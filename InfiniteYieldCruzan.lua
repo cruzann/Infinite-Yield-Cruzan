@@ -4030,9 +4030,11 @@ end)
 
 SettingsButton.MouseButton1Click:Connect(function()
 	if SettingsOpen == false then setSettingsOpenState(true)
+		Dark.Visible = false
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	else setSettingsOpenState(false)
+		Dark.Visible = true
 		CMDsF.Visible = true
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 220), "InOut", "Quart", 0.5, true, nil)
 	end
@@ -4595,6 +4597,7 @@ task.spawn(function()
 				if SettingsOpen == true then
 					wait(0.2)
 					CMDsF.Visible = true
+					Dark.Visible = true
 					Settings:TweenPosition(UDim2.new(0, 0, 0, 220), "InOut", "Quart", 0.2, true, nil)
 				end
 				IndexContents(PlayerGui.Chat.Frame.ChatBarParentFrame.Frame.BoxFrame.Frame.ChatBar.Text:lower():sub(2),true)
@@ -4604,6 +4607,7 @@ task.spawn(function()
 					wait(0.2)
 					Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 					CMDsF.Visible = false
+					Dark.Visible = false
 				end
 			end
 		end
@@ -6492,6 +6496,7 @@ Cmdbar.FocusLost:Connect(function(enterpressed)
 			wait(0.2)
 			Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 			CMDsF.Visible = false
+			Dark.Visible = false
 		end
 		if not SettingsOpen and not StayOpen then
 			scheduleHolderAutoHide(autoHideDelay)
@@ -6507,6 +6512,7 @@ Cmdbar.Focused:Connect(function()
 		wait(0.2)
 		CMDsF.Visible = true
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 220), "InOut", "Quart", 0.2, true, nil)
+		Dark.Visible = true
 	end
 	tabComplete = UserInputService.InputBegan:Connect(function(input,gameProcessed)
 		if Cmdbar:IsFocused() then
@@ -8362,6 +8368,7 @@ end)
 
 addcmd('waypoints',{'positions'},function(args, speaker)
 	if SettingsOpen == false then setSettingsOpenState(true)
+		Dark.Visible = false
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	end
