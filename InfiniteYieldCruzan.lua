@@ -3266,6 +3266,7 @@ end
 PrefixBox.Text = prefix
 local SettingsOpen = false
 local isHidden = IsOnMobile
+local holderBackgroundTransparencyBeforeSettings = Holder.BackgroundTransparency
 local cmdbarVisibilityBeforeSettings = nil
 local cmdbarTextTransparencyBeforeSettings = nil
 local cmdbarFadeToken = 0
@@ -3276,6 +3277,10 @@ local function setSettingsOpenState(open)
     local thisFadeToken = cmdbarFadeToken
 
     if open then
+        -- The main Holder background was leaking below the settings panel. Make the panel fully cover its area while open.
+        Holder.BackgroundTransparency = 1
+        Settings.BackgroundTransparency = 0
+        Settings.Size = UDim2.new(1, 0, 1, -20)
         if not SettingsOpen then
             cmdbarVisibilityBeforeSettings = Cmdbar.Visible
             cmdbarTextTransparencyBeforeSettings = Cmdbar.TextTransparency
@@ -3297,6 +3302,7 @@ local function setSettingsOpenState(open)
         end
     else
         SettingsOpen = false
+        Holder.BackgroundTransparency = holderBackgroundTransparencyBeforeSettings
         if cmdbarVisibilityBeforeSettings ~= nil then
             local shouldRestoreCmdbar = cmdbarVisibilityBeforeSettings
             local restoreTextTransparency = cmdbarTextTransparencyBeforeSettings
