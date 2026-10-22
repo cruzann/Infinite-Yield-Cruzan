@@ -4029,7 +4029,10 @@ end)
 
 
 SettingsButton.MouseButton1Click:Connect(function()
-	if SettingsOpen == false then setSettingsOpenState(true)
+	if SettingsOpen == false then
+		-- Always show the settings from the top so no partially clipped row remains at the bottom.
+		SettingsHolder.CanvasPosition = Vector2.new(0, 0)
+		setSettingsOpenState(true)
 		Dark.Visible = false
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
