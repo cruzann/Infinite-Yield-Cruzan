@@ -404,7 +404,7 @@ Dark.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Dark.BorderSizePixel = 0
 Dark.Position = UDim2.new(0, 0, 0, 45)
 Dark.Size = UDim2.new(0, 250, 0, 175)
-Dark.ZIndex = 9
+Dark.ZIndex = 10
 table.insert(shade1,Dark)
 
 Cmdbar.Name = "Cmdbar"
@@ -463,7 +463,7 @@ Settings.Active = true
 Settings.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Settings.BorderSizePixel = 0
 Settings.Position = UDim2.new(0, 0, 0, 220)
-Settings.Size = UDim2.new(0, 250, 0, 200)
+Settings.Size = UDim2.new(0, 250, 0, 175)
 Settings.ZIndex = 10
 table.insert(shade1,Settings)
 
@@ -634,7 +634,7 @@ AutoHideDelayLabel.Name = "AutoHideDelayLabel"
 AutoHideDelayLabel.Parent = SettingsHolder
 AutoHideDelayLabel.BackgroundTransparency = 1
 AutoHideDelayLabel.Position = UDim2.new(0, 5, 0, 55)
-AutoHideDelayLabel.Size = UDim2.new(1, -10, 0, 20)
+AutoHideDelayLabel.Size = UDim2.new(1, -70, 0, 20)
 AutoHideDelayLabel.Font = Enum.Font.SourceSans
 AutoHideDelayLabel.TextSize = 14
 AutoHideDelayLabel.Text = "Auto-hide delay (sec)"
@@ -646,13 +646,13 @@ table.insert(text1, AutoHideDelayLabel)
 
 AutoHideDelayBox = Instance.new("TextBox")
 AutoHideDelayBox.Name = "AutoHideDelayBox"
-AutoHideDelayBox.Parent = AutoHideDelayLabel
+AutoHideDelayBox.Parent = SettingsHolder
 AutoHideDelayBox.BackgroundColor3 = Color3.fromRGB(78, 78, 79)
 AutoHideDelayBox.BorderSizePixel = 0
-AutoHideDelayBox.Position = UDim2.new(1, -20, 0, 0)
-AutoHideDelayBox.Size = UDim2.new(0, 20, 0, 20)
+AutoHideDelayBox.Position = UDim2.new(1, -34, 0, 53)
+AutoHideDelayBox.Size = UDim2.new(0, 24, 0, 24)
 AutoHideDelayBox.Font = Enum.Font.SourceSansBold
-AutoHideDelayBox.TextSize = 12
+AutoHideDelayBox.TextSize = 14
 AutoHideDelayBox.Text = "1.5"
 AutoHideDelayBox.TextColor3 = Color3.new(1, 1, 1)
 AutoHideDelayBox.ClearTextOnFocus = false
@@ -3270,29 +3270,12 @@ local cmdbarVisibilityBeforeSettings = nil
 local cmdbarTextTransparencyBeforeSettings = nil
 local cmdbarFadeToken = 0
 
--- Keep the original backdrop geometry aligned with the active panel to prevent an overlapping strip.
-local function setSettingsBackdrop(open)
-    if open then
-        Dark.Position = UDim2.new(0, 0, 0, 20)
-        Dark.Size = UDim2.new(0, 250, 0, 200)
-    else
-        Dark.Position = UDim2.new(0, 0, 0, 45)
-        Dark.Size = UDim2.new(0, 250, 0, 175)
-    end
-    Dark.Visible = true
-end
-
 -- Fade the command input out while settings move into its space; restore its prior state on close.
 local function setSettingsOpenState(open)
     cmdbarFadeToken += 1
     local thisFadeToken = cmdbarFadeToken
 
     if open then
-        -- Keep the original holder and panel geometry; only switch which content is visible.
-        Settings.BackgroundTransparency = 0
-        Settings.Size = UDim2.new(0, 250, 0, 200)
-        setSettingsBackdrop(true)
-        CMDsF.Visible = false
         if not SettingsOpen then
             cmdbarVisibilityBeforeSettings = Cmdbar.Visible
             cmdbarTextTransparencyBeforeSettings = Cmdbar.TextTransparency
@@ -3314,8 +3297,6 @@ local function setSettingsOpenState(open)
         end
     else
         SettingsOpen = false
-        setSettingsBackdrop(false)
-        CMDsF.Visible = true
         if cmdbarVisibilityBeforeSettings ~= nil then
             local shouldRestoreCmdbar = cmdbarVisibilityBeforeSettings
             local restoreTextTransparency = cmdbarTextTransparencyBeforeSettings
@@ -4048,15 +4029,10 @@ end)
 
 
 SettingsButton.MouseButton1Click:Connect(function()
-	if SettingsOpen == false then
-		-- Always show the settings from the top so no partially clipped row remains at the bottom.
-		SettingsHolder.CanvasPosition = Vector2.new(0, 0)
-		setSettingsOpenState(true)
-		setSettingsBackdrop(true)
+	if SettingsOpen == false then setSettingsOpenState(true)
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	else setSettingsOpenState(false)
-		setSettingsBackdrop(false)
 		CMDsF.Visible = true
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 220), "InOut", "Quart", 0.5, true, nil)
 	end
@@ -4617,9 +4593,9 @@ task.spawn(function()
 		local function Index()
 			if chatbox.Text:lower():sub(1,1) == prefix then
 				if SettingsOpen == true then
-					-- Keep the settings panel in front without disabling normal command indexing.
-					CMDsF.Visible = false
-					setSettingsBackdrop(true)
+					wait(0.2)
+					CMDsF.Visible = true
+					Settings:TweenPosition(UDim2.new(0, 0, 0, 220), "InOut", "Quart", 0.2, true, nil)
 				end
 				IndexContents(PlayerGui.Chat.Frame.ChatBarParentFrame.Frame.BoxFrame.Frame.ChatBar.Text:lower():sub(2),true)
 			else
@@ -4628,7 +4604,6 @@ task.spawn(function()
 					wait(0.2)
 					Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 					CMDsF.Visible = false
-					setSettingsBackdrop(true)
 				end
 			end
 		end
@@ -6517,7 +6492,6 @@ Cmdbar.FocusLost:Connect(function(enterpressed)
 			wait(0.2)
 			Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 			CMDsF.Visible = false
-			setSettingsBackdrop(true)
 		end
 		if not SettingsOpen and not StayOpen then
 			scheduleHolderAutoHide(autoHideDelay)
@@ -6530,12 +6504,9 @@ Cmdbar.Focused:Connect(function()
 	historyCount = 0
 	canvasPos = CMDsF.CanvasPosition
 	if SettingsOpen == true then
-		-- Settings owns the panel while open; never restore the command-list backdrop from focus events.
-		setSettingsBackdrop(true)
-		CMDsF.Visible = false
-		Settings.Size = UDim2.new(0, 250, 0, 200)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
-		return
+		wait(0.2)
+		CMDsF.Visible = true
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 220), "InOut", "Quart", 0.2, true, nil)
 	end
 	tabComplete = UserInputService.InputBegan:Connect(function(input,gameProcessed)
 		if Cmdbar:IsFocused() then
@@ -8391,7 +8362,6 @@ end)
 
 addcmd('waypoints',{'positions'},function(args, speaker)
 	if SettingsOpen == false then setSettingsOpenState(true)
-		setSettingsBackdrop(true)
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	end
