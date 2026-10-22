@@ -347,7 +347,7 @@ Holder.Parent = ScaledHolder
 Holder.Active = true
 Holder.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Holder.BorderSizePixel = 0
-Holder.Position = UDim2.new(1, -250, 1, IsOnMobile and 0 or -220)
+Holder.Position = UDim2.new(1, -250, 1, -220)
 Holder.Size = UDim2.new(0, 250, 0, 220)
 Holder.ZIndex = 10
 table.insert(shade2,Holder)
@@ -437,7 +437,6 @@ CMDsF.VerticalScrollBarInset = 'Always'
 CMDsF.ZIndex = 10
 table.insert(scroll,CMDsF)
 
-cmdListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 cmdListLayout.Parent = CMDsF
 
 SettingsButton.Name = "SettingsButton"
@@ -475,7 +474,7 @@ SettingsHolder.BorderSizePixel = 0
 SettingsHolder.Size = UDim2.new(1,0,1,0)
 SettingsHolder.ScrollBarImageColor3 = Color3.fromRGB(78,78,79)
 SettingsHolder.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
-SettingsHolder.CanvasSize = UDim2.new(0, 0, 0, 300)
+SettingsHolder.CanvasSize = UDim2.new(0, 0, 0, 265)
 SettingsHolder.MidImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 SettingsHolder.ScrollBarThickness = 8
 SettingsHolder.TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
@@ -552,19 +551,19 @@ function makeSettingsButton(name,iconID,off)
 end
 
 ColorsButton = makeSettingsButton("Edit Theme",getcustomasset("infiniteyield/assets/edittheme.png"))
-ColorsButton.Position = UDim2.new(0, 5, 0, 115)
+ColorsButton.Position = UDim2.new(0, 5, 0, 55)
 ColorsButton.Size = UDim2.new(1, -10, 0, 25)
 ColorsButton.Name = "Colors"
 ColorsButton.Parent = SettingsHolder
 
 Keybinds = makeSettingsButton("Edit Keybinds",getcustomasset("infiniteyield/assets/editkeybinds.png"))
-Keybinds.Position = UDim2.new(0, 5, 0, 145)
+Keybinds.Position = UDim2.new(0, 5, 0, 85)
 Keybinds.Size = UDim2.new(1, -10, 0, 25)
 Keybinds.Name = "Keybinds"
 Keybinds.Parent = SettingsHolder
 
 Aliases = makeSettingsButton("Edit Aliases",getcustomasset("infiniteyield/assets/editaliases.png"))
-Aliases.Position = UDim2.new(0, 5, 0, 175)
+Aliases.Position = UDim2.new(0, 5, 0, 115)
 Aliases.Size = UDim2.new(1, -10, 0, 25)
 Aliases.Name = "Aliases"
 Aliases.Parent = SettingsHolder
@@ -611,19 +610,19 @@ On.TextColor3 = Color3.new(0, 0, 0)
 On.ZIndex = 10
 
 Positions = makeSettingsButton("Edit/Goto Waypoints",getcustomasset("infiniteyield/assets/editwaypoints.png"))
-Positions.Position = UDim2.new(0, 5, 0, 205)
+Positions.Position = UDim2.new(0, 5, 0, 145)
 Positions.Size = UDim2.new(1, -10, 0, 25)
 Positions.Name = "Waypoints"
 Positions.Parent = SettingsHolder
 
 EventBind = makeSettingsButton("Edit Event Binds",getcustomasset("infiniteyield/assets/bindsandplugins.png"),759)
-EventBind.Position = UDim2.new(0, 5, 0, 265)
+EventBind.Position = UDim2.new(0, 5, 0, 205)
 EventBind.Size = UDim2.new(1, -10, 0, 25)
 EventBind.Name = "EventBinds"
 EventBind.Parent = SettingsHolder
 
 Plugins = makeSettingsButton("Manage Plugins",getcustomasset("infiniteyield/assets/bindsandplugins.png"),743)
-Plugins.Position = UDim2.new(0, 5, 0, 235)
+Plugins.Position = UDim2.new(0, 5, 0, 175)
 Plugins.Size = UDim2.new(1, -10, 0, 25)
 Plugins.Name = "Plugins"
 Plugins.Parent = SettingsHolder
@@ -633,7 +632,7 @@ AutoHideDelayLabel = Instance.new("TextLabel")
 AutoHideDelayLabel.Name = "AutoHideDelayLabel"
 AutoHideDelayLabel.Parent = SettingsHolder
 AutoHideDelayLabel.BackgroundTransparency = 1
-AutoHideDelayLabel.Position = UDim2.new(0, 5, 0, 55)
+AutoHideDelayLabel.Position = UDim2.new(0, 5, 0, 235)
 AutoHideDelayLabel.Size = UDim2.new(1, -70, 0, 20)
 AutoHideDelayLabel.Font = Enum.Font.SourceSans
 AutoHideDelayLabel.TextSize = 14
@@ -649,7 +648,7 @@ AutoHideDelayBox.Name = "AutoHideDelayBox"
 AutoHideDelayBox.Parent = SettingsHolder
 AutoHideDelayBox.BackgroundColor3 = Color3.fromRGB(78, 78, 79)
 AutoHideDelayBox.BorderSizePixel = 0
-AutoHideDelayBox.Position = UDim2.new(1, -34, 0, 53)
+AutoHideDelayBox.Position = UDim2.new(1, -34, 0, 233)
 AutoHideDelayBox.Size = UDim2.new(0, 24, 0, 24)
 AutoHideDelayBox.Font = Enum.Font.SourceSansBold
 AutoHideDelayBox.TextSize = 14
@@ -660,12 +659,6 @@ AutoHideDelayBox.TextXAlignment = Enum.TextXAlignment.Center
 AutoHideDelayBox.ZIndex = 10
 table.insert(shade3, AutoHideDelayBox)
 table.insert(text1, AutoHideDelayBox)
-
-FavCmdsButton = makeSettingsButton("Manage Fav cmds", getcustomasset("infiniteyield/assets/editaliases.png"))
-FavCmdsButton.Position = UDim2.new(0, 5, 0, 85)
-FavCmdsButton.Size = UDim2.new(1, -10, 0, 25)
-FavCmdsButton.Name = "FavoriteCommands"
-FavCmdsButton.Parent = SettingsHolder
 
 Example.Name = "Example"
 Example.Parent = Holder
@@ -2976,7 +2969,6 @@ currentScroll = Color3.fromRGB(78,78,79)
 
 defaultGuiScale = IsOnMobile and 0.9 or 1
 local autoHideDelay = 1.5
-favoriteCommands = {}
 defaultsettings = {
 	autoHideDelay = 1.5;
 	prefix = ';';
@@ -2990,7 +2982,6 @@ defaultsettings = {
 	binds = {};
 	WayPoints = {};
 	PluginsTable = {};
-	favoriteCommands = {};
 	currentShade1 = {currentShade1.R,currentShade1.G,currentShade1.B};
 	currentShade2 = {currentShade2.R,currentShade2.G,currentShade2.B};
 	currentShade3 = {currentShade3.R,currentShade3.G,currentShade3.B};
@@ -3016,7 +3007,6 @@ useFactorySettings = function()
 	binds = {}
 	WayPoints = {}
 	PluginsTable = {}
-	favoriteCommands = {}
 end
 
 function createPopup(title, text)
@@ -3112,18 +3102,6 @@ function saves()
 			if out ~= nil and tostring(out):gsub("%s", "") ~= "" then
 				local success, response = pcall(function()
 					local json = HttpService:JSONDecode(out)
-					if vtype(json.favoriteCommands, "table") then
-						local loadedFavorites, seenFavorites = {}, {}
-						for _, name in ipairs(json.favoriteCommands) do
-							if type(name) == "string" and name ~= "" and not seenFavorites[name] then
-								seenFavorites[name] = true
-								table.insert(loadedFavorites, name)
-							end
-						end
-						favoriteCommands = loadedFavorites
-					else
-						favoriteCommands = {}
-					end
 					if vtype(json.autoHideDelay, "number") and json.autoHideDelay >= 0.1 and json.autoHideDelay <= 10 then
 						autoHideDelay = math.floor(json.autoHideDelay * 10 + 0.5) / 10
 					else
@@ -3196,9 +3174,6 @@ end
 
 saves()
 
--- Start in hideiy mode on mobile regardless of the previously saved Keep Menu Open state.
-if IsOnMobile then StayOpen = false end
-
 function updatesaves()
 	if nosaves == false and writefileExploit() then
 		local update = {
@@ -3215,7 +3190,6 @@ function updatesaves()
 			binds = binds or {};
 			WayPoints = AllWaypoints;
 			PluginsTable = PluginsTable;
-			favoriteCommands = favoriteCommands or {};
 			currentShade1 = {currentShade1.R,currentShade1.G,currentShade1.B};
 			currentShade2 = {currentShade2.R,currentShade2.G,currentShade2.B};
 			currentShade3 = {currentShade3.R,currentShade3.G,currentShade3.B};
@@ -3265,59 +3239,7 @@ end
 
 PrefixBox.Text = prefix
 local SettingsOpen = false
-local isHidden = IsOnMobile
-local cmdbarVisibilityBeforeSettings = nil
-local cmdbarTextTransparencyBeforeSettings = nil
-local cmdbarFadeToken = 0
-
--- Fade the command input out while settings move into its space; restore its prior state on close.
-local function setSettingsOpenState(open)
-    cmdbarFadeToken += 1
-    local thisFadeToken = cmdbarFadeToken
-
-    if open then
-        if not SettingsOpen then
-            cmdbarVisibilityBeforeSettings = Cmdbar.Visible
-            cmdbarTextTransparencyBeforeSettings = Cmdbar.TextTransparency
-        end
-        SettingsOpen = true
-        if Cmdbar.Visible then
-            TweenService:Create(Cmdbar, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                TextTransparency = 1
-            }):Play()
-            task.delay(0.12, function()
-                if thisFadeToken ~= cmdbarFadeToken or not SettingsOpen then return end
-                Cmdbar.Visible = false
-                if cmdbarTextTransparencyBeforeSettings ~= nil then
-                    Cmdbar.TextTransparency = cmdbarTextTransparencyBeforeSettings
-                end
-            end)
-        else
-            Cmdbar.Visible = false
-        end
-    else
-        SettingsOpen = false
-        if cmdbarVisibilityBeforeSettings ~= nil then
-            local shouldRestoreCmdbar = cmdbarVisibilityBeforeSettings
-            local restoreTextTransparency = cmdbarTextTransparencyBeforeSettings
-            cmdbarVisibilityBeforeSettings = nil
-            cmdbarTextTransparencyBeforeSettings = nil
-
-            if shouldRestoreCmdbar then
-                Cmdbar.TextTransparency = 1
-                Cmdbar.Visible = true
-                TweenService:Create(Cmdbar, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    TextTransparency = restoreTextTransparency or 0
-                }):Play()
-            else
-                Cmdbar.Visible = false
-                if restoreTextTransparency ~= nil then
-                    Cmdbar.TextTransparency = restoreTextTransparency
-                end
-            end
-        end
-    end
-end
+local isHidden = false
 
 local function updateStayOpenVisual()
 	local enabled = StayOpen == true
@@ -3372,7 +3294,7 @@ function maximizeHolder()
 	Holder:TweenPosition(UDim2.new(1, Holder.Position.X.Offset, 1, -220), "InOut", "Quart", 0.2, true, nil)
 end
 
-minimizeNum = IsOnMobile and 0 or -20
+minimizeNum = -20
 function minimizeHolder()
 	holderHideToken += 1
 	if StayOpen == true or SettingsOpen == true then
@@ -4029,10 +3951,10 @@ end)
 
 
 SettingsButton.MouseButton1Click:Connect(function()
-	if SettingsOpen == false then setSettingsOpenState(true)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
+	if SettingsOpen == false then SettingsOpen = true
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
-	else setSettingsOpenState(false)
+	else SettingsOpen = false
 		CMDsF.Visible = true
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 220), "InOut", "Quart", 0.5, true, nil)
 	end
@@ -4504,8 +4426,6 @@ IndexContents = function(str,bool,cmdbar,Ianim)
 	local indexnum = 0
 	local frame = CMDsF
 	topCommand = nil
-	local favoriteMatches = 0
-	local normalMatches = 0
 	local chunks = {}
 	if str:sub(#str,#str) == "\\" then str = "" end
 	for w in string.gmatch(str,"[^\\]+") do
@@ -4513,57 +4433,26 @@ IndexContents = function(str,bool,cmdbar,Ianim)
 	end
 	if #chunks > 0 then str = chunks[#chunks] end
 	if str:sub(1,1) == "!" then str = str:sub(2) end
-
-	local children = frame:GetChildren()
-	table.sort(children, function(a, b)
-		local aOrder = a:IsA("GuiObject") and a.LayoutOrder or -100000
-		local bOrder = b:IsA("GuiObject") and b.LayoutOrder or -100000
-		if aOrder == bOrder then return a.Name < b.Name end
-		return aOrder < bOrder
-	end)
-
-	for _, v in ipairs(children) do
-		if v:GetAttribute("IsCommandSectionHeader") or v:GetAttribute("IsCommandEmptyState") then
-			v.Visible = false
-		elseif v:GetAttribute("IsCommandEntry") then
-			local matched = (not bool) or Match(v.Text, str)
-			v.Visible = matched
-			if matched then
-				if bool then indexnum = indexnum + 1 end
-				if topCommand == nil then topCommand = v.Text end
-				if v:GetAttribute("IsFavoriteCommand") then
-					favoriteMatches = favoriteMatches + 1
-				else
-					normalMatches = normalMatches + 1
-				end
-			end
-		elseif v:IsA("TextButton") or v:IsA("TextLabel") then
-			-- Keep the original filtering behavior for any non-command UI element.
+	for i,v in next, frame:GetChildren() do
+		if v:IsA("TextButton") or v:IsA("TextLabel") then
 			if bool then
 				if Match(v.Text,str) then
 					indexnum = indexnum + 1
 					v.Visible = true
-					if topCommand == nil then topCommand = v.Text end
+					if topCommand == nil then
+						topCommand = v.Text
+					end
 				else
 					v.Visible = false
 				end
 			else
 				v.Visible = true
-				if topCommand == nil then topCommand = v.Text end
+				if topCommand == nil then
+					topCommand = v.Text
+				end
 			end
 		end
 	end
-
-	if FavSectionHeader then
-		FavSectionHeader.Visible = (not bool) or str == "" or favoriteMatches > 0
-	end
-	if AllCommandsHeader then
-		AllCommandsHeader.Visible = (not bool) or str == "" or normalMatches > 0
-	end
-	if FavEmptyLabel then
-		FavEmptyLabel.Visible = (#(favoriteCommands or {}) == 0) and ((not bool) or str == "")
-	end
-
 	updateCommandCanvasSize(frame)
 	if not Ianim then
 		if indexnum == 0 or string.find(str, " ") then
@@ -4602,7 +4491,7 @@ task.spawn(function()
 				minimizeHolder()
 				if SettingsOpen == true then
 					wait(0.2)
-					Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
+					Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
 					CMDsF.Visible = false
 				end
 			end
@@ -5098,59 +4987,6 @@ CMDs[#CMDs + 1] = {NAME = 'reloadplugin [name]', DESC = 'Reloads a plugin'}
 CMDs[#CMDs + 1] = {NAME = 'addallplugins / loadallplugins', DESC = 'Adds all available plugins from the workspace folder'}
 -- wait()
 
--- Command entries remain the original entries; favorites only change their visual order.
-local commandEntryRows = {}
-local commandRowsByName = {}
-local commandOptions = {}
-local commandOptionSeen = {}
-
-FavSectionHeader = Instance.new("TextLabel")
-FavSectionHeader.Name = "FavCmdsSectionHeader"
-FavSectionHeader.Parent = CMDsF
-FavSectionHeader.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
-FavSectionHeader.BorderSizePixel = 0
-FavSectionHeader.Size = UDim2.new(1, -5, 0, 18)
-FavSectionHeader.Font = Enum.Font.SourceSansBold
-FavSectionHeader.TextSize = 14
-FavSectionHeader.Text = "Fav cmds"
-FavSectionHeader.TextColor3 = Color3.new(1, 1, 1)
-FavSectionHeader.TextXAlignment = Enum.TextXAlignment.Left
-FavSectionHeader.ZIndex = 10
-FavSectionHeader:SetAttribute("IsCommandSectionHeader", true)
-table.insert(shade2, FavSectionHeader)
-table.insert(text1, FavSectionHeader)
-
-FavEmptyLabel = Instance.new("TextLabel")
-FavEmptyLabel.Name = "FavCmdsEmptyState"
-FavEmptyLabel.Parent = CMDsF
-FavEmptyLabel.BackgroundTransparency = 1
-FavEmptyLabel.BorderSizePixel = 0
-FavEmptyLabel.Size = UDim2.new(1, -5, 0, 18)
-FavEmptyLabel.Font = Enum.Font.SourceSansItalic
-FavEmptyLabel.TextSize = 12
-FavEmptyLabel.Text = "Add favorites in Settings"
-FavEmptyLabel.TextColor3 = Color3.new(1, 1, 1)
-FavEmptyLabel.TextXAlignment = Enum.TextXAlignment.Left
-FavEmptyLabel.ZIndex = 10
-FavEmptyLabel:SetAttribute("IsCommandEmptyState", true)
-table.insert(text1, FavEmptyLabel)
-
-AllCommandsHeader = Instance.new("TextLabel")
-AllCommandsHeader.Name = "AllCommandsSectionHeader"
-AllCommandsHeader.Parent = CMDsF
-AllCommandsHeader.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
-AllCommandsHeader.BorderSizePixel = 0
-AllCommandsHeader.Size = UDim2.new(1, -5, 0, 18)
-AllCommandsHeader.Font = Enum.Font.SourceSansBold
-AllCommandsHeader.TextSize = 14
-AllCommandsHeader.Text = "All commands"
-AllCommandsHeader.TextColor3 = Color3.new(1, 1, 1)
-AllCommandsHeader.TextXAlignment = Enum.TextXAlignment.Left
-AllCommandsHeader.ZIndex = 10
-AllCommandsHeader:SetAttribute("IsCommandSectionHeader", true)
-table.insert(shade2, AllCommandsHeader)
-table.insert(text1, AllCommandsHeader)
-
 for i = 1, #CMDs do
 	local newcmd = Example:Clone()
 	newcmd.Parent = CMDsF
@@ -5158,17 +4994,6 @@ for i = 1, #CMDs do
 	newcmd.Text = CMDs[i].NAME
 	newcmd.Name = "CMD"
 	newcmd.Active = false
-	newcmd.LayoutOrder = 1000 + i
-	newcmd:SetAttribute("IsCommandEntry", true)
-	newcmd:SetAttribute("CommandName", CMDs[i].NAME)
-	table.insert(commandEntryRows, newcmd)
-	if CMDs[i].NAME ~= "" and not commandRowsByName[CMDs[i].NAME] then
-		commandRowsByName[CMDs[i].NAME] = newcmd
-		if not commandOptionSeen[CMDs[i].NAME] then
-			commandOptionSeen[CMDs[i].NAME] = true
-			table.insert(commandOptions, {NAME = CMDs[i].NAME, DESC = CMDs[i].DESC or ""})
-		end
-	end
 	table.insert(text1, newcmd)
 	if CMDs[i].DESC ~= "" then
 		newcmd:SetAttribute("Title", CMDs[i].NAME)
@@ -5176,568 +5001,6 @@ for i = 1, #CMDs do
 	end
 end
 
-local function favoriteHas(name)
-	for _, existingName in ipairs(favoriteCommands or {}) do
-		if existingName == name then return true end
-	end
-	return false
-end
-
-local function reorderCommandEntries()
-	local cleanedFavorites = {}
-	local favoriteSeen = {}
-	for _, name in ipairs(favoriteCommands or {}) do
-		if type(name) == "string" and name ~= "" and commandRowsByName[name] and not favoriteSeen[name] then
-			favoriteSeen[name] = true
-			table.insert(cleanedFavorites, name)
-		end
-	end
-	favoriteCommands = cleanedFavorites
-
-	local nextOrder = 0
-	FavSectionHeader.LayoutOrder = nextOrder
-	nextOrder = nextOrder + 1
-	local favoriteRowSet = {}
-	for _, name in ipairs(favoriteCommands) do
-		local row = commandRowsByName[name]
-		if row then
-			row.LayoutOrder = nextOrder
-			nextOrder = nextOrder + 1
-			row:SetAttribute("IsFavoriteCommand", true)
-			favoriteRowSet[row] = true
-		end
-	end
-	FavEmptyLabel.LayoutOrder = nextOrder
-	FavEmptyLabel.Size = UDim2.new(1, -5, 0, #favoriteCommands == 0 and 18 or 0)
-	FavEmptyLabel.Visible = #favoriteCommands == 0
-	nextOrder = nextOrder + 1
-	AllCommandsHeader.LayoutOrder = nextOrder
-	nextOrder = nextOrder + 1
-
-	for _, row in ipairs(commandEntryRows) do
-		if not favoriteRowSet[row] then
-			row:SetAttribute("IsFavoriteCommand", false)
-			row.LayoutOrder = nextOrder
-			nextOrder = nextOrder + 1
-		end
-	end
-	updateCommandCanvasSize(CMDsF)
-end
-
-local FavCmdsManagerFrame = Instance.new("Frame")
-FavCmdsManagerFrame.Name = "FavCmdsManagerFrame"
-FavCmdsManagerFrame.Parent = Settings
-FavCmdsManagerFrame.Active = true
-FavCmdsManagerFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
-FavCmdsManagerFrame.BorderSizePixel = 0
-FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 175)
-FavCmdsManagerFrame.Size = UDim2.new(0, 250, 0, 175)
-FavCmdsManagerFrame.Visible = false
-FavCmdsManagerFrame.ZIndex = 20
-table.insert(shade1, FavCmdsManagerFrame)
-
-local FavManagerTitle = Instance.new("TextLabel")
-FavManagerTitle.Name = "Header"
-FavManagerTitle.Parent = FavCmdsManagerFrame
-FavManagerTitle.BackgroundTransparency = 1
-FavManagerTitle.BorderSizePixel = 0
-FavManagerTitle.Position = UDim2.new(0, 5, 0, 1)
-FavManagerTitle.Size = UDim2.new(1, -10, 0, 18)
-FavManagerTitle.Font = Enum.Font.SourceSans
-FavManagerTitle.TextSize = 14
-FavManagerTitle.Text = "Manage Fav cmds"
-FavManagerTitle.TextColor3 = Color3.new(1, 1, 1)
-FavManagerTitle.TextXAlignment = Enum.TextXAlignment.Left
-FavManagerTitle.ZIndex = 21
-table.insert(shade2, FavManagerTitle)
-table.insert(text1, FavManagerTitle)
-
-local FavManagerClose = Instance.new("TextButton")
-FavManagerClose.Name = "Close"
-FavManagerClose.Parent = FavCmdsManagerFrame
-FavManagerClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
-FavManagerClose.BorderSizePixel = 0
-FavManagerClose.Position = UDim2.new(0, 205, 0, 150)
-FavManagerClose.Size = UDim2.new(0, 40, 0, 20)
-FavManagerClose.Font = Enum.Font.SourceSans
-FavManagerClose.TextSize = 14
-FavManagerClose.Text = "Close"
-FavManagerClose.TextColor3 = Color3.new(1, 1, 1)
-FavManagerClose.ZIndex = 22
-table.insert(shade2, FavManagerClose)
-table.insert(text1, FavManagerClose)
-
-local FavManagerHint = Instance.new("TextLabel")
-FavManagerHint.Name = "Hint"
-FavManagerHint.Parent = FavCmdsManagerFrame
-FavManagerHint.BackgroundTransparency = 1
-FavManagerHint.BorderSizePixel = 0
-FavManagerHint.Position = UDim2.new(0, 5, 0, 21)
-FavManagerHint.Size = UDim2.new(1, -10, 0, 17)
-FavManagerHint.Font = Enum.Font.SourceSansItalic
-FavManagerHint.TextSize = 11
-FavManagerHint.Text = "Drag ↕ to reorder · × to remove"
-FavManagerHint.TextColor3 = Color3.new(1, 1, 1)
-FavManagerHint.TextXAlignment = Enum.TextXAlignment.Left
-FavManagerHint.ZIndex = 21
-table.insert(text1, FavManagerHint)
-
-local FavCmdsList = Instance.new("ScrollingFrame")
-FavCmdsList.Name = "FavoritesList"
-FavCmdsList.Parent = FavCmdsManagerFrame
-FavCmdsList.BackgroundTransparency = 1
-FavCmdsList.BorderSizePixel = 0
-FavCmdsList.Position = UDim2.new(0, 5, 0, 40)
-FavCmdsList.Size = UDim2.new(1, -10, 0, 105)
-FavCmdsList.ScrollBarImageColor3 = Color3.fromRGB(78, 78, 79)
-FavCmdsList.ScrollBarThickness = 5
-FavCmdsList.CanvasSize = UDim2.new(0, 0, 0, 0)
-FavCmdsList.ZIndex = 21
-table.insert(scroll, FavCmdsList)
-local FavCmdsListLayout = Instance.new("UIListLayout")
-FavCmdsListLayout.Parent = FavCmdsList
-FavCmdsListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-FavCmdsListLayout.Padding = UDim.new(0, 2)
-
-local FavManagerEmpty = Instance.new("TextLabel")
-FavManagerEmpty.Name = "EmptyState"
-FavManagerEmpty.Parent = FavCmdsManagerFrame
-FavManagerEmpty.BackgroundTransparency = 1
-FavManagerEmpty.BorderSizePixel = 0
-FavManagerEmpty.Position = UDim2.new(0, 8, 0, 77)
-FavManagerEmpty.Size = UDim2.new(1, -16, 0, 22)
-FavManagerEmpty.Font = Enum.Font.SourceSansItalic
-FavManagerEmpty.TextSize = 13
-FavManagerEmpty.Text = "No favorites yet. Tap Add."
-FavManagerEmpty.TextColor3 = Color3.new(1, 1, 1)
-FavManagerEmpty.TextXAlignment = Enum.TextXAlignment.Center
-FavManagerEmpty.ZIndex = 22
-table.insert(text1, FavManagerEmpty)
-
-local FavManagerAdd = Instance.new("TextButton")
-FavManagerAdd.Name = "AddExistingCommand"
-FavManagerAdd.Parent = FavCmdsManagerFrame
-FavManagerAdd.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
-FavManagerAdd.BorderSizePixel = 0
-FavManagerAdd.Position = UDim2.new(0, 50, 0, 150)
-FavManagerAdd.Size = UDim2.new(0, 150, 0, 20)
-FavManagerAdd.Font = Enum.Font.SourceSans
-FavManagerAdd.TextSize = 13
-FavManagerAdd.Text = "+ Add existing command"
-FavManagerAdd.TextColor3 = Color3.new(1, 1, 1)
-FavManagerAdd.ZIndex = 21
-table.insert(shade2, FavManagerAdd)
-table.insert(text1, FavManagerAdd)
-
-local FavCmdsPickerFrame = Instance.new("Frame")
-FavCmdsPickerFrame.Name = "FavCmdsPickerFrame"
-FavCmdsPickerFrame.Parent = Settings
-FavCmdsPickerFrame.Active = true
-FavCmdsPickerFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
-FavCmdsPickerFrame.BorderSizePixel = 0
-FavCmdsPickerFrame.Position = UDim2.new(0, 0, 0, 175)
-FavCmdsPickerFrame.Size = UDim2.new(0, 250, 0, 175)
-FavCmdsPickerFrame.Visible = false
-FavCmdsPickerFrame.ZIndex = 30
-table.insert(shade1, FavCmdsPickerFrame)
-
-local FavPickerTitle = Instance.new("TextLabel")
-FavPickerTitle.Name = "Header"
-FavPickerTitle.Parent = FavCmdsPickerFrame
-FavPickerTitle.BackgroundTransparency = 1
-FavPickerTitle.BorderSizePixel = 0
-FavPickerTitle.Position = UDim2.new(0, 5, 0, 1)
-FavPickerTitle.Size = UDim2.new(1, -10, 0, 18)
-FavPickerTitle.Font = Enum.Font.SourceSans
-FavPickerTitle.TextSize = 14
-FavPickerTitle.Text = "Add existing command"
-FavPickerTitle.TextColor3 = Color3.new(1, 1, 1)
-FavPickerTitle.TextXAlignment = Enum.TextXAlignment.Left
-FavPickerTitle.ZIndex = 31
-table.insert(shade2, FavPickerTitle)
-table.insert(text1, FavPickerTitle)
-
-local FavPickerClose = Instance.new("TextButton")
-FavPickerClose.Name = "Back"
-FavPickerClose.Parent = FavCmdsPickerFrame
-FavPickerClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
-FavPickerClose.BorderSizePixel = 0
-FavPickerClose.Position = UDim2.new(0, 50, 0, 150)
-FavPickerClose.Size = UDim2.new(0, 150, 0, 20)
-FavPickerClose.Font = Enum.Font.SourceSans
-FavPickerClose.TextSize = 14
-FavPickerClose.Text = "Back"
-FavPickerClose.TextColor3 = Color3.new(1, 1, 1)
-FavPickerClose.ZIndex = 32
-table.insert(shade2, FavPickerClose)
-table.insert(text1, FavPickerClose)
-
-local FavPickerCloseAll = Instance.new("TextButton")
-FavPickerCloseAll.Name = "Close"
-FavPickerCloseAll.Parent = FavCmdsPickerFrame
-FavPickerCloseAll.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
-FavPickerCloseAll.BorderSizePixel = 0
-FavPickerCloseAll.Position = UDim2.new(0, 205, 0, 150)
-FavPickerCloseAll.Size = UDim2.new(0, 40, 0, 20)
-FavPickerCloseAll.Font = Enum.Font.SourceSans
-FavPickerCloseAll.TextSize = 14
-FavPickerCloseAll.Text = "Close"
-FavPickerCloseAll.TextColor3 = Color3.new(1, 1, 1)
-FavPickerCloseAll.ZIndex = 32
-table.insert(shade2, FavPickerCloseAll)
-table.insert(text1, FavPickerCloseAll)
-
-local FavPickerSearch = Instance.new("TextBox")
-FavPickerSearch.Name = "Search"
-FavPickerSearch.Parent = FavCmdsPickerFrame
-FavPickerSearch.BackgroundColor3 = Color3.fromRGB(78, 78, 79)
-FavPickerSearch.BorderSizePixel = 0
-FavPickerSearch.Position = UDim2.new(0, 5, 0, 23)
-FavPickerSearch.Size = UDim2.new(1, -10, 0, 20)
-FavPickerSearch.Font = Enum.Font.SourceSans
-FavPickerSearch.TextSize = 13
-FavPickerSearch.Text = ""
-FavPickerSearch.PlaceholderText = "Search existing commands"
-FavPickerSearch.ClearTextOnFocus = false
-FavPickerSearch.TextColor3 = Color3.new(1, 1, 1)
-FavPickerSearch.PlaceholderColor3 = Color3.fromRGB(200, 200, 200)
-FavPickerSearch.TextXAlignment = Enum.TextXAlignment.Left
-FavPickerSearch.ZIndex = 31
-table.insert(shade3, FavPickerSearch)
-table.insert(text1, FavPickerSearch)
-
-local FavPickerList = Instance.new("ScrollingFrame")
-FavPickerList.Name = "CommandsList"
-FavPickerList.Parent = FavCmdsPickerFrame
-FavPickerList.BackgroundTransparency = 1
-FavPickerList.BorderSizePixel = 0
-FavPickerList.Position = UDim2.new(0, 5, 0, 47)
-FavPickerList.Size = UDim2.new(1, -10, 0, 98)
-FavPickerList.ScrollBarImageColor3 = Color3.fromRGB(78, 78, 79)
-FavPickerList.ScrollBarThickness = 5
-FavPickerList.CanvasSize = UDim2.new(0, 0, 0, 0)
-FavPickerList.ZIndex = 31
-table.insert(scroll, FavPickerList)
-local FavPickerLayout = Instance.new("UIListLayout")
-FavPickerLayout.Parent = FavPickerList
-FavPickerLayout.SortOrder = Enum.SortOrder.LayoutOrder
-FavPickerLayout.Padding = UDim.new(0, 1)
-
-local favoriteRowFrames = {}
-local favoritePickerRows = {}
-local favoriteDragState = nil
-
-local function removeThemeReferences(root)
-	local themeLists = {shade1, shade2, shade3, text1, text2, scroll}
-	for _, list in ipairs(themeLists) do
-		for i = #list, 1, -1 do
-			local object = list[i]
-			if object == root or object:IsDescendantOf(root) then
-				table.remove(list, i)
-			end
-		end
-	end
-end
-
-local function applyFavoritePickerFilter()
-	local query = string.lower(FavPickerSearch.Text or "")
-	local shown = 0
-	for index, row in ipairs(favoritePickerRows) do
-		local name = row:GetAttribute("CommandName") or ""
-		local matches = string.find(string.lower(name), query, 1, true) ~= nil
-		row.Visible = matches
-		if matches then
-			row.LayoutOrder = shown
-			shown = shown + 1
-		else
-			row.LayoutOrder = 10000 + index
-		end
-	end
-	FavPickerList.CanvasSize = UDim2.new(0, 0, 0, math.max(0, FavPickerLayout.AbsoluteContentSize.Y + 2))
-end
-
-local function refreshFavoriteManagerRows()
-	for _, child in ipairs(FavCmdsList:GetChildren()) do
-		if child:GetAttribute("IsFavoriteManagerRow") then
-			removeThemeReferences(child)
-			child:Destroy()
-		end
-	end
-	favoriteRowFrames = {}
-	FavManagerEmpty.Visible = #favoriteCommands == 0
-
-	for i, name in ipairs(favoriteCommands) do
-		local row = Instance.new("Frame")
-		row.Name = "FavoriteRow"
-		row.Parent = FavCmdsList
-		row.BackgroundColor3 = currentShade2
-		row.BorderSizePixel = 0
-		row.Size = UDim2.new(1, -6, 0, 23)
-		row.LayoutOrder = i
-		row.ZIndex = 22
-		row:SetAttribute("IsFavoriteManagerRow", true)
-		row:SetAttribute("CommandName", name)
-		table.insert(shade2, row)
-
-		local dragHandle = Instance.new("TextButton")
-		dragHandle.Name = "DragHandle"
-		dragHandle.Parent = row
-		dragHandle.BackgroundColor3 = currentShade3
-		dragHandle.BorderSizePixel = 0
-		dragHandle.Position = UDim2.new(0, 0, 0, 0)
-		dragHandle.Size = UDim2.new(0, 24, 1, 0)
-		dragHandle.Font = Enum.Font.SourceSansBold
-		dragHandle.TextSize = 16
-		dragHandle.Text = "↕"
-		dragHandle.TextColor3 = currentText1
-		dragHandle.ZIndex = 23
-		table.insert(shade3, dragHandle)
-		table.insert(text1, dragHandle)
-
-		local label = Instance.new("TextLabel")
-		label.Name = "CommandName"
-		label.Parent = row
-		label.BackgroundTransparency = 1
-		label.BorderSizePixel = 0
-		label.Position = UDim2.new(0, 28, 0, 0)
-		label.Size = UDim2.new(1, -57, 1, 0)
-		label.Font = Enum.Font.SourceSans
-		label.TextSize = 13
-		label.Text = name
-		label.TextColor3 = currentText1
-		label.TextXAlignment = Enum.TextXAlignment.Left
-		label.TextTruncate = Enum.TextTruncate.AtEnd
-		label.ZIndex = 23
-		table.insert(text1, label)
-
-		local removeButton = Instance.new("TextButton")
-		removeButton.Name = "Remove"
-		removeButton.Parent = row
-		removeButton.BackgroundColor3 = currentShade3
-		removeButton.BorderSizePixel = 0
-		removeButton.Position = UDim2.new(1, -25, 0, 1)
-		removeButton.Size = UDim2.new(0, 24, 1, -2)
-		removeButton.Font = Enum.Font.SourceSansBold
-		removeButton.TextSize = 15
-		removeButton.Text = "×"
-		removeButton.TextColor3 = currentText1
-		removeButton.ZIndex = 23
-		table.insert(shade3, removeButton)
-		table.insert(text1, removeButton)
-
-		dragHandle.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				if favoriteDragState then return end
-				favoriteDragState = {
-					row = row,
-					input = input.UserInputType == Enum.UserInputType.Touch and input or nil,
-					startPosition = input.Position,
-					active = false,
-				}
-				-- Prevent the scrolling list from stealing the gesture while the drag handle is held.
-				FavCmdsList.ScrollingEnabled = false
-			end
-		end)
-
-		removeButton.MouseButton1Click:Connect(function()
-			for index = #favoriteCommands, 1, -1 do
-				if favoriteCommands[index] == name then table.remove(favoriteCommands, index) end
-			end
-			reorderCommandEntries()
-			refreshFavoriteManagerRows()
-			updatesaves()
-		end)
-
-		table.insert(favoriteRowFrames, row)
-	end
-	FavCmdsList.CanvasSize = UDim2.new(0, 0, 0, math.max(0, FavCmdsListLayout.AbsoluteContentSize.Y + 2))
-end
-
-local function refreshFavoritePickerRows()
-	for _, child in ipairs(FavPickerList:GetChildren()) do
-		if child:GetAttribute("IsFavoritePickerRow") then
-			removeThemeReferences(child)
-			child:Destroy()
-		end
-	end
-	favoritePickerRows = {}
-	for i, command in ipairs(commandOptions) do
-		if not favoriteHas(command.NAME) then
-			local row = Instance.new("Frame")
-			row.Name = "CommandPickerRow"
-			row.Parent = FavPickerList
-			row.BackgroundColor3 = currentShade2
-			row.BorderSizePixel = 0
-			row.Size = UDim2.new(1, -6, 0, 22)
-			row.LayoutOrder = i
-			row.ZIndex = 32
-			row:SetAttribute("IsFavoritePickerRow", true)
-			row:SetAttribute("CommandName", command.NAME)
-			table.insert(shade2, row)
-
-			local label = Instance.new("TextLabel")
-			label.Name = "CommandName"
-			label.Parent = row
-			label.BackgroundTransparency = 1
-			label.BorderSizePixel = 0
-			label.Position = UDim2.new(0, 4, 0, 0)
-			label.Size = UDim2.new(1, -34, 1, 0)
-			label.Font = Enum.Font.SourceSans
-			label.TextSize = 13
-			label.Text = command.NAME
-			label.TextColor3 = currentText1
-			label.TextXAlignment = Enum.TextXAlignment.Left
-			label.TextTruncate = Enum.TextTruncate.AtEnd
-			label.ZIndex = 33
-			table.insert(text1, label)
-
-			local addButton = Instance.new("TextButton")
-			addButton.Name = "Add"
-			addButton.Parent = row
-			addButton.BackgroundColor3 = currentShade3
-			addButton.BorderSizePixel = 0
-			addButton.Position = UDim2.new(1, -25, 0, 1)
-			addButton.Size = UDim2.new(0, 24, 1, -2)
-			addButton.Font = Enum.Font.SourceSansBold
-			addButton.TextSize = 15
-			addButton.Text = "+"
-			addButton.TextColor3 = currentText1
-			addButton.ZIndex = 33
-			table.insert(shade3, addButton)
-			table.insert(text1, addButton)
-
-			addButton.MouseButton1Click:Connect(function()
-				if not favoriteHas(command.NAME) and commandRowsByName[command.NAME] then
-					table.insert(favoriteCommands, command.NAME)
-					reorderCommandEntries()
-					refreshFavoriteManagerRows()
-					updatesaves()
-					refreshFavoritePickerRows()
-				end
-			end)
-			table.insert(favoritePickerRows, row)
-		end
-	end
-	applyFavoritePickerFilter()
-end
-
-FavPickerSearch:GetPropertyChangedSignal("Text"):Connect(applyFavoritePickerFilter)
-
-FavCmdsListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	FavCmdsList.CanvasSize = UDim2.new(0, 0, 0, math.max(0, FavCmdsListLayout.AbsoluteContentSize.Y + 2))
-end)
-FavPickerLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	FavPickerList.CanvasSize = UDim2.new(0, 0, 0, math.max(0, FavPickerLayout.AbsoluteContentSize.Y + 2))
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	local drag = favoriteDragState
-	if not drag then return end
-
-	local isMouseMove = drag.input == nil and input.UserInputType == Enum.UserInputType.MouseMovement
-	local isTouchMove = drag.input ~= nil and input == drag.input
-	if not isMouseMove and not isTouchMove then return end
-
-	-- Ignore tiny finger jitter/taps; only begin reordering after a deliberate movement.
-	if not drag.active then
-		if math.abs(input.Position.Y - drag.startPosition.Y) < 7 then return end
-		drag.active = true
-		drag.row.BackgroundColor3 = currentShade3
-	end
-
-	-- Calculate the target from the list's content coordinates, not the rows' moving
-	-- screen positions. This avoids repeated jumps as UIListLayout updates LayoutOrder.
-	local listY = input.Position.Y - FavCmdsList.AbsolutePosition.Y + FavCmdsList.CanvasPosition.Y
-	local rowStep = 25 -- 23px row height + 2px UIListLayout padding
-	local targetIndex = math.clamp(math.floor((listY + rowStep / 2) / rowStep) + 1, 1, #favoriteRowFrames)
-	local currentIndex = table.find(favoriteRowFrames, drag.row)
-	if currentIndex and targetIndex and currentIndex ~= targetIndex then
-		table.remove(favoriteRowFrames, currentIndex)
-		table.insert(favoriteRowFrames, targetIndex, drag.row)
-		for order, orderedRow in ipairs(favoriteRowFrames) do
-			orderedRow.LayoutOrder = order
-		end
-	end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-	local drag = favoriteDragState
-	if not drag then return end
-
-	local isMouseEnd = drag.input == nil and input.UserInputType == Enum.UserInputType.MouseButton1
-	local isTouchEnd = drag.input ~= nil and input == drag.input
-	if not isMouseEnd and not isTouchEnd then return end
-
-	favoriteDragState = nil
-	FavCmdsList.ScrollingEnabled = true
-	TweenService:Create(drag.row, TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		BackgroundColor3 = currentShade2,
-	}):Play()
-
-	if drag.active then
-		local orderedNames = {}
-		for _, orderedRow in ipairs(favoriteRowFrames) do
-			local orderedName = orderedRow:GetAttribute("CommandName")
-			if orderedName then table.insert(orderedNames, orderedName) end
-		end
-		favoriteCommands = orderedNames
-		reorderCommandEntries()
-		updatesaves()
-	end
-end)
-
-local function openFavManager()
-	refreshFavoriteManagerRows()
-	FavCmdsManagerFrame.Visible = true
-	FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 175)
-	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
-	task.wait(0.5)
-	SettingsHolder.Visible = false
-end
-
-local function closeFavManager()
-	SettingsHolder.Visible = true
-	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
-	task.delay(0.52, function()
-		if FavCmdsManagerFrame then FavCmdsManagerFrame.Visible = false end
-	end)
-end
-
-local function openFavPicker()
-	refreshFavoritePickerRows()
-	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
-	FavCmdsPickerFrame.Visible = true
-	FavCmdsPickerFrame.Position = UDim2.new(0, 0, 0, 175)
-	FavCmdsPickerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
-end
-
-local function returnToFavManager()
-	FavCmdsManagerFrame.Visible = true
-	FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 175)
-	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
-	FavCmdsPickerFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
-	task.delay(0.52, function()
-		if FavCmdsPickerFrame then FavCmdsPickerFrame.Visible = false end
-	end)
-end
-
-local function closeFavPicker()
-	SettingsHolder.Visible = true
-	FavCmdsPickerFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
-	task.delay(0.52, function()
-		if FavCmdsPickerFrame then FavCmdsPickerFrame.Visible = false end
-		if FavCmdsManagerFrame then FavCmdsManagerFrame.Visible = false end
-	end)
-end
-
-FavCmdsButton.MouseButton1Click:Connect(openFavManager)
-FavManagerClose.MouseButton1Click:Connect(closeFavManager)
-FavManagerAdd.MouseButton1Click:Connect(openFavPicker)
-FavPickerClose.MouseButton1Click:Connect(returnToFavManager)
-FavPickerCloseAll.MouseButton1Click:Connect(closeFavPicker)
-
-reorderCommandEntries()
-refreshFavoriteManagerRows()
 IndexContents("", true)
 
 function checkTT()
@@ -6490,7 +5753,7 @@ Cmdbar.FocusLost:Connect(function(enterpressed)
 		IndexContents('',true,false,false)
 		if SettingsOpen == true then
 			wait(0.2)
-			Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
+			Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
 			CMDsF.Visible = false
 		end
 		if not SettingsOpen and not StayOpen then
@@ -8361,8 +7624,8 @@ addcmd('waypointpos',{'wpp','setwaypointposition','setpos','setwaypoint','setway
 end)
 
 addcmd('waypoints',{'positions'},function(args, speaker)
-	if SettingsOpen == false then setSettingsOpenState(true)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
+	if SettingsOpen == false then SettingsOpen = true
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	end
 	KeybindsFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
@@ -13912,7 +13175,6 @@ if IsOnMobile then
 	UICorner.CornerRadius = UDim.new(0.5, 0)
 	UICorner.Parent = QuickCapture
 	QuickCapture.MouseButton1Click:Connect(function()
-		isHidden = false
 		Cmdbar:CaptureFocus()
 		maximizeHolder()
 	end)
@@ -14194,8 +13456,8 @@ task.spawn(function()
     pcall(function()
         Credits:TweenPosition(UDim2.new(0, 0, 0.9, 0), "Out", "Quart", 0.2)
         Logo:TweenSizeAndPosition(UDim2.new(0, 175, 0, 175), UDim2.new(0, 37, 0, 45), "Out", "Quart", 0.3)
-        task.wait(0.5)
-        local OutInfo = TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0, false, 0)
+        task.wait(1)
+        local OutInfo = TweenInfo.new(1.6809, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0, false, 0)
         TweenService:Create(Logo, OutInfo, {ImageTransparency = 1}):Play()
         TweenService:Create(IntroBackground, OutInfo, {BackgroundTransparency = 1}):Play()
         Credits:TweenPosition(UDim2.new(0, 0, 0.9, 30), "Out", "Quart", 0.2)
