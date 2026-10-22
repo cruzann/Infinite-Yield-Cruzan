@@ -463,7 +463,7 @@ Settings.Active = true
 Settings.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Settings.BorderSizePixel = 0
 Settings.Position = UDim2.new(0, 0, 0, 220)
-Settings.Size = UDim2.new(0, 250, 0, 175)
+Settings.Size = UDim2.new(0, 250, 0, 200)
 Settings.ZIndex = 10
 table.insert(shade1,Settings)
 
@@ -649,10 +649,10 @@ AutoHideDelayBox.Name = "AutoHideDelayBox"
 AutoHideDelayBox.Parent = SettingsHolder
 AutoHideDelayBox.BackgroundColor3 = Color3.fromRGB(78, 78, 79)
 AutoHideDelayBox.BorderSizePixel = 0
-AutoHideDelayBox.Position = UDim2.new(1, -34, 0, 53)
-AutoHideDelayBox.Size = UDim2.new(0, 24, 0, 24)
+AutoHideDelayBox.Position = UDim2.new(1, -20, 0, 55)
+AutoHideDelayBox.Size = UDim2.new(0, 20, 0, 20)
 AutoHideDelayBox.Font = Enum.Font.SourceSansBold
-AutoHideDelayBox.TextSize = 14
+AutoHideDelayBox.TextSize = 12
 AutoHideDelayBox.Text = "1.5"
 AutoHideDelayBox.TextColor3 = Color3.new(1, 1, 1)
 AutoHideDelayBox.ClearTextOnFocus = false
