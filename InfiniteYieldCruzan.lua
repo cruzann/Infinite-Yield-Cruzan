@@ -463,7 +463,7 @@ Settings.Active = true
 Settings.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Settings.BorderSizePixel = 0
 Settings.Position = UDim2.new(0, 0, 0, 220)
-Settings.Size = UDim2.new(0, 250, 0, 175)
+Settings.Size = UDim2.new(0, 250, 0, 200)
 Settings.ZIndex = 10
 table.insert(shade1,Settings)
 
@@ -649,10 +649,10 @@ AutoHideDelayBox.Name = "AutoHideDelayBox"
 AutoHideDelayBox.Parent = SettingsHolder
 AutoHideDelayBox.BackgroundColor3 = Color3.fromRGB(78, 78, 79)
 AutoHideDelayBox.BorderSizePixel = 0
-AutoHideDelayBox.Position = UDim2.new(1, -34, 0, 53)
-AutoHideDelayBox.Size = UDim2.new(0, 24, 0, 24)
+AutoHideDelayBox.Position = UDim2.new(1, -20, 0, 55)
+AutoHideDelayBox.Size = UDim2.new(0, 20, 0, 20)
 AutoHideDelayBox.Font = Enum.Font.SourceSansBold
-AutoHideDelayBox.TextSize = 14
+AutoHideDelayBox.TextSize = 12
 AutoHideDelayBox.Text = "1.5"
 AutoHideDelayBox.TextColor3 = Color3.new(1, 1, 1)
 AutoHideDelayBox.ClearTextOnFocus = false
@@ -5425,8 +5425,7 @@ FavPickerLayout.Padding = UDim.new(0, 1)
 
 local favoriteRowFrames = {}
 local favoritePickerRows = {}
-local draggingFavoriteRow = nil
-local activeFavoriteDragInput = nil
+local favoriteDragState = nil
 
 local function removeThemeReferences(root)
 	local themeLists = {shade1, shade2, shade3, text1, text2, scroll}
@@ -5526,32 +5525,17 @@ local function refreshFavoriteManagerRows()
 		table.insert(shade3, removeButton)
 		table.insert(text1, removeButton)
 
-		dragHandle.InputChanged:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-				activeFavoriteDragInput = input
-			end
-		end)
 		dragHandle.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				draggingFavoriteRow = row
+				if favoriteDragState then return end
+				favoriteDragState = {
+					row = row,
+					input = input.UserInputType == Enum.UserInputType.Touch and input or nil,
+					startPosition = input.Position,
+					active = false,
+				}
+				-- Prevent the scrolling list from stealing the gesture while the drag handle is held.
 				FavCmdsList.ScrollingEnabled = false
-				row.BackgroundColor3 = currentShade3
-				input.Changed:Connect(function()
-					if input.UserInputState == Enum.UserInputState.End and draggingFavoriteRow == row then
-						draggingFavoriteRow = nil
-						activeFavoriteDragInput = nil
-						FavCmdsList.ScrollingEnabled = true
-						row.BackgroundColor3 = currentShade2
-						local orderedNames = {}
-						for _, orderedRow in ipairs(favoriteRowFrames) do
-							local orderedName = orderedRow:GetAttribute("CommandName")
-							if orderedName then table.insert(orderedNames, orderedName) end
-						end
-						favoriteCommands = orderedNames
-						reorderCommandEntries()
-						updatesaves()
-					end
-				end)
 			end
 		end)
 
@@ -5647,21 +5631,58 @@ FavPickerLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if draggingFavoriteRow and activeFavoriteDragInput and input == activeFavoriteDragInput then
-		local targetIndex = #favoriteRowFrames
-		for i, row in ipairs(favoriteRowFrames) do
-			local midpoint = row.AbsolutePosition.Y + (row.AbsoluteSize.Y / 2)
-			if input.Position.Y < midpoint then
-				targetIndex = i
-				break
-			end
+	local drag = favoriteDragState
+	if not drag then return end
+
+	local isMouseMove = drag.input == nil and input.UserInputType == Enum.UserInputType.MouseMovement
+	local isTouchMove = drag.input ~= nil and input == drag.input
+	if not isMouseMove and not isTouchMove then return end
+
+	-- Ignore tiny finger jitter/taps; only begin reordering after a deliberate movement.
+	if not drag.active then
+		if math.abs(input.Position.Y - drag.startPosition.Y) < 7 then return end
+		drag.active = true
+		drag.row.BackgroundColor3 = currentShade3
+	end
+
+	-- Calculate the target from the list's content coordinates, not the rows' moving
+	-- screen positions. This avoids repeated jumps as UIListLayout updates LayoutOrder.
+	local listY = input.Position.Y - FavCmdsList.AbsolutePosition.Y + FavCmdsList.CanvasPosition.Y
+	local rowStep = 25 -- 23px row height + 2px UIListLayout padding
+	local targetIndex = math.clamp(math.floor((listY + rowStep / 2) / rowStep) + 1, 1, #favoriteRowFrames)
+	local currentIndex = table.find(favoriteRowFrames, drag.row)
+	if currentIndex and targetIndex and currentIndex ~= targetIndex then
+		table.remove(favoriteRowFrames, currentIndex)
+		table.insert(favoriteRowFrames, targetIndex, drag.row)
+		for order, orderedRow in ipairs(favoriteRowFrames) do
+			orderedRow.LayoutOrder = order
 		end
-		local currentIndex = table.find(favoriteRowFrames, draggingFavoriteRow)
-		if currentIndex and targetIndex and currentIndex ~= targetIndex then
-			table.remove(favoriteRowFrames, currentIndex)
-			table.insert(favoriteRowFrames, targetIndex, draggingFavoriteRow)
-			for order, row in ipairs(favoriteRowFrames) do row.LayoutOrder = order end
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	local drag = favoriteDragState
+	if not drag then return end
+
+	local isMouseEnd = drag.input == nil and input.UserInputType == Enum.UserInputType.MouseButton1
+	local isTouchEnd = drag.input ~= nil and input == drag.input
+	if not isMouseEnd and not isTouchEnd then return end
+
+	favoriteDragState = nil
+	FavCmdsList.ScrollingEnabled = true
+	TweenService:Create(drag.row, TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundColor3 = currentShade2,
+	}):Play()
+
+	if drag.active then
+		local orderedNames = {}
+		for _, orderedRow in ipairs(favoriteRowFrames) do
+			local orderedName = orderedRow:GetAttribute("CommandName")
+			if orderedName then table.insert(orderedNames, orderedName) end
 		end
+		favoriteCommands = orderedNames
+		reorderCommandEntries()
+		updatesaves()
 	end
 end)
 
