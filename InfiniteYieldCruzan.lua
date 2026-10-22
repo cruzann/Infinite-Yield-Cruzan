@@ -404,7 +404,7 @@ Dark.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Dark.BorderSizePixel = 0
 Dark.Position = UDim2.new(0, 0, 0, 45)
 Dark.Size = UDim2.new(0, 250, 0, 175)
-Dark.ZIndex = 10
+Dark.ZIndex = 9
 table.insert(shade1,Dark)
 
 Cmdbar.Name = "Cmdbar"
@@ -3270,6 +3270,18 @@ local cmdbarVisibilityBeforeSettings = nil
 local cmdbarTextTransparencyBeforeSettings = nil
 local cmdbarFadeToken = 0
 
+-- Keep the original backdrop geometry aligned with the active panel to prevent an overlapping strip.
+local function setSettingsBackdrop(open)
+    if open then
+        Dark.Position = UDim2.new(0, 0, 0, 20)
+        Dark.Size = UDim2.new(0, 250, 0, 200)
+    else
+        Dark.Position = UDim2.new(0, 0, 0, 45)
+        Dark.Size = UDim2.new(0, 250, 0, 175)
+    end
+    Dark.Visible = true
+end
+
 -- Fade the command input out while settings move into its space; restore its prior state on close.
 local function setSettingsOpenState(open)
     cmdbarFadeToken += 1
@@ -3279,7 +3291,7 @@ local function setSettingsOpenState(open)
         -- Keep the original holder and panel geometry; only switch which content is visible.
         Settings.BackgroundTransparency = 0
         Settings.Size = UDim2.new(0, 250, 0, 200)
-        Dark.Visible = false
+        setSettingsBackdrop(true)
         CMDsF.Visible = false
         if not SettingsOpen then
             cmdbarVisibilityBeforeSettings = Cmdbar.Visible
@@ -3302,7 +3314,7 @@ local function setSettingsOpenState(open)
         end
     else
         SettingsOpen = false
-        Dark.Visible = true
+        setSettingsBackdrop(false)
         CMDsF.Visible = true
         if cmdbarVisibilityBeforeSettings ~= nil then
             local shouldRestoreCmdbar = cmdbarVisibilityBeforeSettings
@@ -4040,11 +4052,11 @@ SettingsButton.MouseButton1Click:Connect(function()
 		-- Always show the settings from the top so no partially clipped row remains at the bottom.
 		SettingsHolder.CanvasPosition = Vector2.new(0, 0)
 		setSettingsOpenState(true)
-		Dark.Visible = false
+		setSettingsBackdrop(true)
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	else setSettingsOpenState(false)
-		Dark.Visible = true
+		setSettingsBackdrop(false)
 		CMDsF.Visible = true
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 220), "InOut", "Quart", 0.5, true, nil)
 	end
@@ -4607,7 +4619,7 @@ task.spawn(function()
 				if SettingsOpen == true then
 					-- Keep the settings panel in front without disabling normal command indexing.
 					CMDsF.Visible = false
-					Dark.Visible = false
+					setSettingsBackdrop(true)
 				end
 				IndexContents(PlayerGui.Chat.Frame.ChatBarParentFrame.Frame.BoxFrame.Frame.ChatBar.Text:lower():sub(2),true)
 			else
@@ -4616,7 +4628,7 @@ task.spawn(function()
 					wait(0.2)
 					Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 					CMDsF.Visible = false
-					Dark.Visible = false
+					setSettingsBackdrop(true)
 				end
 			end
 		end
@@ -6505,7 +6517,7 @@ Cmdbar.FocusLost:Connect(function(enterpressed)
 			wait(0.2)
 			Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 			CMDsF.Visible = false
-			Dark.Visible = false
+			setSettingsBackdrop(true)
 		end
 		if not SettingsOpen and not StayOpen then
 			scheduleHolderAutoHide(autoHideDelay)
@@ -6519,7 +6531,7 @@ Cmdbar.Focused:Connect(function()
 	canvasPos = CMDsF.CanvasPosition
 	if SettingsOpen == true then
 		-- Settings owns the panel while open; never restore the command-list backdrop from focus events.
-		Dark.Visible = false
+		setSettingsBackdrop(true)
 		CMDsF.Visible = false
 		Settings.Size = UDim2.new(0, 250, 0, 200)
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
@@ -8379,7 +8391,7 @@ end)
 
 addcmd('waypoints',{'positions'},function(args, speaker)
 	if SettingsOpen == false then setSettingsOpenState(true)
-		Dark.Visible = false
+		setSettingsBackdrop(true)
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	end
