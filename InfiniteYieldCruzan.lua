@@ -463,7 +463,7 @@ Settings.Active = true
 Settings.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Settings.BorderSizePixel = 0
 Settings.Position = UDim2.new(0, 0, 0, 220)
-Settings.Size = UDim2.new(0, 250, 0, 175)
+Settings.Size = UDim2.new(0, 250, 0, 200)
 Settings.ZIndex = 10
 table.insert(shade1,Settings)
 
