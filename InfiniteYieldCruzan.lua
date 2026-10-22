@@ -3266,7 +3266,6 @@ end
 PrefixBox.Text = prefix
 local SettingsOpen = false
 local isHidden = IsOnMobile
-local holderBackgroundTransparencyBeforeSettings = Holder.BackgroundTransparency
 local cmdbarVisibilityBeforeSettings = nil
 local cmdbarTextTransparencyBeforeSettings = nil
 local cmdbarFadeToken = 0
@@ -3277,10 +3276,11 @@ local function setSettingsOpenState(open)
     local thisFadeToken = cmdbarFadeToken
 
     if open then
-        -- The main Holder background was leaking below the settings panel. Make the panel fully cover its area while open.
-        Holder.BackgroundTransparency = 1
+        -- Keep the original holder and panel geometry; only switch which content is visible.
         Settings.BackgroundTransparency = 0
-        Settings.Size = UDim2.new(1, 0, 1, -20)
+        Settings.Size = UDim2.new(0, 250, 0, 200)
+        Dark.Visible = false
+        CMDsF.Visible = false
         if not SettingsOpen then
             cmdbarVisibilityBeforeSettings = Cmdbar.Visible
             cmdbarTextTransparencyBeforeSettings = Cmdbar.TextTransparency
@@ -3302,7 +3302,8 @@ local function setSettingsOpenState(open)
         end
     else
         SettingsOpen = false
-        Holder.BackgroundTransparency = holderBackgroundTransparencyBeforeSettings
+        Dark.Visible = true
+        CMDsF.Visible = true
         if cmdbarVisibilityBeforeSettings ~= nil then
             local shouldRestoreCmdbar = cmdbarVisibilityBeforeSettings
             local restoreTextTransparency = cmdbarTextTransparencyBeforeSettings
@@ -4604,10 +4605,9 @@ task.spawn(function()
 		local function Index()
 			if chatbox.Text:lower():sub(1,1) == prefix then
 				if SettingsOpen == true then
-					wait(0.2)
-					CMDsF.Visible = true
-					Dark.Visible = true
-					Settings:TweenPosition(UDim2.new(0, 0, 0, 220), "InOut", "Quart", 0.2, true, nil)
+					-- Keep the settings panel in front without disabling normal command indexing.
+					CMDsF.Visible = false
+					Dark.Visible = false
 				end
 				IndexContents(PlayerGui.Chat.Frame.ChatBarParentFrame.Frame.BoxFrame.Frame.ChatBar.Text:lower():sub(2),true)
 			else
@@ -6518,10 +6518,12 @@ Cmdbar.Focused:Connect(function()
 	historyCount = 0
 	canvasPos = CMDsF.CanvasPosition
 	if SettingsOpen == true then
-		wait(0.2)
-		CMDsF.Visible = true
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 220), "InOut", "Quart", 0.2, true, nil)
-		Dark.Visible = true
+		-- Settings owns the panel while open; never restore the command-list backdrop from focus events.
+		Dark.Visible = false
+		CMDsF.Visible = false
+		Settings.Size = UDim2.new(0, 250, 0, 200)
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
+		return
 	end
 	tabComplete = UserInputService.InputBegan:Connect(function(input,gameProcessed)
 		if Cmdbar:IsFocused() then
