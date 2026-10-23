@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.0.4"
+currentVersion = "1.0.5"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -409,8 +409,7 @@ table.insert(shade1,Dark)
 
 Cmdbar.Name = "Cmdbar"
 Cmdbar.Parent = Holder
-Cmdbar.BackgroundTransparency = 0
-Cmdbar.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+Cmdbar.BackgroundTransparency = 1
 Cmdbar.BorderSizePixel = 0
 Cmdbar.Position = UDim2.new(0, 5, 0, 20)
 Cmdbar.Size = UDim2.new(0, 240, 0, 25)
@@ -2100,6 +2099,8 @@ end)()
 
 CmdbarView = ViewportTextBox.convert(Cmdbar).View
 CmdbarView.ZIndex = 10
+CmdbarView.BackgroundColor3 = Color3.fromRGB(63, 63, 66)
+CmdbarView.BackgroundTransparency = 0
 ViewportTextBox.convert(Cmdbar_2).View.ZIndex = 10
 ViewportTextBox.convert(Cmdbar_3).View.ZIndex = 10
 
@@ -3330,6 +3331,7 @@ local function setSettingsOpenState(open)
             cmdbarTextTransparencyBeforeSettings = Cmdbar.TextTransparency
         end
         SettingsOpen = true
+        if CmdbarView then CmdbarView.Visible = false end
         if Cmdbar.Visible then
             TweenService:Create(Cmdbar, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                 TextTransparency = 1
@@ -3355,12 +3357,14 @@ local function setSettingsOpenState(open)
             cmdbarTextTransparencyBeforeSettings = nil
 
             if shouldRestoreCmdbar then
+                if CmdbarView then CmdbarView.Visible = true end
                 Cmdbar.TextTransparency = 1
                 Cmdbar.Visible = true
                 TweenService:Create(Cmdbar, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                     TextTransparency = restoreTextTransparency or 0
                 }):Play()
             else
+                if CmdbarView then CmdbarView.Visible = false end
                 Cmdbar.Visible = false
                 if restoreTextTransparency ~= nil then
                     Cmdbar.TextTransparency = restoreTextTransparency
@@ -3613,18 +3617,15 @@ end)
 
 local function applyCommandPaletteColors()
 	local base = currentShade2 or Color3.fromRGB(46, 46, 47)
-	local slateAccent = Color3.fromRGB(80, 94, 110)
+	local grayAccent = Color3.fromRGB(112, 112, 116)
 	if CmdbarView and CmdbarView.Parent then
-		CmdbarView.BackgroundColor3 = base:Lerp(slateAccent, 0.18)
-		CmdbarView.BackgroundTransparency = 0
+		CmdbarView.BackgroundColor3 = base:Lerp(grayAccent, 0.25)
 	end
 	if FavSectionHeader and FavSectionHeader.Parent then
-		FavSectionHeader.BackgroundColor3 = base:Lerp(slateAccent, 0.28)
-		FavSectionHeader.BackgroundTransparency = 0
+		FavSectionHeader.BackgroundColor3 = base:Lerp(grayAccent, 0.16)
 	end
 	if AllCommandsHeader and AllCommandsHeader.Parent then
-		AllCommandsHeader.BackgroundColor3 = base:Lerp(Color3.new(1, 1, 1), 0.06)
-		AllCommandsHeader.BackgroundTransparency = 0
+		AllCommandsHeader.BackgroundColor3 = base:Lerp(grayAccent, 0.16)
 	end
 end
 
@@ -3639,6 +3640,7 @@ function updateColors(color,ctype)
 			v.BackgroundColor3 = color
 		end
 		currentShade2 = color
+		applyCommandPaletteColors()
 	elseif ctype == shade3 then
 		for i,v in pairs(shade3) do
 			v.BackgroundColor3 = color
@@ -3663,7 +3665,6 @@ function updateColors(color,ctype)
 		end
 		currentScroll = color
 	end
-	applyCommandPaletteColors()
 end
 
 local colorpickerOpen = false
@@ -5225,6 +5226,7 @@ AllCommandsHeader.ZIndex = 10
 AllCommandsHeader:SetAttribute("IsCommandSectionHeader", true)
 table.insert(shade2, AllCommandsHeader)
 table.insert(text1, AllCommandsHeader)
+applyCommandPaletteColors()
 
 for i = 1, #CMDs do
 	local newcmd = Example:Clone()
