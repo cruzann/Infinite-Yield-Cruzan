@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.0.5"
+currentVersion = "1.0.6"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -462,6 +462,7 @@ Settings.Parent = Holder
 Settings.Active = true
 Settings.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Settings.BorderSizePixel = 0
+Settings.ClipsDescendants = true
 Settings.Position = UDim2.new(0, 0, 0, 220)
 Settings.Size = UDim2.new(0, 250, 0, 200)
 Settings.ZIndex = 10
@@ -472,6 +473,7 @@ SettingsHolder.Name = "Holder"
 SettingsHolder.Parent = Settings
 SettingsHolder.BackgroundTransparency = 1
 SettingsHolder.BorderSizePixel = 0
+SettingsHolder.ClipsDescendants = true
 SettingsHolder.Size = UDim2.new(1,0,1,0)
 SettingsHolder.ScrollBarImageColor3 = Color3.fromRGB(78,78,79)
 SettingsHolder.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
@@ -2099,7 +2101,7 @@ end)()
 
 CmdbarView = ViewportTextBox.convert(Cmdbar).View
 CmdbarView.ZIndex = 10
-CmdbarView.BackgroundColor3 = Color3.fromRGB(63, 63, 66)
+CmdbarView.BackgroundColor3 = Color3.fromRGB(57, 57, 58)
 CmdbarView.BackgroundTransparency = 0
 ViewportTextBox.convert(Cmdbar_2).View.ZIndex = 10
 ViewportTextBox.convert(Cmdbar_3).View.ZIndex = 10
@@ -3619,7 +3621,7 @@ local function applyCommandPaletteColors()
 	local base = currentShade2 or Color3.fromRGB(46, 46, 47)
 	local grayAccent = Color3.fromRGB(112, 112, 116)
 	if CmdbarView and CmdbarView.Parent then
-		CmdbarView.BackgroundColor3 = base:Lerp(grayAccent, 0.25)
+		CmdbarView.BackgroundColor3 = base:Lerp(grayAccent, 0.16)
 	end
 	if FavSectionHeader and FavSectionHeader.Parent then
 		FavSectionHeader.BackgroundColor3 = base:Lerp(grayAccent, 0.16)
