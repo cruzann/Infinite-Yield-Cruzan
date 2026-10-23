@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.0.2"
+currentVersion = "1.0.3"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -3304,9 +3304,12 @@ local cmdbarVisibilityBeforeSettings = nil
 local cmdbarTextTransparencyBeforeSettings = nil
 local cmdbarFadeToken = 0
 
--- Hide the command-list backdrop while settings are open so it cannot show as a strip.
+-- Keep the settings panel visually continuous with the title while it occupies
+-- the command-bar area. The Holder's lighter background must not peek through.
+local holderBackgroundTransparencyBeforeSettings = Holder.BackgroundTransparency
 local function setSettingsBackdrop(open)
     Dark.Visible = not open
+    Holder.BackgroundTransparency = open and 1 or holderBackgroundTransparencyBeforeSettings
 end
 
 -- Fade the command input out while settings move into its space; restore its prior state on close.
