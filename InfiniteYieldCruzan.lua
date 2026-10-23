@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.0.3"
+currentVersion = "1.0.4"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -409,7 +409,8 @@ table.insert(shade1,Dark)
 
 Cmdbar.Name = "Cmdbar"
 Cmdbar.Parent = Holder
-Cmdbar.BackgroundTransparency = 1
+Cmdbar.BackgroundTransparency = 0
+Cmdbar.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Cmdbar.BorderSizePixel = 0
 Cmdbar.Position = UDim2.new(0, 5, 0, 20)
 Cmdbar.Size = UDim2.new(0, 240, 0, 25)
@@ -2097,7 +2098,8 @@ ViewportTextBox = (function()
 	return {convert = convert}
 end)()
 
-ViewportTextBox.convert(Cmdbar).View.ZIndex = 10
+CmdbarView = ViewportTextBox.convert(Cmdbar).View
+CmdbarView.ZIndex = 10
 ViewportTextBox.convert(Cmdbar_2).View.ZIndex = 10
 ViewportTextBox.convert(Cmdbar_3).View.ZIndex = 10
 
@@ -3609,6 +3611,23 @@ Holder.MouseLeave:Connect(function()
 	end
 end)
 
+local function applyCommandPaletteColors()
+	local base = currentShade2 or Color3.fromRGB(46, 46, 47)
+	local slateAccent = Color3.fromRGB(80, 94, 110)
+	if CmdbarView and CmdbarView.Parent then
+		CmdbarView.BackgroundColor3 = base:Lerp(slateAccent, 0.18)
+		CmdbarView.BackgroundTransparency = 0
+	end
+	if FavSectionHeader and FavSectionHeader.Parent then
+		FavSectionHeader.BackgroundColor3 = base:Lerp(slateAccent, 0.28)
+		FavSectionHeader.BackgroundTransparency = 0
+	end
+	if AllCommandsHeader and AllCommandsHeader.Parent then
+		AllCommandsHeader.BackgroundColor3 = base:Lerp(Color3.new(1, 1, 1), 0.06)
+		AllCommandsHeader.BackgroundTransparency = 0
+	end
+end
+
 function updateColors(color,ctype)
 	if ctype == shade1 then
 		for i,v in pairs(shade1) do
@@ -3644,6 +3663,7 @@ function updateColors(color,ctype)
 		end
 		currentScroll = color
 	end
+	applyCommandPaletteColors()
 end
 
 local colorpickerOpen = false
