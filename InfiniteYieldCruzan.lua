@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.0.0"
+currentVersion = "1.0.1"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -463,7 +463,7 @@ Settings.Active = true
 Settings.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Settings.BorderSizePixel = 0
 Settings.Position = UDim2.new(0, 0, 0, 220)
-Settings.Size = UDim2.new(0, 250, 0, 175)
+Settings.Size = UDim2.new(0, 250, 0, 200)
 Settings.ZIndex = 10
 table.insert(shade1,Settings)
 
@@ -3105,6 +3105,39 @@ end
 
 local loadedEventData = nil
 local jsonAttempts = 0
+local FAVORITES_BACKUP_FILE = "IY_FE_Favorites.iy"
+
+local function sanitizeFavoriteNames(list)
+    local cleaned, seen = {}, {}
+    if type(list) == "table" then
+        for _, name in ipairs(list) do
+            if type(name) == "string" and name ~= "" and not seen[name] then
+                seen[name] = true
+                table.insert(cleaned, name)
+            end
+        end
+    end
+    return cleaned
+end
+
+local function readFavoriteBackup()
+    if not readfileExploit() then return nil end
+    local ok, raw = readfile(FAVORITES_BACKUP_FILE, true)
+    if not ok or type(raw) ~= "string" or raw == "" then return nil end
+    local decodedOk, decoded = pcall(function()
+        return HttpService:JSONDecode(raw)
+    end)
+    if not decodedOk or type(decoded) ~= "table" then return nil end
+    return sanitizeFavoriteNames(decoded)
+end
+
+local function writeFavoriteBackup()
+    if not writefileExploit() then return end
+    pcall(function()
+        writefile(FAVORITES_BACKUP_FILE, HttpService:JSONEncode(sanitizeFavoriteNames(favoriteCommands)), true)
+    end)
+end
+
 function saves()
 	if writefileExploit() and readfileExploit() and jsonAttempts < 10 then
 		local readSuccess, out = readfile("IY_FE.iy", true)
@@ -3112,18 +3145,17 @@ function saves()
 			if out ~= nil and tostring(out):gsub("%s", "") ~= "" then
 				local success, response = pcall(function()
 					local json = HttpService:JSONDecode(out)
+					local loadedFavorites = nil
 					if vtype(json.favoriteCommands, "table") then
-						local loadedFavorites, seenFavorites = {}, {}
-						for _, name in ipairs(json.favoriteCommands) do
-							if type(name) == "string" and name ~= "" and not seenFavorites[name] then
-								seenFavorites[name] = true
-								table.insert(loadedFavorites, name)
-							end
-						end
-						favoriteCommands = loadedFavorites
-					else
-						favoriteCommands = {}
+						loadedFavorites = sanitizeFavoriteNames(json.favoriteCommands)
 					end
+					local backupFavorites = readFavoriteBackup()
+					-- Prefer a populated main config; if an older build removed this field
+					-- or rewrote it empty, recover the separate favorites backup.
+					if (not loadedFavorites or #loadedFavorites == 0) and backupFavorites and #backupFavorites > 0 then
+						loadedFavorites = backupFavorites
+					end
+					favoriteCommands = loadedFavorites or {}
 					if vtype(json.autoHideDelay, "number") and json.autoHideDelay >= 0.1 and json.autoHideDelay <= 10 then
 						autoHideDelay = math.floor(json.autoHideDelay * 10 + 0.5) / 10
 					else
@@ -3195,6 +3227,7 @@ function saves()
 end
 
 saves()
+writeFavoriteBackup()
 
 -- Start in hideiy mode on mobile regardless of the previously saved Keep Menu Open state.
 if IsOnMobile then StayOpen = false end
@@ -3225,6 +3258,7 @@ function updatesaves()
 			eventBinds = eventEditor.SaveData()
 		}
 		writefileCooldown("IY_FE.iy", HttpService:JSONEncode(update))
+		writeFavoriteBackup()
 	end
 end
 
@@ -3270,23 +3304,9 @@ local cmdbarVisibilityBeforeSettings = nil
 local cmdbarTextTransparencyBeforeSettings = nil
 local cmdbarFadeToken = 0
 
--- Keep the settings geometry identical to the original panel. Fill the former
--- command-bar row with the same theme color, instead of stretching the panel.
-SettingsGapFill = Instance.new("Frame")
-SettingsGapFill.Name = "SettingsGapFill"
-SettingsGapFill.Parent = Holder
-SettingsGapFill.BackgroundColor3 = Settings.BackgroundColor3
-SettingsGapFill.BorderSizePixel = 0
-SettingsGapFill.Position = UDim2.new(0, 0, 0, 20)
-SettingsGapFill.Size = UDim2.new(0, 250, 0, 25)
-SettingsGapFill.Visible = false
-SettingsGapFill.ZIndex = 10
-table.insert(shade1, SettingsGapFill)
-
+-- Keep Dark at its original geometry behind the settings panel.
+-- Settings itself covers the command-bar row while open, avoiding a second edge/strip.
 local function setSettingsBackdrop(open)
-    SettingsGapFill.BackgroundColor3 = Settings.BackgroundColor3
-    -- Let the command text fade first; then fill its former space seamlessly.
-    SettingsGapFill.Visible = open and not Cmdbar.Visible
     Dark.Visible = true
 end
 
@@ -3298,7 +3318,7 @@ local function setSettingsOpenState(open)
     if open then
         -- Keep the original holder and panel geometry; only switch which content is visible.
         Settings.BackgroundTransparency = 0
-        Settings.Size = UDim2.new(0, 250, 0, 175)
+        Settings.Size = UDim2.new(0, 250, 0, 200)
         setSettingsBackdrop(true)
         CMDsF.Visible = false
         if not SettingsOpen then
@@ -3313,7 +3333,6 @@ local function setSettingsOpenState(open)
             task.delay(0.12, function()
                 if thisFadeToken ~= cmdbarFadeToken or not SettingsOpen then return end
                 Cmdbar.Visible = false
-                SettingsGapFill.Visible = true
                 if cmdbarTextTransparencyBeforeSettings ~= nil then
                     Cmdbar.TextTransparency = cmdbarTextTransparencyBeforeSettings
                 end
@@ -4062,7 +4081,7 @@ SettingsButton.MouseButton1Click:Connect(function()
 		SettingsHolder.CanvasPosition = Vector2.new(0, 0)
 		setSettingsOpenState(true)
 		setSettingsBackdrop(true)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.5, true, nil)
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	else setSettingsOpenState(false)
 		setSettingsBackdrop(false)
@@ -4635,7 +4654,7 @@ task.spawn(function()
 				minimizeHolder()
 				if SettingsOpen == true then
 					wait(0.2)
-					Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
+					Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 					CMDsF.Visible = false
 					setSettingsBackdrop(true)
 				end
@@ -6524,7 +6543,7 @@ Cmdbar.FocusLost:Connect(function(enterpressed)
 		IndexContents('',true,false,false)
 		if SettingsOpen == true then
 			wait(0.2)
-			Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
+			Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 			CMDsF.Visible = false
 			setSettingsBackdrop(true)
 		end
@@ -6542,8 +6561,8 @@ Cmdbar.Focused:Connect(function()
 		-- Settings owns the panel while open; never restore the command-list backdrop from focus events.
 		setSettingsBackdrop(true)
 		CMDsF.Visible = false
-		Settings.Size = UDim2.new(0, 250, 0, 175)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
+		Settings.Size = UDim2.new(0, 250, 0, 200)
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 		return
 	end
 	tabComplete = UserInputService.InputBegan:Connect(function(input,gameProcessed)
@@ -8401,7 +8420,7 @@ end)
 addcmd('waypoints',{'positions'},function(args, speaker)
 	if SettingsOpen == false then setSettingsOpenState(true)
 		setSettingsBackdrop(true)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.5, true, nil)
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	end
 	KeybindsFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
@@ -14139,10 +14158,6 @@ task.spawn(function()
 	end)
 
 	if success then
-		if currentVersion ~= latestVersionInfo.Version then
-			notify("Outdated", "Get the new version at infyiff.github.io")
-		end
-
 		if latestVersionInfo.Announcement and latestVersionInfo.Announcement ~= "" then
 			local AnnGUI = Instance.new("Frame")
 			local background = Instance.new("Frame")
