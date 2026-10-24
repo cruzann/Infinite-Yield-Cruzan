@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.0.6"
+currentVersion = "1.0.7"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -462,9 +462,8 @@ Settings.Parent = Holder
 Settings.Active = true
 Settings.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Settings.BorderSizePixel = 0
-Settings.ClipsDescendants = true
 Settings.Position = UDim2.new(0, 0, 0, 220)
-Settings.Size = UDim2.new(0, 250, 0, 200)
+Settings.Size = UDim2.new(0, 250, 0, 175)
 Settings.ZIndex = 10
 table.insert(shade1,Settings)
 
@@ -473,7 +472,6 @@ SettingsHolder.Name = "Holder"
 SettingsHolder.Parent = Settings
 SettingsHolder.BackgroundTransparency = 1
 SettingsHolder.BorderSizePixel = 0
-SettingsHolder.ClipsDescendants = true
 SettingsHolder.Size = UDim2.new(1,0,1,0)
 SettingsHolder.ScrollBarImageColor3 = Color3.fromRGB(78,78,79)
 SettingsHolder.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
@@ -2101,7 +2099,7 @@ end)()
 
 CmdbarView = ViewportTextBox.convert(Cmdbar).View
 CmdbarView.ZIndex = 10
-CmdbarView.BackgroundColor3 = Color3.fromRGB(57, 57, 58)
+CmdbarView.BackgroundColor3 = Holder.BackgroundColor3
 CmdbarView.BackgroundTransparency = 0
 ViewportTextBox.convert(Cmdbar_2).View.ZIndex = 10
 ViewportTextBox.convert(Cmdbar_3).View.ZIndex = 10
@@ -3309,12 +3307,12 @@ local cmdbarVisibilityBeforeSettings = nil
 local cmdbarTextTransparencyBeforeSettings = nil
 local cmdbarFadeToken = 0
 
--- Keep the settings panel visually continuous with the title while it occupies
--- the command-bar area. The Holder's lighter background must not peek through.
+-- Keep the original Infinite Yield backdrop behavior.
+-- Settings overlays Dark at the same Y position and height, so keep the normal backdrop intact.
 local holderBackgroundTransparencyBeforeSettings = Holder.BackgroundTransparency
 local function setSettingsBackdrop(open)
-    Dark.Visible = not open
-    Holder.BackgroundTransparency = open and 1 or holderBackgroundTransparencyBeforeSettings
+    Dark.Visible = true
+    Holder.BackgroundTransparency = holderBackgroundTransparencyBeforeSettings
 end
 
 -- Fade the command input out while settings move into its space; restore its prior state on close.
@@ -3325,7 +3323,7 @@ local function setSettingsOpenState(open)
     if open then
         -- Keep the original holder and panel geometry; only switch which content is visible.
         Settings.BackgroundTransparency = 0
-        Settings.Size = UDim2.new(0, 250, 0, 200)
+        Settings.Size = UDim2.new(0, 250, 0, 175)
         setSettingsBackdrop(true)
         CMDsF.Visible = false
         if not SettingsOpen then
@@ -3621,7 +3619,7 @@ local function applyCommandPaletteColors()
 	local base = currentShade2 or Color3.fromRGB(46, 46, 47)
 	local grayAccent = Color3.fromRGB(112, 112, 116)
 	if CmdbarView and CmdbarView.Parent then
-		CmdbarView.BackgroundColor3 = base:Lerp(grayAccent, 0.16)
+		CmdbarView.BackgroundColor3 = base
 	end
 	if FavSectionHeader and FavSectionHeader.Parent then
 		FavSectionHeader.BackgroundColor3 = base:Lerp(grayAccent, 0.16)
@@ -4106,7 +4104,7 @@ SettingsButton.MouseButton1Click:Connect(function()
 		SettingsHolder.CanvasPosition = Vector2.new(0, 0)
 		setSettingsOpenState(true)
 		setSettingsBackdrop(true)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	else setSettingsOpenState(false)
 		setSettingsBackdrop(false)
@@ -4679,7 +4677,7 @@ task.spawn(function()
 				minimizeHolder()
 				if SettingsOpen == true then
 					wait(0.2)
-					Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
+					Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
 					CMDsF.Visible = false
 					setSettingsBackdrop(true)
 				end
@@ -6569,7 +6567,7 @@ Cmdbar.FocusLost:Connect(function(enterpressed)
 		IndexContents('',true,false,false)
 		if SettingsOpen == true then
 			wait(0.2)
-			Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
+			Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
 			CMDsF.Visible = false
 			setSettingsBackdrop(true)
 		end
@@ -6587,8 +6585,8 @@ Cmdbar.Focused:Connect(function()
 		-- Settings owns the panel while open; never restore the command-list backdrop from focus events.
 		setSettingsBackdrop(true)
 		CMDsF.Visible = false
-		Settings.Size = UDim2.new(0, 250, 0, 200)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
+		Settings.Size = UDim2.new(0, 250, 0, 175)
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
 		return
 	end
 	tabComplete = UserInputService.InputBegan:Connect(function(input,gameProcessed)
@@ -8446,7 +8444,7 @@ end)
 addcmd('waypoints',{'positions'},function(args, speaker)
 	if SettingsOpen == false then setSettingsOpenState(true)
 		setSettingsBackdrop(true)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	end
 	KeybindsFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
