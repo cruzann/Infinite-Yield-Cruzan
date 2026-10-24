@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.0.8"
+currentVersion = "1.0.9"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -5429,7 +5429,8 @@ table.insert(text1, FavManagerAdd)
 
 local FavCmdsPickerFrame = Instance.new("Frame")
 FavCmdsPickerFrame.Name = "FavCmdsPickerFrame"
-FavCmdsPickerFrame.Parent = Settings
+-- Keep the picker independent from the Settings panel so it can be dragged on mobile.
+FavCmdsPickerFrame.Parent = ScaledHolder
 FavCmdsPickerFrame.Active = true
 FavCmdsPickerFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 FavCmdsPickerFrame.BorderSizePixel = 0
@@ -5448,38 +5449,40 @@ FavPickerTitle.Position = UDim2.new(0, 5, 0, 1)
 FavPickerTitle.Size = UDim2.new(1, -10, 0, 18)
 FavPickerTitle.Font = Enum.Font.SourceSans
 FavPickerTitle.TextSize = 14
-FavPickerTitle.Text = "Add existing command"
+FavPickerTitle.Text = "Choose a command, then tap Done"
 FavPickerTitle.TextColor3 = Color3.new(1, 1, 1)
 FavPickerTitle.TextXAlignment = Enum.TextXAlignment.Left
+FavPickerTitle.TextTruncate = Enum.TextTruncate.AtEnd
+FavPickerTitle.Active = true
 FavPickerTitle.ZIndex = 31
 table.insert(shade2, FavPickerTitle)
 table.insert(text1, FavPickerTitle)
 
 local FavPickerClose = Instance.new("TextButton")
-FavPickerClose.Name = "Back"
+FavPickerClose.Name = "Done"
 FavPickerClose.Parent = FavCmdsPickerFrame
 FavPickerClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 FavPickerClose.BorderSizePixel = 0
-FavPickerClose.Position = UDim2.new(0, 50, 0, 150)
-FavPickerClose.Size = UDim2.new(0, 150, 0, 20)
+FavPickerClose.Position = UDim2.new(0, 25, 0, 150)
+FavPickerClose.Size = UDim2.new(0, 90, 0, 20)
 FavPickerClose.Font = Enum.Font.SourceSans
 FavPickerClose.TextSize = 14
-FavPickerClose.Text = "Back"
+FavPickerClose.Text = "Done"
 FavPickerClose.TextColor3 = Color3.new(1, 1, 1)
 FavPickerClose.ZIndex = 32
 table.insert(shade2, FavPickerClose)
 table.insert(text1, FavPickerClose)
 
 local FavPickerCloseAll = Instance.new("TextButton")
-FavPickerCloseAll.Name = "Close"
+FavPickerCloseAll.Name = "Cancel"
 FavPickerCloseAll.Parent = FavCmdsPickerFrame
 FavPickerCloseAll.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 FavPickerCloseAll.BorderSizePixel = 0
-FavPickerCloseAll.Position = UDim2.new(0, 205, 0, 150)
-FavPickerCloseAll.Size = UDim2.new(0, 40, 0, 20)
+FavPickerCloseAll.Position = UDim2.new(0, 135, 0, 150)
+FavPickerCloseAll.Size = UDim2.new(0, 90, 0, 20)
 FavPickerCloseAll.Font = Enum.Font.SourceSans
 FavPickerCloseAll.TextSize = 14
-FavPickerCloseAll.Text = "Close"
+FavPickerCloseAll.Text = "Cancel"
 FavPickerCloseAll.TextColor3 = Color3.new(1, 1, 1)
 FavPickerCloseAll.ZIndex = 32
 table.insert(shade2, FavPickerCloseAll)
@@ -5524,6 +5527,7 @@ FavPickerLayout.Padding = UDim.new(0, 1)
 local favoriteRowFrames = {}
 local favoritePickerRows = {}
 local favoriteDragState = nil
+local selectedFavoriteCommand = nil
 
 local function removeThemeReferences(root)
 	local themeLists = {shade1, shade2, shade3, text1, text2, scroll}
@@ -5552,6 +5556,19 @@ local function applyFavoritePickerFilter()
 		end
 	end
 	FavPickerList.CanvasSize = UDim2.new(0, 0, 0, math.max(0, FavPickerLayout.AbsoluteContentSize.Y + 2))
+end
+
+local function updateFavoritePickerSelection()
+	for _, row in ipairs(favoritePickerRows) do
+		local commandName = row:GetAttribute("CommandName")
+		local isSelected = commandName ~= nil and commandName == selectedFavoriteCommand
+		row.BackgroundColor3 = isSelected and currentShade3 or currentShade2
+		local selectButton = row:FindFirstChild("Add")
+		if selectButton then
+			selectButton.Text = isSelected and "✓" or "+"
+			selectButton.BackgroundColor3 = isSelected and currentShade2 or currentShade3
+		end
+	end
 end
 
 local function refreshFavoriteManagerRows()
@@ -5705,18 +5722,25 @@ local function refreshFavoritePickerRows()
 			table.insert(text1, addButton)
 
 			addButton.MouseButton1Click:Connect(function()
-				if not favoriteHas(command.NAME) and commandRowsByName[command.NAME] then
-					table.insert(favoriteCommands, command.NAME)
-					reorderCommandEntries()
-					refreshFavoriteManagerRows()
-					updatesaves()
-					refreshFavoritePickerRows()
+				-- This button selects a command; it does not commit the change until Done.
+				if not commandRowsByName[command.NAME] then
+					notify("Fav cmds", "This command is no longer available.", 3)
+					return
 				end
+				if favoriteHas(command.NAME) then
+					notify("Fav cmds", command.NAME .. " is already in favorites.", 3)
+					selectedFavoriteCommand = nil
+					updateFavoritePickerSelection()
+					return
+				end
+				selectedFavoriteCommand = (selectedFavoriteCommand == command.NAME) and nil or command.NAME
+				updateFavoritePickerSelection()
 			end)
 			table.insert(favoritePickerRows, row)
 		end
 	end
 	applyFavoritePickerFilter()
+	updateFavoritePickerSelection()
 end
 
 FavPickerSearch:GetPropertyChangedSignal("Text"):Connect(applyFavoritePickerFilter)
@@ -5784,6 +5808,18 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
+local function getFavPickerSettingsPosition()
+	local scaleFactor = (Scale and Scale.Scale) or 1
+	if scaleFactor <= 0 then scaleFactor = 1 end
+	local relativePosition = Settings.AbsolutePosition - ScaledHolder.AbsolutePosition
+	return UDim2.new(0, math.floor(relativePosition.X / scaleFactor + 0.5), 0, math.floor(relativePosition.Y / scaleFactor + 0.5))
+end
+
+local function getFavPickerExitPosition(xOffset)
+	local visiblePosition = getFavPickerSettingsPosition()
+	return UDim2.new(0, xOffset or visiblePosition.X.Offset, 0, visiblePosition.Y.Offset + FavCmdsPickerFrame.Size.Y.Offset)
+end
+
 local function openFavManager()
 	refreshFavoriteManagerRows()
 	FavCmdsManagerFrame.Visible = true
@@ -5802,37 +5838,129 @@ local function closeFavManager()
 end
 
 local function openFavPicker()
+	selectedFavoriteCommand = nil
+	FavPickerSearch.Text = ""
 	refreshFavoritePickerRows()
 	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
+	local targetPosition = getFavPickerSettingsPosition()
+	FavCmdsPickerFrame.Position = getFavPickerExitPosition(targetPosition.X.Offset)
 	FavCmdsPickerFrame.Visible = true
-	FavCmdsPickerFrame.Position = UDim2.new(0, 0, 0, 175)
-	FavCmdsPickerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
+	FavCmdsPickerFrame:TweenPosition(targetPosition, "InOut", "Quart", 0.5, true, nil)
+	task.delay(0.52, function()
+		if FavCmdsManagerFrame and FavCmdsPickerFrame.Visible then
+			FavCmdsManagerFrame.Visible = false
+		end
+	end)
 end
 
 local function returnToFavManager()
 	FavCmdsManagerFrame.Visible = true
 	FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 175)
 	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
-	FavCmdsPickerFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
+	FavCmdsPickerFrame:TweenPosition(getFavPickerExitPosition(FavCmdsPickerFrame.Position.X.Offset), "InOut", "Quart", 0.5, true, nil)
 	task.delay(0.52, function()
 		if FavCmdsPickerFrame then FavCmdsPickerFrame.Visible = false end
 	end)
 end
 
-local function closeFavPicker()
-	SettingsHolder.Visible = true
-	FavCmdsPickerFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
-	task.delay(0.52, function()
-		if FavCmdsPickerFrame then FavCmdsPickerFrame.Visible = false end
-		if FavCmdsManagerFrame then FavCmdsManagerFrame.Visible = false end
-	end)
+local function completeFavoritePickerSelection()
+	local commandName = selectedFavoriteCommand
+	if type(commandName) ~= "string" or commandName == "" then
+		notify("Fav cmds", "Select a command first, then tap Done.", 3)
+		return
+	end
+
+	local commandIsValid = commandRowsByName[commandName] ~= nil
+	if commandIsValid then
+		commandIsValid = false
+		for _, command in ipairs(commandOptions) do
+			if command.NAME == commandName then
+				commandIsValid = true
+				break
+			end
+		end
+	end
+	if not commandIsValid then
+		notify("Fav cmds", "The selected command is not available.", 3)
+		selectedFavoriteCommand = nil
+		refreshFavoritePickerRows()
+		return
+	end
+	if favoriteHas(commandName) then
+		notify("Fav cmds", commandName .. " is already in favorites.", 3)
+		selectedFavoriteCommand = nil
+		refreshFavoritePickerRows()
+		return
+	end
+
+	table.insert(favoriteCommands, commandName)
+	reorderCommandEntries()
+	refreshFavoriteManagerRows()
+	updatesaves()
+	selectedFavoriteCommand = nil
+	notify("Fav cmds", commandName .. " added to favorites.", 3)
+	returnToFavManager()
 end
+
+local function cancelFavoritePickerSelection()
+	-- Cancel discards the pending selection and returns to the manager unchanged.
+	selectedFavoriteCommand = nil
+	returnToFavManager()
+end
+
+-- Drag the add-command dialog from its title bar; constrain it to the visible screen.
+local favoritePickerWindowDrag = nil
+FavPickerTitle.InputBegan:Connect(function(input)
+	if not FavCmdsPickerFrame.Visible then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		favoritePickerWindowDrag = {
+			dragging = true,
+			dragInput = nil,
+			dragStart = input.Position,
+			startPosition = FavCmdsPickerFrame.Position,
+			touchInput = input.UserInputType == Enum.UserInputType.Touch and input or nil,
+		}
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End and favoritePickerWindowDrag then
+				favoritePickerWindowDrag = nil
+			end
+		end)
+	end
+end)
+
+FavPickerTitle.InputChanged:Connect(function(input)
+	local drag = favoritePickerWindowDrag
+	if drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		drag.dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	local drag = favoritePickerWindowDrag
+	if not drag or not drag.dragging or not FavCmdsPickerFrame.Visible then return end
+	local isMouseMove = drag.touchInput == nil and input.UserInputType == Enum.UserInputType.MouseMovement
+	local isTouchMove = drag.touchInput ~= nil and input == drag.dragInput
+	if not isMouseMove and not isTouchMove then return end
+
+	local scaleFactor = (Scale and Scale.Scale) or 1
+	if scaleFactor <= 0 then scaleFactor = 1 end
+	local delta = input.Position - drag.dragStart
+	local logicalWidth = ScaledHolder.AbsoluteSize.X / scaleFactor
+	local logicalHeight = ScaledHolder.AbsoluteSize.Y / scaleFactor
+	local frameWidth = FavCmdsPickerFrame.Size.X.Offset
+	local frameHeight = FavCmdsPickerFrame.Size.Y.Offset
+	local x = drag.startPosition.X.Offset + delta.X / scaleFactor
+	local y = drag.startPosition.Y.Offset + delta.Y / scaleFactor
+	x = math.clamp(x, 0, math.max(0, logicalWidth - frameWidth))
+	y = math.clamp(y, 0, math.max(0, logicalHeight - frameHeight))
+	FavCmdsPickerFrame.Position = UDim2.new(0, math.floor(x + 0.5), 0, math.floor(y + 0.5))
+end)
 
 FavCmdsButton.MouseButton1Click:Connect(openFavManager)
 FavManagerClose.MouseButton1Click:Connect(closeFavManager)
 FavManagerAdd.MouseButton1Click:Connect(openFavPicker)
-FavPickerClose.MouseButton1Click:Connect(returnToFavManager)
-FavPickerCloseAll.MouseButton1Click:Connect(closeFavPicker)
+FavPickerClose.MouseButton1Click:Connect(completeFavoritePickerSelection)
+FavPickerCloseAll.MouseButton1Click:Connect(cancelFavoritePickerSelection)
 
 reorderCommandEntries()
 refreshFavoriteManagerRows()
