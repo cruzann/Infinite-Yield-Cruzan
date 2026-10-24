@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.0.7"
+currentVersion = "1.0.8"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -5281,6 +5281,21 @@ local function reorderCommandEntries()
 			row.LayoutOrder = nextOrder
 			nextOrder = nextOrder + 1
 			row:SetAttribute("IsFavoriteCommand", true)
+			-- Favorites are slightly larger for touch readability. Measure wrapped text
+			-- so long command names stay inside the list without overlapping other rows.
+			row.TextSize = 20
+			row.TextWrapped = true
+			row.TextYAlignment = Enum.TextYAlignment.Center
+			row.AutomaticSize = Enum.AutomaticSize.None
+			local favoriteTextWidth = math.max(120, CMDsF.Size.X.Offset - 15)
+			local favoriteTextHeight = 24
+			local measureOK, textBounds = pcall(function()
+				return TextService:GetTextSize(row.Text, row.TextSize, row.Font, Vector2.new(favoriteTextWidth, 10000))
+			end)
+			if measureOK and textBounds then
+				favoriteTextHeight = math.max(24, math.ceil(textBounds.Y) + 2)
+			end
+			row.Size = UDim2.new(1, -15, 0, favoriteTextHeight)
 			favoriteRowSet[row] = true
 		end
 	end
@@ -5294,6 +5309,12 @@ local function reorderCommandEntries()
 	for _, row in ipairs(commandEntryRows) do
 		if not favoriteRowSet[row] then
 			row:SetAttribute("IsFavoriteCommand", false)
+			-- Restore the original command-row styling when a favorite is removed.
+			row.TextSize = Example.TextSize
+			row.TextWrapped = false
+			row.TextYAlignment = Example.TextYAlignment
+			row.AutomaticSize = Enum.AutomaticSize.None
+			row.Size = Example.Size
 			row.LayoutOrder = nextOrder
 			nextOrder = nextOrder + 1
 		end
