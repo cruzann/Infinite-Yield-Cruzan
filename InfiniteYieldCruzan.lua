@@ -174,7 +174,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.1.7"
+currentVersion = "1.1.8"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -10700,7 +10700,7 @@ addcmd('invisible',{'invis'},function(args, speaker)
 	end
 
 	local invisDied
-	invisDied = InvisibleCharacter:FindFirstChildOfClasstrackIYConnection('Humanoid'.Died, function()
+	invisDied = trackIYConnection(InvisibleCharacter:FindFirstChildOfClass('Humanoid').Died, function()
 		Respawn()
 		invisDied:Disconnect()
 	end)
@@ -10736,7 +10736,7 @@ addcmd('invisible',{'invis'},function(args, speaker)
 		IsInvis = false
 		Player.Character.Animate.Disabled = true
 		Player.Character.Animate.Disabled = false
-		invisDied = Character:FindFirstChildOfClasstrackIYConnection('Humanoid'.Died, function()
+		invisDied = trackIYConnection(Character:FindFirstChildOfClass('Humanoid').Died, function()
 			Respawn()
 			invisDied:Disconnect()
 		end)
@@ -11918,7 +11918,7 @@ addcmd('carpet',{},function(args, speaker)
 			carpet = speaker.Character:FindFirstChildOfClass('Humanoid'):LoadAnimation(carpetAnim)
 			carpet:Play(.1, 1, 1)
 			local carpetplr = Players[v].Name
-			carpetDied = speaker.Character:FindFirstChildOfClasstrackIYConnection('Humanoid'.Died, function()
+			carpetDied = trackIYConnection(speaker.Character:FindFirstChildOfClass('Humanoid').Died, function()
 				carpetLoop:Disconnect()
 				carpet:Stop()
 				carpetAnim:Destroy()
