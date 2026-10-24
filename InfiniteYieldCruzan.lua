@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.1.2"
+currentVersion = "1.1.3"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -168,8 +168,6 @@ cmdListLayout = Instance.new("UIListLayout")
 SettingsButton = Instance.new("ImageButton")
 ColorsButton = Instance.new("ImageButton")
 Settings = Instance.new("Frame")
-Prefix = Instance.new("TextLabel")
-PrefixBox = Instance.new("TextBox")
 Keybinds = Instance.new("TextLabel")
 StayOpen = Instance.new("TextButton")
 StayOpenButton = StayOpen
@@ -476,43 +474,13 @@ SettingsHolder.BorderSizePixel = 0
 SettingsHolder.Size = UDim2.new(1,0,1,0)
 SettingsHolder.ScrollBarImageColor3 = Color3.fromRGB(78,78,79)
 SettingsHolder.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
-SettingsHolder.CanvasSize = UDim2.new(0, 0, 0, 300)
+SettingsHolder.CanvasSize = UDim2.new(0, 0, 0, 270)
 SettingsHolder.MidImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 SettingsHolder.ScrollBarThickness = 8
 SettingsHolder.TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 SettingsHolder.VerticalScrollBarInset = 'Always'
 SettingsHolder.ZIndex = 10
 table.insert(scroll,SettingsHolder)
-
-Prefix.Name = "Prefix"
-Prefix.Parent = SettingsHolder
-Prefix.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
-Prefix.BorderSizePixel = 0
-Prefix.BackgroundTransparency = 1
-Prefix.Position = UDim2.new(0, 5, 0, 5)
-Prefix.Size = UDim2.new(1, -10, 0, 20)
-Prefix.Font = Enum.Font.SourceSans
-Prefix.TextSize = 14
-Prefix.Text = "Prefix"
-Prefix.TextColor3 = Color3.new(1, 1, 1)
-Prefix.TextXAlignment = Enum.TextXAlignment.Left
-Prefix.ZIndex = 10
-table.insert(shade2,Prefix)
-table.insert(text1,Prefix)
-
-PrefixBox.Name = "PrefixBox"
-PrefixBox.Parent = Prefix
-PrefixBox.BackgroundColor3 = Color3.fromRGB(78, 78, 79)
-PrefixBox.BorderSizePixel = 0
-PrefixBox.Position = UDim2.new(1, -20, 0, 0)
-PrefixBox.Size = UDim2.new(0, 20, 0, 20)
-PrefixBox.Font = Enum.Font.SourceSansBold
-PrefixBox.TextSize = 14
-PrefixBox.Text = ''
-PrefixBox.TextColor3 = Color3.new(0, 0, 0)
-PrefixBox.ZIndex = 10
-table.insert(shade3,PrefixBox)
-table.insert(text2,PrefixBox)
 
 function makeSettingsButton(name,iconID,off)
 	local button = Instance.new("TextButton")
@@ -553,19 +521,19 @@ function makeSettingsButton(name,iconID,off)
 end
 
 ColorsButton = makeSettingsButton("Edit Theme",getcustomasset("infiniteyield/assets/edittheme.png"))
-ColorsButton.Position = UDim2.new(0, 5, 0, 115)
+ColorsButton.Position = UDim2.new(0, 5, 0, 85)
 ColorsButton.Size = UDim2.new(1, -10, 0, 25)
 ColorsButton.Name = "Colors"
 ColorsButton.Parent = SettingsHolder
 
 Keybinds = makeSettingsButton("Edit Keybinds",getcustomasset("infiniteyield/assets/editkeybinds.png"))
-Keybinds.Position = UDim2.new(0, 5, 0, 145)
+Keybinds.Position = UDim2.new(0, 5, 0, 115)
 Keybinds.Size = UDim2.new(1, -10, 0, 25)
 Keybinds.Name = "Keybinds"
 Keybinds.Parent = SettingsHolder
 
 Aliases = makeSettingsButton("Edit Aliases",getcustomasset("infiniteyield/assets/editaliases.png"))
-Aliases.Position = UDim2.new(0, 5, 0, 175)
+Aliases.Position = UDim2.new(0, 5, 0, 145)
 Aliases.Size = UDim2.new(1, -10, 0, 25)
 Aliases.Name = "Aliases"
 Aliases.Parent = SettingsHolder
@@ -575,7 +543,7 @@ StayOpen.Parent = SettingsHolder
 StayOpen.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 StayOpen.BorderSizePixel = 0
 StayOpen.BackgroundTransparency = 1
-StayOpen.Position = UDim2.new(0, 5, 0, 30)
+StayOpen.Position = UDim2.new(0, 5, 0, 5)
 StayOpen.Size = UDim2.new(1, -10, 0, 20)
 StayOpen.Font = Enum.Font.SourceSans
 StayOpen.TextSize = 14
@@ -612,19 +580,19 @@ On.TextColor3 = Color3.new(0, 0, 0)
 On.ZIndex = 10
 
 Positions = makeSettingsButton("Edit/Goto Waypoints",getcustomasset("infiniteyield/assets/editwaypoints.png"))
-Positions.Position = UDim2.new(0, 5, 0, 205)
+Positions.Position = UDim2.new(0, 5, 0, 175)
 Positions.Size = UDim2.new(1, -10, 0, 25)
 Positions.Name = "Waypoints"
 Positions.Parent = SettingsHolder
 
 EventBind = makeSettingsButton("Edit Event Binds",getcustomasset("infiniteyield/assets/bindsandplugins.png"),759)
-EventBind.Position = UDim2.new(0, 5, 0, 265)
+EventBind.Position = UDim2.new(0, 5, 0, 235)
 EventBind.Size = UDim2.new(1, -10, 0, 25)
 EventBind.Name = "EventBinds"
 EventBind.Parent = SettingsHolder
 
 Plugins = makeSettingsButton("Manage Plugins",getcustomasset("infiniteyield/assets/bindsandplugins.png"),743)
-Plugins.Position = UDim2.new(0, 5, 0, 235)
+Plugins.Position = UDim2.new(0, 5, 0, 205)
 Plugins.Size = UDim2.new(1, -10, 0, 25)
 Plugins.Name = "Plugins"
 Plugins.Parent = SettingsHolder
@@ -634,7 +602,7 @@ AutoHideDelayLabel = Instance.new("TextLabel")
 AutoHideDelayLabel.Name = "AutoHideDelayLabel"
 AutoHideDelayLabel.Parent = SettingsHolder
 AutoHideDelayLabel.BackgroundTransparency = 1
-AutoHideDelayLabel.Position = UDim2.new(0, 5, 0, 55)
+AutoHideDelayLabel.Position = UDim2.new(0, 5, 0, 30)
 AutoHideDelayLabel.Size = UDim2.new(1, -10, 0, 20)
 AutoHideDelayLabel.Font = Enum.Font.SourceSans
 AutoHideDelayLabel.TextSize = 14
@@ -663,7 +631,7 @@ table.insert(shade3, AutoHideDelayBox)
 table.insert(text1, AutoHideDelayBox)
 
 FavCmdsButton = makeSettingsButton("Manage Fav cmds", getcustomasset("infiniteyield/assets/editaliases.png"))
-FavCmdsButton.Position = UDim2.new(0, 5, 0, 85)
+FavCmdsButton.Position = UDim2.new(0, 5, 0, 55)
 FavCmdsButton.Size = UDim2.new(1, -10, 0, 25)
 FavCmdsButton.Name = "FavoriteCommands"
 FavCmdsButton.Parent = SettingsHolder
@@ -2980,10 +2948,10 @@ currentScroll = Color3.fromRGB(78,78,79)
 
 defaultGuiScale = IsOnMobile and 0.9 or 1
 local autoHideDelay = 1.5
+local prefix = ';' -- Fixed internal shortcut; commands entered in Command Bar need no prefix.
 favoriteCommands = {}
 defaultsettings = {
 	autoHideDelay = 1.5;
-	prefix = ';';
 	StayOpen = false;
 	guiScale = defaultGuiScale;
 	espTransparency = 0.3;
@@ -3165,7 +3133,6 @@ function saves()
 					else
 						autoHideDelay = 1.5
 					end
-					if vtype(json.prefix, "string") then prefix = json.prefix else prefix = ';' end
 					if vtype(json.StayOpen, "boolean") then StayOpen = json.StayOpen else StayOpen = false end
 					if vtype(json.guiScale, "number") then guiScale = json.guiScale else guiScale = defaultGuiScale end
 					if vtype(json.keepIY, "boolean") then KeepInfYield = json.keepIY else KeepInfYield = true end
@@ -3240,7 +3207,6 @@ function updatesaves()
 	if nosaves == false and writefileExploit() then
 		local update = {
 			autoHideDelay = autoHideDelay;
-			prefix = prefix;
 			StayOpen = StayOpen;
 			guiScale = guiScale;
 			keepIY = KeepInfYield;
@@ -3301,7 +3267,6 @@ function Time()
 	return HOUR .. ':' .. MINUTE .. ':' .. SECOND .. ' ' .. AP
 end
 
-PrefixBox.Text = prefix
 local SettingsOpen = false
 local isHidden = IsOnMobile
 local cmdbarVisibilityBeforeSettings = nil
@@ -4471,12 +4436,6 @@ Delete_3.MouseButton1Click:Connect(function()
 	notify('Aliases Modified','Removed all aliases')
 	updatesaves()
 	refreshaliases()
-end)
-
-PrefixBox:GetPropertyChangedSignal("Text"):Connect(function()
-	prefix = PrefixBox.Text
-	Cmdbar.PlaceholderText = "Command Bar ("..prefix..")"
-	updatesaves()
 end)
 
 function CamViewport()
@@ -6673,7 +6632,7 @@ Players.LocalPlayer.Chatted:Connect(function()
 	end
 end)
 
-Cmdbar.PlaceholderText = "Command Bar ("..prefix..")"
+Cmdbar.PlaceholderText = "Command Bar"
 Cmdbar:GetPropertyChangedSignal("Text"):Connect(function()
 	if Cmdbar:IsFocused() then
 		IndexContents(Cmdbar.Text,true,true)
