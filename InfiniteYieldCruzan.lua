@@ -734,7 +734,7 @@ Tooltip.Active = true
 Tooltip.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Tooltip.BackgroundTransparency = 0.1
 Tooltip.BorderSizePixel = 0
-Tooltip.Size = UDim2.new(0, 112, 0, 56)
+Tooltip.Size = UDim2.new(0, 200, 0, 96)
 Tooltip.Visible = false
 Tooltip.ZIndex = 10
 table.insert(shade1,Tooltip)
@@ -744,9 +744,9 @@ Title_3.Parent = Tooltip
 Title_3.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Title_3.BackgroundTransparency = 0.1
 Title_3.BorderSizePixel = 0
-Title_3.Size = UDim2.new(1, 0, 0, 16)
+Title_3.Size = UDim2.new(0, 200, 0, 20)
 Title_3.Font = Enum.Font.SourceSans
-Title_3.TextSize = 10
+Title_3.TextSize = 14
 Title_3.Text = ""
 Title_3.TextColor3 = Color3.new(1, 1, 1)
 Title_3.TextTransparency = 0.1
@@ -758,10 +758,10 @@ Description.Name = "Description"
 Description.Parent = Tooltip
 Description.BackgroundTransparency = 1
 Description.BorderSizePixel = 0
-Description.Size = UDim2.new(1, -10, 0, 38)
-Description.Position = UDim2.new(0, 5, 0, 16)
+Description.Size = UDim2.new(0,180,0,72)
+Description.Position = UDim2.new(0,10,0,18)
 Description.Font = Enum.Font.SourceSans
-Description.TextSize = 10
+Description.TextSize = 16
 Description.Text = ""
 Description.TextColor3 = Color3.new(1, 1, 1)
 Description.TextTransparency = 0.1
@@ -1995,7 +1995,7 @@ WaypointHoverFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 WaypointHoverFrame.BorderSizePixel = 0
 WaypointHoverFrame.AnchorPoint = Vector2.new(1, 0)
 WaypointHoverFrame.Position = UDim2.new(1, -12, 0, 45)
-WaypointHoverFrame.Size = UDim2.new(0, 200, 0, 76)
+WaypointHoverFrame.Size = UDim2.new(0, 120, 0, 52)
 WaypointHoverFrame.Visible = false
 WaypointHoverFrame.ZIndex = 80
 table.insert(shade1, WaypointHoverFrame)
@@ -2005,9 +2005,9 @@ WaypointHoverHeader.Parent = WaypointHoverFrame
 WaypointHoverHeader.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverHeader.BorderSizePixel = 0
 WaypointHoverHeader.Position = UDim2.new(0, 0, 0, 0)
-WaypointHoverHeader.Size = UDim2.new(1, 0, 0, 22)
+WaypointHoverHeader.Size = UDim2.new(1, 0, 0, 18)
 WaypointHoverHeader.Font = Enum.Font.SourceSans
-WaypointHoverHeader.TextSize = 14
+WaypointHoverHeader.TextSize = 12
 WaypointHoverHeader.Text = "Waypoint Hover"
 WaypointHoverHeader.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverHeader.TextXAlignment = Enum.TextXAlignment.Left
@@ -2019,10 +2019,10 @@ WaypointHoverClose.Name = "Close"
 WaypointHoverClose.Parent = WaypointHoverHeader
 WaypointHoverClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverClose.BorderSizePixel = 0
-WaypointHoverClose.Position = UDim2.new(1, -22, 0, 1)
-WaypointHoverClose.Size = UDim2.new(0, 21, 0, 20)
+WaypointHoverClose.Position = UDim2.new(1, -20, 0, 1)
+WaypointHoverClose.Size = UDim2.new(0, 19, 0, 16)
 WaypointHoverClose.Font = Enum.Font.SourceSansBold
-WaypointHoverClose.TextSize = 14
+WaypointHoverClose.TextSize = 12
 WaypointHoverClose.Text = "X"
 WaypointHoverClose.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverClose.ZIndex = 82
@@ -2033,10 +2033,10 @@ WaypointHoverButton.Name = "GotoWaypoint"
 WaypointHoverButton.Parent = WaypointHoverFrame
 WaypointHoverButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverButton.BorderSizePixel = 0
-WaypointHoverButton.Position = UDim2.new(0, 6, 0, 28)
-WaypointHoverButton.Size = UDim2.new(1, -12, 0, 42)
+WaypointHoverButton.Position = UDim2.new(0, 4, 0, 22)
+WaypointHoverButton.Size = UDim2.new(1, -8, 0, 26)
 WaypointHoverButton.Font = Enum.Font.SourceSans
-WaypointHoverButton.TextSize = 18
+WaypointHoverButton.TextSize = 14
 WaypointHoverButton.Text = "Waypoint"
 WaypointHoverButton.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverButton.TextScaled = true
@@ -6122,195 +6122,41 @@ reorderCommandEntries()
 refreshFavoriteManagerRows()
 IndexContents("", true)
 
--- Keep a small pool of independent command tooltips so multiple descriptions
--- can remain visible briefly as the pointer moves between command rows.
-local COMMAND_TOOLTIP_WIDTH = 112
-local COMMAND_TOOLTIP_HEIGHT = 56
-local COMMAND_TOOLTIP_GAP = 8
-local COMMAND_TOOLTIP_LIFETIME = 4
-local COMMAND_TOOLTIP_POOL_SIZE = 6
-local commandTooltipPool = {}
-local commandTooltipByRow = {}
-local activeCommandTooltipRow = nil
-
-commandTooltipPool[1] = {
-	frame = Tooltip,
-	title = Title_3,
-	description = Description,
-	row = nil,
-	expiryToken = 0,
-	lastTouched = 0,
-}
-
-for i = 2, COMMAND_TOOLTIP_POOL_SIZE do
-	local frame = Tooltip:Clone()
-	frame.Name = randomString()
-	frame.Parent = ScaledHolder
-	frame.Visible = false
-	local title = frame:FindFirstChild("Title")
-	local description = frame:FindFirstChild("Description")
-	table.insert(shade1, frame)
-	table.insert(shade2, title)
-	table.insert(text1, title)
-	table.insert(text1, description)
-	commandTooltipPool[i] = {
-		frame = frame,
-		title = title,
-		description = description,
-		row = nil,
-		expiryToken = 0,
-		lastTouched = 0,
-	}
-end
-
-local function hideCommandTooltipSlot(slot)
-	if slot.row and commandTooltipByRow[slot.row] == slot then
-		commandTooltipByRow[slot.row] = nil
-	end
-	slot.row = nil
-	slot.expiryToken = slot.expiryToken + 1
-	slot.frame.Visible = false
-end
-
-local function scheduleCommandTooltipExpiry(slot)
-	local token = slot.expiryToken + 1
-	local row = slot.row
-	slot.expiryToken = token
-	task.delay(COMMAND_TOOLTIP_LIFETIME, function()
-		if slot.expiryToken ~= token or slot.row ~= row then return end
-		if activeCommandTooltipRow == row then
-			scheduleCommandTooltipExpiry(slot)
-		else
-			hideCommandTooltipSlot(slot)
-		end
-	end)
-end
-
-local function getCommandTooltipSlot(row)
-	local existing = commandTooltipByRow[row]
-	if existing then return existing end
-
-	for _, slot in ipairs(commandTooltipPool) do
-		if slot.row == nil then
-			slot.row = row
-			commandTooltipByRow[row] = slot
-			return slot
-		end
-	end
-
-	local oldestSlot = commandTooltipPool[1]
-	for _, slot in ipairs(commandTooltipPool) do
-		if slot.lastTouched < oldestSlot.lastTouched then
-			oldestSlot = slot
-		end
-	end
-	hideCommandTooltipSlot(oldestSlot)
-	oldestSlot.row = row
-	commandTooltipByRow[row] = oldestSlot
-	return oldestSlot
-end
-
-local function findCommandTooltipPosition(mouseX, mouseY, excludedFrame)
-	local viewWidth = math.max(COMMAND_TOOLTIP_WIDTH + 8, IYMouse.ViewSizeX)
-	local viewHeight = math.max(COMMAND_TOOLTIP_HEIGHT + 8, IYMouse.ViewSizeY)
-	local maxX = math.max(4, viewWidth - COMMAND_TOOLTIP_WIDTH - 4)
-	local maxY = math.max(4, viewHeight - COMMAND_TOOLTIP_HEIGHT - 4)
-	local verticalOffsets = {
-		0,
-		-(COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP),
-		COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP,
-		-2 * (COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP),
-		2 * (COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP),
-		-3 * (COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP),
-		3 * (COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP),
-	}
-	local horizontalOffsets = {14, -COMMAND_TOOLTIP_WIDTH - 14}
-
-	local function positionIsFree(x, y)
-		if mouseX >= x and mouseX <= x + COMMAND_TOOLTIP_WIDTH
-			and mouseY >= y and mouseY <= y + COMMAND_TOOLTIP_HEIGHT then
-			return false
-		end
-		for _, other in ipairs(commandTooltipPool) do
-			local frame = other.frame
-			if frame ~= excludedFrame and frame.Visible then
-				local ox = frame.Position.X.Offset
-				local oy = frame.Position.Y.Offset
-				if x < ox + COMMAND_TOOLTIP_WIDTH and x + COMMAND_TOOLTIP_WIDTH > ox
-					and y < oy + COMMAND_TOOLTIP_HEIGHT and y + COMMAND_TOOLTIP_HEIGHT > oy then
-					return false
-				end
-			end
-		end
-		return true
-	end
-
-	for _, yOffset in ipairs(verticalOffsets) do
-		for _, xOffset in ipairs(horizontalOffsets) do
-			local x = math.clamp(mouseX + xOffset, 4, maxX)
-			local y = math.clamp(mouseY + yOffset, 4, maxY)
-			if positionIsFree(x, y) then
-				return UDim2.new(0, x, 0, y)
-			end
-		end
-	end
-
-	-- Fallback: find the nearest unoccupied grid position on the screen.
-	local xPositions, yPositions = {}, {}
-	local x = 4
-	while x < maxX do
-		table.insert(xPositions, x)
-		x = x + COMMAND_TOOLTIP_WIDTH + COMMAND_TOOLTIP_GAP
-	end
-	table.insert(xPositions, maxX)
-	local y = 4
-	while y < maxY do
-		table.insert(yPositions, y)
-		y = y + COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP
-	end
-	table.insert(yPositions, maxY)
-
-	local bestX, bestY, bestDistance = nil, nil, math.huge
-	for _, gridX in ipairs(xPositions) do
-		for _, gridY in ipairs(yPositions) do
-			if positionIsFree(gridX, gridY) then
-				local dx = gridX + COMMAND_TOOLTIP_WIDTH / 2 - mouseX
-				local dy = gridY + COMMAND_TOOLTIP_HEIGHT / 2 - mouseY
-				local distance = dx * dx + dy * dy
-				if distance < bestDistance then
-					bestX, bestY, bestDistance = gridX, gridY, distance
-				end
-			end
-		end
-	end
-	if bestX then return UDim2.new(0, bestX, 0, bestY) end
-	return UDim2.new(0, maxX, 0, maxY)
-end
-
 function checkTT()
-	local hoveredRow
+	local t
 	local guisAtPosition = COREGUI:GetGuiObjectsAtPosition(IYMouse.X, IYMouse.Y)
 
 	for _, gui in pairs(guisAtPosition) do
 		if gui.Parent == CMDsF then
-			hoveredRow = gui
+			t = gui
 		end
 	end
 
-	if hoveredRow and hoveredRow:GetAttribute("Title") ~= nil then
-		local isNewHover = activeCommandTooltipRow ~= hoveredRow
-		local slot = getCommandTooltipSlot(hoveredRow)
-		if isNewHover then
-			slot.title.Text = tostring(hoveredRow:GetAttribute("Title") or "")
-			slot.description.Text = tostring(hoveredRow:GetAttribute("Desc") or "")
-			scheduleCommandTooltipExpiry(slot)
+	if t ~= nil and t:GetAttribute("Title") ~= nil then
+		local x = IYMouse.X
+		local y = IYMouse.Y
+		local xP
+		local yP
+		if IYMouse.X > 200 then
+			xP = x - 201
+		else
+			xP = x + 21
 		end
-		slot.lastTouched = tick()
-		slot.frame.Position = findCommandTooltipPosition(IYMouse.X, IYMouse.Y, slot.frame)
-		slot.frame.Visible = true
-		activeCommandTooltipRow = hoveredRow
+		if IYMouse.Y > (IYMouse.ViewSizeY-96) then
+			yP = y - 97
+		else
+			yP = y
+		end
+		Tooltip.Position = UDim2.new(0, xP, 0, yP)
+		Description.Text = t:GetAttribute("Desc")
+		if t:GetAttribute("Title") ~= nil then
+			Title_3.Text = t:GetAttribute("Title")
+		else
+			Title_3.Text = ''
+		end
+		Tooltip.Visible = true
 	else
-		activeCommandTooltipRow = nil
+		Tooltip.Visible = false
 	end
 end
 
@@ -7443,55 +7289,160 @@ WaypointClearCancelButton.MouseButton1Click:Connect(function()
 	returnToWaypointsPanel()
 end)
 
-local hoveredWaypointName = nil
-local waypointHoverDrag = {dragging = false, dragInput = nil, dragStart = nil, startPosition = nil}
+-- Each waypoint Hover window owns its waypoint target, drag state, and close action.
+-- The original frame above remains an invisible style template; every click creates
+-- an independent copy so opening one waypoint never replaces another one.
+local waypointHoverWindows = {}
+local waypointHoverWindowCounter = 0
 
-local function showWaypointHover(name)
-	hoveredWaypointName = tostring(name or "")
-	WaypointHoverButton.Text = hoveredWaypointName
-	WaypointHoverFrame.Visible = true
+local function removeWaypointHoverStyleEntry(list, item)
+	for index = #list, 1, -1 do
+		if list[index] == item then
+			table.remove(list, index)
+		end
+	end
 end
 
-WaypointHoverClose.MouseButton1Click:Connect(function()
-	WaypointHoverFrame.Visible = false
-	hoveredWaypointName = nil
-end)
-
-WaypointHoverButton.MouseButton1Click:Connect(function()
-	if hoveredWaypointName and hoveredWaypointName ~= "" then
-		-- Reuse the exact command used by each row's Goto button.
-		execCmd("loadpos "..hoveredWaypointName)
+local function removeWaypointHoverWindow(state)
+	if not state then return end
+	if state.endConnection then
+		state.endConnection:Disconnect()
+		state.endConnection = nil
 	end
-end)
 
--- Drag the floating panel by its title bar, without affecting the large Goto button.
-WaypointHoverHeader.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		waypointHoverDrag.dragging = true
-		waypointHoverDrag.dragStart = input.Position
-		waypointHoverDrag.startPosition = WaypointHoverFrame.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				waypointHoverDrag.dragging = false
-			end
-		end)
-	end
-end)
+	removeWaypointHoverStyleEntry(shade1, state.frame)
+	removeWaypointHoverStyleEntry(shade2, state.header)
+	removeWaypointHoverStyleEntry(shade2, state.closeButton)
+	removeWaypointHoverStyleEntry(shade2, state.gotoButton)
+	removeWaypointHoverStyleEntry(text1, state.header)
+	removeWaypointHoverStyleEntry(text1, state.closeButton)
+	removeWaypointHoverStyleEntry(text1, state.gotoButton)
 
-WaypointHoverHeader.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		waypointHoverDrag.dragInput = input
+	for index = #waypointHoverWindows, 1, -1 do
+		if waypointHoverWindows[index] == state then
+			table.remove(waypointHoverWindows, index)
+		end
 	end
-end)
+	if state.frame and state.frame.Parent then
+		state.frame:Destroy()
+	end
+end
+
+local function getWaypointHoverSlot()
+	local occupied = {}
+	for _, state in ipairs(waypointHoverWindows) do
+		if state.frame and state.frame.Parent then
+			occupied[state.slot] = true
+		end
+	end
+
+	local slot = 0
+	while occupied[slot] do
+		slot += 1
+	end
+	return slot
+end
+
+local function showWaypointHover(name)
+	local waypointName = tostring(name or "")
+	if waypointName == "" then return end
+
+	local slot = getWaypointHoverSlot()
+	local viewportSize = Vector2.new(800, 600)
+	if workspace.CurrentCamera then
+		viewportSize = workspace.CurrentCamera.ViewportSize
+	end
+	local rowsPerColumn = math.max(1, math.floor((viewportSize.Y - 100) / 60))
+	local row = slot % rowsPerColumn
+	local column = math.floor(slot / rowsPerColumn)
+	local frame = WaypointHoverFrame:Clone()
+	local header = frame:FindFirstChild("Header")
+	local closeButton = header and header:FindFirstChild("Close")
+	local gotoButton = frame:FindFirstChild("GotoWaypoint")
+	if not header or not closeButton or not gotoButton then
+		frame:Destroy()
+		return
+	end
+
+	waypointHoverWindowCounter += 1
+	frame.Name = "WaypointHover_" .. tostring(waypointHoverWindowCounter)
+	frame.AnchorPoint = Vector2.new(1, 0)
+	frame.Position = UDim2.new(1, -(12 + column * 128), 0, 45 + row * 60)
+	frame.Visible = true
+	header.Text = waypointName
+	gotoButton.Text = waypointName
+	frame.Parent = PARENT
+
+	local state = {
+		frame = frame,
+		header = header,
+		closeButton = closeButton,
+		gotoButton = gotoButton,
+		waypointName = waypointName,
+		slot = slot,
+		dragging = false,
+		dragInput = nil,
+		dragStart = nil,
+		startPosition = nil,
+		endConnection = nil,
+	}
+	table.insert(waypointHoverWindows, state)
+
+	-- Register cloned UI elements so the existing theme controls still update them.
+	table.insert(shade1, frame)
+	table.insert(shade2, header)
+	table.insert(shade2, closeButton)
+	table.insert(shade2, gotoButton)
+	table.insert(text1, header)
+	table.insert(text1, closeButton)
+	table.insert(text1, gotoButton)
+
+	closeButton.MouseButton1Click:Connect(function()
+		removeWaypointHoverWindow(state)
+	end)
+
+	gotoButton.MouseButton1Click:Connect(function()
+		if state.waypointName ~= "" then
+			-- Match the exact command used by this waypoint row's Goto button.
+			execCmd("loadpos " .. state.waypointName)
+		end
+	end)
+
+	-- Drag this window by its own header; other open windows keep their positions.
+	header.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			state.dragging = true
+			state.dragStart = input.Position
+			state.startPosition = frame.Position
+			state.endConnection = input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					state.dragging = false
+					if state.endConnection then
+						state.endConnection:Disconnect()
+						state.endConnection = nil
+					end
+				end
+			end)
+		end
+	end)
+
+	header.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			state.dragInput = input
+		end
+	end)
+end
 
 UserInputService.InputChanged:Connect(function(input)
-	if input == waypointHoverDrag.dragInput and waypointHoverDrag.dragging then
-		local delta = input.Position - waypointHoverDrag.dragStart
-		local startPosition = waypointHoverDrag.startPosition
-		WaypointHoverFrame.Position = UDim2.new(
-			startPosition.X.Scale, startPosition.X.Offset + delta.X,
-			startPosition.Y.Scale, startPosition.Y.Offset + delta.Y
-		)
+	for _, state in ipairs(waypointHoverWindows) do
+		if state.dragging and input == state.dragInput and state.frame and state.frame.Parent then
+			local delta = input.Position - state.dragStart
+			local startPosition = state.startPosition
+			state.frame.Position = UDim2.new(
+				startPosition.X.Scale, startPosition.X.Offset + delta.X,
+				startPosition.Y.Scale, startPosition.Y.Offset + delta.Y
+			)
+		end
 	end
 end)
 
@@ -14758,10 +14709,7 @@ IYMouse.Move:Connect(checkTT)
 -- Hide the tooltip on touch release so command descriptions do not remain stuck.
 UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch then
-		activeCommandTooltipRow = nil
-		for _, slot in ipairs(commandTooltipPool) do
-			hideCommandTooltipSlot(slot)
-		end
+		Tooltip.Visible = false
 	end
 end)
 
