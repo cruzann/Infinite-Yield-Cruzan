@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.2.2"
+currentVersion = "1.2.3"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -734,7 +734,7 @@ Tooltip.Active = true
 Tooltip.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Tooltip.BackgroundTransparency = 0.1
 Tooltip.BorderSizePixel = 0
-Tooltip.Size = UDim2.new(0, 200, 0, 96)
+Tooltip.Size = UDim2.new(0, 112, 0, 56)
 Tooltip.Visible = false
 Tooltip.ZIndex = 10
 table.insert(shade1,Tooltip)
@@ -744,9 +744,9 @@ Title_3.Parent = Tooltip
 Title_3.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Title_3.BackgroundTransparency = 0.1
 Title_3.BorderSizePixel = 0
-Title_3.Size = UDim2.new(0, 200, 0, 20)
+Title_3.Size = UDim2.new(1, 0, 0, 16)
 Title_3.Font = Enum.Font.SourceSans
-Title_3.TextSize = 14
+Title_3.TextSize = 10
 Title_3.Text = ""
 Title_3.TextColor3 = Color3.new(1, 1, 1)
 Title_3.TextTransparency = 0.1
@@ -758,10 +758,10 @@ Description.Name = "Description"
 Description.Parent = Tooltip
 Description.BackgroundTransparency = 1
 Description.BorderSizePixel = 0
-Description.Size = UDim2.new(0,180,0,72)
-Description.Position = UDim2.new(0,10,0,18)
+Description.Size = UDim2.new(1, -10, 0, 38)
+Description.Position = UDim2.new(0, 5, 0, 16)
 Description.Font = Enum.Font.SourceSans
-Description.TextSize = 16
+Description.TextSize = 10
 Description.Text = ""
 Description.TextColor3 = Color3.new(1, 1, 1)
 Description.TextTransparency = 0.1
@@ -6122,41 +6122,195 @@ reorderCommandEntries()
 refreshFavoriteManagerRows()
 IndexContents("", true)
 
+-- Keep a small pool of independent command tooltips so multiple descriptions
+-- can remain visible briefly as the pointer moves between command rows.
+local COMMAND_TOOLTIP_WIDTH = 112
+local COMMAND_TOOLTIP_HEIGHT = 56
+local COMMAND_TOOLTIP_GAP = 8
+local COMMAND_TOOLTIP_LIFETIME = 4
+local COMMAND_TOOLTIP_POOL_SIZE = 6
+local commandTooltipPool = {}
+local commandTooltipByRow = {}
+local activeCommandTooltipRow = nil
+
+commandTooltipPool[1] = {
+	frame = Tooltip,
+	title = Title_3,
+	description = Description,
+	row = nil,
+	expiryToken = 0,
+	lastTouched = 0,
+}
+
+for i = 2, COMMAND_TOOLTIP_POOL_SIZE do
+	local frame = Tooltip:Clone()
+	frame.Name = randomString()
+	frame.Parent = ScaledHolder
+	frame.Visible = false
+	local title = frame:FindFirstChild("Title")
+	local description = frame:FindFirstChild("Description")
+	table.insert(shade1, frame)
+	table.insert(shade2, title)
+	table.insert(text1, title)
+	table.insert(text1, description)
+	commandTooltipPool[i] = {
+		frame = frame,
+		title = title,
+		description = description,
+		row = nil,
+		expiryToken = 0,
+		lastTouched = 0,
+	}
+end
+
+local function hideCommandTooltipSlot(slot)
+	if slot.row and commandTooltipByRow[slot.row] == slot then
+		commandTooltipByRow[slot.row] = nil
+	end
+	slot.row = nil
+	slot.expiryToken = slot.expiryToken + 1
+	slot.frame.Visible = false
+end
+
+local function scheduleCommandTooltipExpiry(slot)
+	local token = slot.expiryToken + 1
+	local row = slot.row
+	slot.expiryToken = token
+	task.delay(COMMAND_TOOLTIP_LIFETIME, function()
+		if slot.expiryToken ~= token or slot.row ~= row then return end
+		if activeCommandTooltipRow == row then
+			scheduleCommandTooltipExpiry(slot)
+		else
+			hideCommandTooltipSlot(slot)
+		end
+	end)
+end
+
+local function getCommandTooltipSlot(row)
+	local existing = commandTooltipByRow[row]
+	if existing then return existing end
+
+	for _, slot in ipairs(commandTooltipPool) do
+		if slot.row == nil then
+			slot.row = row
+			commandTooltipByRow[row] = slot
+			return slot
+		end
+	end
+
+	local oldestSlot = commandTooltipPool[1]
+	for _, slot in ipairs(commandTooltipPool) do
+		if slot.lastTouched < oldestSlot.lastTouched then
+			oldestSlot = slot
+		end
+	end
+	hideCommandTooltipSlot(oldestSlot)
+	oldestSlot.row = row
+	commandTooltipByRow[row] = oldestSlot
+	return oldestSlot
+end
+
+local function findCommandTooltipPosition(mouseX, mouseY, excludedFrame)
+	local viewWidth = math.max(COMMAND_TOOLTIP_WIDTH + 8, IYMouse.ViewSizeX)
+	local viewHeight = math.max(COMMAND_TOOLTIP_HEIGHT + 8, IYMouse.ViewSizeY)
+	local maxX = math.max(4, viewWidth - COMMAND_TOOLTIP_WIDTH - 4)
+	local maxY = math.max(4, viewHeight - COMMAND_TOOLTIP_HEIGHT - 4)
+	local verticalOffsets = {
+		0,
+		-(COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP),
+		COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP,
+		-2 * (COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP),
+		2 * (COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP),
+		-3 * (COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP),
+		3 * (COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP),
+	}
+	local horizontalOffsets = {14, -COMMAND_TOOLTIP_WIDTH - 14}
+
+	local function positionIsFree(x, y)
+		if mouseX >= x and mouseX <= x + COMMAND_TOOLTIP_WIDTH
+			and mouseY >= y and mouseY <= y + COMMAND_TOOLTIP_HEIGHT then
+			return false
+		end
+		for _, other in ipairs(commandTooltipPool) do
+			local frame = other.frame
+			if frame ~= excludedFrame and frame.Visible then
+				local ox = frame.Position.X.Offset
+				local oy = frame.Position.Y.Offset
+				if x < ox + COMMAND_TOOLTIP_WIDTH and x + COMMAND_TOOLTIP_WIDTH > ox
+					and y < oy + COMMAND_TOOLTIP_HEIGHT and y + COMMAND_TOOLTIP_HEIGHT > oy then
+					return false
+				end
+			end
+		end
+		return true
+	end
+
+	for _, yOffset in ipairs(verticalOffsets) do
+		for _, xOffset in ipairs(horizontalOffsets) do
+			local x = math.clamp(mouseX + xOffset, 4, maxX)
+			local y = math.clamp(mouseY + yOffset, 4, maxY)
+			if positionIsFree(x, y) then
+				return UDim2.new(0, x, 0, y)
+			end
+		end
+	end
+
+	-- Fallback: find the nearest unoccupied grid position on the screen.
+	local xPositions, yPositions = {}, {}
+	local x = 4
+	while x < maxX do
+		table.insert(xPositions, x)
+		x = x + COMMAND_TOOLTIP_WIDTH + COMMAND_TOOLTIP_GAP
+	end
+	table.insert(xPositions, maxX)
+	local y = 4
+	while y < maxY do
+		table.insert(yPositions, y)
+		y = y + COMMAND_TOOLTIP_HEIGHT + COMMAND_TOOLTIP_GAP
+	end
+	table.insert(yPositions, maxY)
+
+	local bestX, bestY, bestDistance = nil, nil, math.huge
+	for _, gridX in ipairs(xPositions) do
+		for _, gridY in ipairs(yPositions) do
+			if positionIsFree(gridX, gridY) then
+				local dx = gridX + COMMAND_TOOLTIP_WIDTH / 2 - mouseX
+				local dy = gridY + COMMAND_TOOLTIP_HEIGHT / 2 - mouseY
+				local distance = dx * dx + dy * dy
+				if distance < bestDistance then
+					bestX, bestY, bestDistance = gridX, gridY, distance
+				end
+			end
+		end
+	end
+	if bestX then return UDim2.new(0, bestX, 0, bestY) end
+	return UDim2.new(0, maxX, 0, maxY)
+end
+
 function checkTT()
-	local t
+	local hoveredRow
 	local guisAtPosition = COREGUI:GetGuiObjectsAtPosition(IYMouse.X, IYMouse.Y)
 
 	for _, gui in pairs(guisAtPosition) do
 		if gui.Parent == CMDsF then
-			t = gui
+			hoveredRow = gui
 		end
 	end
 
-	if t ~= nil and t:GetAttribute("Title") ~= nil then
-		local x = IYMouse.X
-		local y = IYMouse.Y
-		local xP
-		local yP
-		if IYMouse.X > 200 then
-			xP = x - 201
-		else
-			xP = x + 21
+	if hoveredRow and hoveredRow:GetAttribute("Title") ~= nil then
+		local isNewHover = activeCommandTooltipRow ~= hoveredRow
+		local slot = getCommandTooltipSlot(hoveredRow)
+		if isNewHover then
+			slot.title.Text = tostring(hoveredRow:GetAttribute("Title") or "")
+			slot.description.Text = tostring(hoveredRow:GetAttribute("Desc") or "")
+			scheduleCommandTooltipExpiry(slot)
 		end
-		if IYMouse.Y > (IYMouse.ViewSizeY-96) then
-			yP = y - 97
-		else
-			yP = y
-		end
-		Tooltip.Position = UDim2.new(0, xP, 0, yP)
-		Description.Text = t:GetAttribute("Desc")
-		if t:GetAttribute("Title") ~= nil then
-			Title_3.Text = t:GetAttribute("Title")
-		else
-			Title_3.Text = ''
-		end
-		Tooltip.Visible = true
+		slot.lastTouched = tick()
+		slot.frame.Position = findCommandTooltipPosition(IYMouse.X, IYMouse.Y, slot.frame)
+		slot.frame.Visible = true
+		activeCommandTooltipRow = hoveredRow
 	else
-		Tooltip.Visible = false
+		activeCommandTooltipRow = nil
 	end
 end
 
@@ -14604,7 +14758,10 @@ IYMouse.Move:Connect(checkTT)
 -- Hide the tooltip on touch release so command descriptions do not remain stuck.
 UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch then
-		Tooltip.Visible = false
+		activeCommandTooltipRow = nil
+		for _, slot in ipairs(commandTooltipPool) do
+			hideCommandTooltipSlot(slot)
+		end
 	end
 end)
 
