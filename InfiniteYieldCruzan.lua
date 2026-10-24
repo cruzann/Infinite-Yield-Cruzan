@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.1.0"
+currentVersion = "1.1.1"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -827,7 +827,7 @@ KeybindsFrame.Active = true
 KeybindsFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 KeybindsFrame.BorderSizePixel = 0
 KeybindsFrame.Position = UDim2.new(0, 0, 0, 200)
-KeybindsFrame.Size = UDim2.new(0, 250, 0, 175)
+KeybindsFrame.Size = UDim2.new(0, 250, 0, 200)
 KeybindsFrame.ZIndex = 10
 table.insert(shade1,KeybindsFrame)
 
@@ -835,7 +835,7 @@ Close.Name = "Close"
 Close.Parent = KeybindsFrame
 Close.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Close.BorderSizePixel = 0
-Close.Position = UDim2.new(0, 205, 0, 150)
+Close.Position = UDim2.new(0, 205, 0, 175)
 Close.Size = UDim2.new(0, 40, 0, 20)
 Close.Font = Enum.Font.SourceSans
 Close.TextSize = 14
@@ -849,7 +849,7 @@ Add.Name = "Add"
 Add.Parent = KeybindsFrame
 Add.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Add.BorderSizePixel = 0
-Add.Position = UDim2.new(0, 5, 0, 150)
+Add.Position = UDim2.new(0, 5, 0, 175)
 Add.Size = UDim2.new(0, 40, 0, 20)
 Add.Font = Enum.Font.SourceSans
 Add.TextSize = 14
@@ -863,7 +863,7 @@ Delete.Name = "Delete"
 Delete.Parent = KeybindsFrame
 Delete.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Delete.BorderSizePixel = 0
-Delete.Position = UDim2.new(0, 50, 0, 150)
+Delete.Position = UDim2.new(0, 50, 0, 175)
 Delete.Size = UDim2.new(0, 40, 0, 20)
 Delete.Font = Enum.Font.SourceSans
 Delete.TextSize = 14
@@ -878,7 +878,7 @@ Holder_2.Parent = KeybindsFrame
 Holder_2.BackgroundTransparency = 1
 Holder_2.BorderSizePixel = 0
 Holder_2.Position = UDim2.new(0, 0, 0, 0)
-Holder_2.Size = UDim2.new(0, 250, 0, 145)
+Holder_2.Size = UDim2.new(0, 250, 0, 170)
 Holder_2.ScrollBarImageColor3 = Color3.fromRGB(78,78,79)
 Holder_2.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 Holder_2.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -1201,7 +1201,7 @@ PositionsFrame.Parent = Settings
 PositionsFrame.Active = true
 PositionsFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 PositionsFrame.BorderSizePixel = 0
-PositionsFrame.Size = UDim2.new(0, 250, 0, 175)
+PositionsFrame.Size = UDim2.new(0, 250, 0, 200)
 PositionsFrame.Position = UDim2.new(0, 0, 0, 200)
 PositionsFrame.ZIndex = 10
 table.insert(shade1,PositionsFrame)
@@ -1210,7 +1210,7 @@ Close_3.Name = "Close"
 Close_3.Parent = PositionsFrame
 Close_3.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Close_3.BorderSizePixel = 0
-Close_3.Position = UDim2.new(0, 205, 0, 150)
+Close_3.Position = UDim2.new(0, 205, 0, 175)
 Close_3.Size = UDim2.new(0, 40, 0, 20)
 Close_3.Font = Enum.Font.SourceSans
 Close_3.TextSize = 14
@@ -1224,7 +1224,7 @@ Delete_5.Name = "Delete"
 Delete_5.Parent = PositionsFrame
 Delete_5.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Delete_5.BorderSizePixel = 0
-Delete_5.Position = UDim2.new(0, 50, 0, 150)
+Delete_5.Position = UDim2.new(0, 50, 0, 175)
 Delete_5.Size = UDim2.new(0, 40, 0, 20)
 Delete_5.Font = Enum.Font.SourceSans
 Delete_5.TextSize = 14
@@ -1238,7 +1238,7 @@ Part.Name = "PartGoto"
 Part.Parent = PositionsFrame
 Part.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Part.BorderSizePixel = 0
-Part.Position = UDim2.new(0, 5, 0, 150)
+Part.Position = UDim2.new(0, 5, 0, 175)
 Part.Size = UDim2.new(0, 40, 0, 20)
 Part.Font = Enum.Font.SourceSans
 Part.TextSize = 14
@@ -1254,7 +1254,7 @@ Holder_4.BackgroundTransparency = 1
 Holder_4.BorderSizePixel = 0
 Holder_4.Position = UDim2.new(0, 0, 0, 0)
 Holder_4.Selectable = false
-Holder_4.Size = UDim2.new(0, 250, 0, 145)
+Holder_4.Size = UDim2.new(0, 250, 0, 170)
 Holder_4.ScrollBarImageColor3 = Color3.fromRGB(78,78,79)
 Holder_4.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 Holder_4.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -1323,7 +1323,7 @@ AliasesFrame.Active = true
 AliasesFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 AliasesFrame.BorderSizePixel = 0
 AliasesFrame.Position = UDim2.new(0, 0, 0, 200)
-AliasesFrame.Size = UDim2.new(0, 250, 0, 175)
+AliasesFrame.Size = UDim2.new(0, 250, 0, 200)
 AliasesFrame.ZIndex = 10
 table.insert(shade1,AliasesFrame)
 
@@ -1331,7 +1331,7 @@ Close_2.Name = "Close"
 Close_2.Parent = AliasesFrame
 Close_2.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Close_2.BorderSizePixel = 0
-Close_2.Position = UDim2.new(0, 205, 0, 150)
+Close_2.Position = UDim2.new(0, 205, 0, 175)
 Close_2.Size = UDim2.new(0, 40, 0, 20)
 Close_2.Font = Enum.Font.SourceSans
 Close_2.TextSize = 14
@@ -1345,7 +1345,7 @@ Delete_3.Name = "Delete"
 Delete_3.Parent = AliasesFrame
 Delete_3.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Delete_3.BorderSizePixel = 0
-Delete_3.Position = UDim2.new(0, 5, 0, 150)
+Delete_3.Position = UDim2.new(0, 5, 0, 175)
 Delete_3.Size = UDim2.new(0, 40, 0, 20)
 Delete_3.Font = Enum.Font.SourceSans
 Delete_3.TextSize = 14
@@ -1360,7 +1360,7 @@ Holder_3.Parent = AliasesFrame
 Holder_3.BackgroundTransparency = 1
 Holder_3.BorderSizePixel = 0
 Holder_3.Position = UDim2.new(0, 0, 0, 0)
-Holder_3.Size = UDim2.new(0, 250, 0, 145)
+Holder_3.Size = UDim2.new(0, 250, 0, 170)
 Holder_3.ScrollBarImageColor3 = Color3.fromRGB(78,78,79)
 Holder_3.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 Holder_3.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -1414,7 +1414,7 @@ PluginsFrame.Active = true
 PluginsFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 PluginsFrame.BorderSizePixel = 0
 PluginsFrame.Position = UDim2.new(0, 0, 0, 200)
-PluginsFrame.Size = UDim2.new(0, 250, 0, 175)
+PluginsFrame.Size = UDim2.new(0, 250, 0, 200)
 PluginsFrame.ZIndex = 10
 table.insert(shade1,PluginsFrame)
 
@@ -1422,7 +1422,7 @@ Close_4.Name = "Close"
 Close_4.Parent = PluginsFrame
 Close_4.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Close_4.BorderSizePixel = 0
-Close_4.Position = UDim2.new(0, 205, 0, 150)
+Close_4.Position = UDim2.new(0, 205, 0, 175)
 Close_4.Size = UDim2.new(0, 40, 0, 20)
 Close_4.Font = Enum.Font.SourceSans
 Close_4.TextSize = 14
@@ -1436,7 +1436,7 @@ Add_3.Name = "Add"
 Add_3.Parent = PluginsFrame
 Add_3.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Add_3.BorderSizePixel = 0
-Add_3.Position = UDim2.new(0, 5, 0, 150)
+Add_3.Position = UDim2.new(0, 5, 0, 175)
 Add_3.Size = UDim2.new(0, 40, 0, 20)
 Add_3.Font = Enum.Font.SourceSans
 Add_3.TextSize = 14
@@ -1452,7 +1452,7 @@ Holder_5.BackgroundTransparency = 1
 Holder_5.BorderSizePixel = 0
 Holder_5.Position = UDim2.new(0, 0, 0, 0)
 Holder_5.Selectable = false
-Holder_5.Size = UDim2.new(0, 250, 0, 145)
+Holder_5.Size = UDim2.new(0, 250, 0, 170)
 Holder_5.ScrollBarImageColor3 = Color3.fromRGB(78,78,79)
 Holder_5.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 Holder_5.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -5291,19 +5291,19 @@ local function reorderCommandEntries()
 			row.LayoutOrder = nextOrder
 			nextOrder = nextOrder + 1
 			row:SetAttribute("IsFavoriteCommand", true)
-			-- Favorites are slightly larger for touch readability. Measure wrapped text
-			-- so long command names stay inside the list without overlapping other rows.
-			row.TextSize = 20
+			-- Match the normal command font size; measure wrapped text so long names
+			-- stay inside the list without overlapping neighboring rows.
+			row.TextSize = Example.TextSize
 			row.TextWrapped = true
 			row.TextYAlignment = Enum.TextYAlignment.Center
 			row.AutomaticSize = Enum.AutomaticSize.None
 			local favoriteTextWidth = math.max(120, CMDsF.Size.X.Offset - 15)
-			local favoriteTextHeight = 24
+			local favoriteTextHeight = 20
 			local measureOK, textBounds = pcall(function()
 				return TextService:GetTextSize(row.Text, row.TextSize, row.Font, Vector2.new(favoriteTextWidth, 10000))
 			end)
 			if measureOK and textBounds then
-				favoriteTextHeight = math.max(24, math.ceil(textBounds.Y) + 2)
+				favoriteTextHeight = math.max(20, math.ceil(textBounds.Y) + 2)
 			end
 			row.Size = UDim2.new(1, -15, 0, favoriteTextHeight)
 			favoriteRowSet[row] = true
@@ -5339,7 +5339,7 @@ FavCmdsManagerFrame.Active = true
 FavCmdsManagerFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 FavCmdsManagerFrame.BorderSizePixel = 0
 FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 200)
-FavCmdsManagerFrame.Size = UDim2.new(0, 250, 0, 175)
+FavCmdsManagerFrame.Size = UDim2.new(0, 250, 0, 200)
 FavCmdsManagerFrame.Visible = false
 FavCmdsManagerFrame.ZIndex = 20
 table.insert(shade1, FavCmdsManagerFrame)
@@ -5365,7 +5365,7 @@ FavManagerClose.Name = "Close"
 FavManagerClose.Parent = FavCmdsManagerFrame
 FavManagerClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 FavManagerClose.BorderSizePixel = 0
-FavManagerClose.Position = UDim2.new(0, 205, 0, 150)
+FavManagerClose.Position = UDim2.new(0, 205, 0, 175)
 FavManagerClose.Size = UDim2.new(0, 40, 0, 20)
 FavManagerClose.Font = Enum.Font.SourceSans
 FavManagerClose.TextSize = 14
@@ -5396,7 +5396,7 @@ FavCmdsList.Parent = FavCmdsManagerFrame
 FavCmdsList.BackgroundTransparency = 1
 FavCmdsList.BorderSizePixel = 0
 FavCmdsList.Position = UDim2.new(0, 5, 0, 40)
-FavCmdsList.Size = UDim2.new(1, -10, 0, 105)
+FavCmdsList.Size = UDim2.new(1, -10, 0, 130)
 FavCmdsList.ScrollBarImageColor3 = Color3.fromRGB(78, 78, 79)
 FavCmdsList.ScrollBarThickness = 5
 FavCmdsList.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -5412,7 +5412,7 @@ FavManagerEmpty.Name = "EmptyState"
 FavManagerEmpty.Parent = FavCmdsManagerFrame
 FavManagerEmpty.BackgroundTransparency = 1
 FavManagerEmpty.BorderSizePixel = 0
-FavManagerEmpty.Position = UDim2.new(0, 8, 0, 77)
+FavManagerEmpty.Position = UDim2.new(0, 8, 0, 94)
 FavManagerEmpty.Size = UDim2.new(1, -16, 0, 22)
 FavManagerEmpty.Font = Enum.Font.SourceSansItalic
 FavManagerEmpty.TextSize = 13
@@ -5427,7 +5427,7 @@ FavManagerAdd.Name = "AddExistingCommand"
 FavManagerAdd.Parent = FavCmdsManagerFrame
 FavManagerAdd.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 FavManagerAdd.BorderSizePixel = 0
-FavManagerAdd.Position = UDim2.new(0, 50, 0, 150)
+FavManagerAdd.Position = UDim2.new(0, 50, 0, 175)
 FavManagerAdd.Size = UDim2.new(0, 150, 0, 20)
 FavManagerAdd.Font = Enum.Font.SourceSans
 FavManagerAdd.TextSize = 13
@@ -5445,7 +5445,7 @@ FavCmdsPickerFrame.Active = true
 FavCmdsPickerFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 FavCmdsPickerFrame.BorderSizePixel = 0
 FavCmdsPickerFrame.Position = UDim2.new(0, 0, 0, 200)
-FavCmdsPickerFrame.Size = UDim2.new(0, 250, 0, 175)
+FavCmdsPickerFrame.Size = UDim2.new(0, 250, 0, 200)
 FavCmdsPickerFrame.Visible = false
 FavCmdsPickerFrame.ZIndex = 30
 table.insert(shade1, FavCmdsPickerFrame)
@@ -5473,7 +5473,7 @@ FavPickerClose.Name = "Done"
 FavPickerClose.Parent = FavCmdsPickerFrame
 FavPickerClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 FavPickerClose.BorderSizePixel = 0
-FavPickerClose.Position = UDim2.new(0, 25, 0, 150)
+FavPickerClose.Position = UDim2.new(0, 25, 0, 175)
 FavPickerClose.Size = UDim2.new(0, 90, 0, 20)
 FavPickerClose.Font = Enum.Font.SourceSans
 FavPickerClose.TextSize = 14
@@ -5488,7 +5488,7 @@ FavPickerCloseAll.Name = "Cancel"
 FavPickerCloseAll.Parent = FavCmdsPickerFrame
 FavPickerCloseAll.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 FavPickerCloseAll.BorderSizePixel = 0
-FavPickerCloseAll.Position = UDim2.new(0, 135, 0, 150)
+FavPickerCloseAll.Position = UDim2.new(0, 135, 0, 175)
 FavPickerCloseAll.Size = UDim2.new(0, 90, 0, 20)
 FavPickerCloseAll.Font = Enum.Font.SourceSans
 FavPickerCloseAll.TextSize = 14
@@ -5523,7 +5523,7 @@ FavPickerList.Parent = FavCmdsPickerFrame
 FavPickerList.BackgroundTransparency = 1
 FavPickerList.BorderSizePixel = 0
 FavPickerList.Position = UDim2.new(0, 5, 0, 47)
-FavPickerList.Size = UDim2.new(1, -10, 0, 98)
+FavPickerList.Size = UDim2.new(1, -10, 0, 123)
 FavPickerList.ScrollBarImageColor3 = Color3.fromRGB(78, 78, 79)
 FavPickerList.ScrollBarThickness = 5
 FavPickerList.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -5895,7 +5895,6 @@ local function completeFavoritePickerSelection()
 	refreshFavoriteManagerRows()
 	updatesaves()
 	selectedFavoriteCommand = nil
-	notify("Fav cmds", commandName .. " added to favorites.", 3)
 	returnToFavManager()
 end
 
