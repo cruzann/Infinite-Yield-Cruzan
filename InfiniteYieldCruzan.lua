@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.1.7"
+currentVersion = "1.1.8"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -219,7 +219,6 @@ ExitImage_2 = Instance.new("ImageLabel")
 PositionsFrame = Instance.new("Frame")
 Close_3 = Instance.new("TextButton")
 Delete_5 = Instance.new("TextButton")
-Part = Instance.new("TextButton")
 Holder_4 = Instance.new("ScrollingFrame")
 Example_4 = Instance.new("Frame")
 Text_5 = Instance.new("TextLabel")
@@ -1197,20 +1196,6 @@ Delete_5.TextColor3 = Color3.new(1, 1, 1)
 Delete_5.ZIndex = 10
 table.insert(shade2,Delete_5)
 table.insert(text1,Delete_5)
-
-Part.Name = "PartGoto"
-Part.Parent = PositionsFrame
-Part.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
-Part.BorderSizePixel = 0
-Part.Position = UDim2.new(0, 5, 0, 175)
-Part.Size = UDim2.new(0, 40, 0, 20)
-Part.Font = Enum.Font.SourceSans
-Part.TextSize = 14
-Part.Text = "Part"
-Part.TextColor3 = Color3.new(1, 1, 1)
-Part.ZIndex = 10
-table.insert(shade2,Part)
-table.insert(text1,Part)
 
 Holder_4.Name = "Holder"
 Holder_4.Parent = PositionsFrame
@@ -4206,10 +4191,6 @@ function selectPart()
 	end
 	ClickSelect = IYMouse.Button1Down:Connect(SelectPart)
 end
-
-Part.MouseButton1Click:Connect(function()
-	selectPart()
-end)
 
 Exit_4.MouseButton1Click:Connect(function()
 	ToPartFrame:TweenPosition(UDim2.new(0.5, -180, 0, -500), "InOut", "Quart", 0.5, true, nil)
