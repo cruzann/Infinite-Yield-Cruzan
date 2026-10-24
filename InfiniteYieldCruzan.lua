@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.1.1"
+currentVersion = "1.1.2"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -5818,24 +5818,46 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
+-- Serialize Fav cmds panel transitions. Older delayed callbacks must not hide
+-- a panel after the user has already returned to another view.
+local favoritePanelTransitionToken = 0
+local favoritePanelState = "settings"
+
 local function openFavManager()
+	favoritePanelTransitionToken += 1
+	local transitionToken = favoritePanelTransitionToken
+	favoritePanelState = "manager"
 	refreshFavoriteManagerRows()
+	FavCmdsPickerFrame.Visible = false
 	FavCmdsManagerFrame.Visible = true
 	FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 200)
 	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
-	task.wait(0.5)
-	SettingsHolder.Visible = false
+	task.delay(0.5, function()
+		if transitionToken ~= favoritePanelTransitionToken or favoritePanelState ~= "manager" then return end
+		if FavCmdsManagerFrame.Visible then
+			SettingsHolder.Visible = false
+		end
+	end)
 end
 
 local function closeFavManager()
+	favoritePanelTransitionToken += 1
+	local transitionToken = favoritePanelTransitionToken
+	favoritePanelState = "settings"
 	SettingsHolder.Visible = true
+	FavCmdsPickerFrame.Visible = false
 	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 	task.delay(0.52, function()
-		if FavCmdsManagerFrame then FavCmdsManagerFrame.Visible = false end
+		if transitionToken ~= favoritePanelTransitionToken or favoritePanelState ~= "settings" then return end
+		FavCmdsManagerFrame.Visible = false
+		SettingsHolder.Visible = true
 	end)
 end
 
 local function openFavPicker()
+	favoritePanelTransitionToken += 1
+	local transitionToken = favoritePanelTransitionToken
+	favoritePanelState = "picker"
 	selectedFavoriteCommand = nil
 	FavPickerSearch.Text = ""
 	refreshFavoritePickerRows()
@@ -5844,19 +5866,27 @@ local function openFavPicker()
 	FavCmdsPickerFrame.Visible = true
 	FavCmdsPickerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
 	task.delay(0.52, function()
-		if FavCmdsManagerFrame and FavCmdsPickerFrame.Visible then
+		if transitionToken ~= favoritePanelTransitionToken or favoritePanelState ~= "picker" then return end
+		if FavCmdsPickerFrame.Visible then
 			FavCmdsManagerFrame.Visible = false
+			SettingsHolder.Visible = false
 		end
 	end)
 end
 
 local function returnToFavManager()
+	favoritePanelTransitionToken += 1
+	local transitionToken = favoritePanelTransitionToken
+	favoritePanelState = "manager"
+	SettingsHolder.Visible = false
 	FavCmdsManagerFrame.Visible = true
 	FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 200)
 	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
 	FavCmdsPickerFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 	task.delay(0.52, function()
-		if FavCmdsPickerFrame then FavCmdsPickerFrame.Visible = false end
+		if transitionToken ~= favoritePanelTransitionToken or favoritePanelState ~= "manager" then return end
+		FavCmdsPickerFrame.Visible = false
+		SettingsHolder.Visible = false
 	end)
 end
 
