@@ -155,7 +155,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.0.9"
+currentVersion = "1.1.0"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -464,6 +464,7 @@ Settings.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 Settings.BorderSizePixel = 0
 Settings.Position = UDim2.new(0, 0, 0, 220)
 Settings.Size = UDim2.new(0, 250, 0, 175)
+Settings.ClipsDescendants = true
 Settings.ZIndex = 10
 table.insert(shade1,Settings)
 
@@ -825,7 +826,7 @@ KeybindsFrame.Parent = Settings
 KeybindsFrame.Active = true
 KeybindsFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 KeybindsFrame.BorderSizePixel = 0
-KeybindsFrame.Position = UDim2.new(0, 0, 0, 175)
+KeybindsFrame.Position = UDim2.new(0, 0, 0, 200)
 KeybindsFrame.Size = UDim2.new(0, 250, 0, 175)
 KeybindsFrame.ZIndex = 10
 table.insert(shade1,KeybindsFrame)
@@ -1201,7 +1202,7 @@ PositionsFrame.Active = true
 PositionsFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 PositionsFrame.BorderSizePixel = 0
 PositionsFrame.Size = UDim2.new(0, 250, 0, 175)
-PositionsFrame.Position = UDim2.new(0, 0, 0, 175)
+PositionsFrame.Position = UDim2.new(0, 0, 0, 200)
 PositionsFrame.ZIndex = 10
 table.insert(shade1,PositionsFrame)
 
@@ -1321,7 +1322,7 @@ AliasesFrame.Parent = Settings
 AliasesFrame.Active = true
 AliasesFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 AliasesFrame.BorderSizePixel = 0
-AliasesFrame.Position = UDim2.new(0, 0, 0, 175)
+AliasesFrame.Position = UDim2.new(0, 0, 0, 200)
 AliasesFrame.Size = UDim2.new(0, 250, 0, 175)
 AliasesFrame.ZIndex = 10
 table.insert(shade1,AliasesFrame)
@@ -1412,7 +1413,7 @@ PluginsFrame.Parent = Settings
 PluginsFrame.Active = true
 PluginsFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 PluginsFrame.BorderSizePixel = 0
-PluginsFrame.Position = UDim2.new(0, 0, 0, 175)
+PluginsFrame.Position = UDim2.new(0, 0, 0, 200)
 PluginsFrame.Size = UDim2.new(0, 250, 0, 175)
 PluginsFrame.ZIndex = 10
 table.insert(shade1,PluginsFrame)
@@ -3306,9 +3307,10 @@ local isHidden = IsOnMobile
 local cmdbarVisibilityBeforeSettings = nil
 local cmdbarTextTransparencyBeforeSettings = nil
 local cmdbarFadeToken = 0
+local settingsGeometryToken = 0
 
 -- Keep the original Infinite Yield backdrop behavior.
--- Settings overlays Dark at the same Y position and height, so keep the normal backdrop intact.
+-- Dark remains the command-list backdrop; the opaque Settings panel covers it while open.
 local holderBackgroundTransparencyBeforeSettings = Holder.BackgroundTransparency
 local function setSettingsBackdrop(open)
     Dark.Visible = true
@@ -3321,9 +3323,10 @@ local function setSettingsOpenState(open)
     local thisFadeToken = cmdbarFadeToken
 
     if open then
-        -- Keep the original holder and panel geometry; only switch which content is visible.
+        -- Fill both the former command-bar row and command-list area with one Settings panel.
+        settingsGeometryToken += 1
         Settings.BackgroundTransparency = 0
-        Settings.Size = UDim2.new(0, 250, 0, 175)
+        Settings.Size = UDim2.new(0, 250, 0, 200)
         setSettingsBackdrop(true)
         CMDsF.Visible = false
         if not SettingsOpen then
@@ -3348,6 +3351,13 @@ local function setSettingsOpenState(open)
         end
     else
         SettingsOpen = false
+        settingsGeometryToken += 1
+        local closeGeometryToken = settingsGeometryToken
+        task.delay(0.52, function()
+            if closeGeometryToken == settingsGeometryToken and not SettingsOpen then
+                Settings.Size = UDim2.new(0, 250, 0, 175)
+            end
+        end)
         setSettingsBackdrop(false)
         CMDsF.Visible = true
         if cmdbarVisibilityBeforeSettings ~= nil then
@@ -4104,7 +4114,7 @@ SettingsButton.MouseButton1Click:Connect(function()
 		SettingsHolder.CanvasPosition = Vector2.new(0, 0)
 		setSettingsOpenState(true)
 		setSettingsBackdrop(true)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.5, true, nil)
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	else setSettingsOpenState(false)
 		setSettingsBackdrop(false)
@@ -4324,7 +4334,7 @@ end)
 
 Close.MouseButton1Click:Connect(function()
 	SettingsHolder.Visible = true
-	KeybindsFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
+	KeybindsFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 end)
 
 Keybinds.MouseButton1Click:Connect(function()
@@ -4346,7 +4356,7 @@ end)
 
 Close_2.MouseButton1Click:Connect(function()
 	SettingsHolder.Visible = true
-	AliasesFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
+	AliasesFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 end)
 
 Aliases.MouseButton1Click:Connect(function()
@@ -4357,7 +4367,7 @@ end)
 
 Close_3.MouseButton1Click:Connect(function()
 	SettingsHolder.Visible = true
-	PositionsFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
+	PositionsFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 end)
 
 Positions.MouseButton1Click:Connect(function()
@@ -4677,7 +4687,7 @@ task.spawn(function()
 				minimizeHolder()
 				if SettingsOpen == true then
 					wait(0.2)
-					Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
+					Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 					CMDsF.Visible = false
 					setSettingsBackdrop(true)
 				end
@@ -5328,7 +5338,7 @@ FavCmdsManagerFrame.Parent = Settings
 FavCmdsManagerFrame.Active = true
 FavCmdsManagerFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 FavCmdsManagerFrame.BorderSizePixel = 0
-FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 175)
+FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 200)
 FavCmdsManagerFrame.Size = UDim2.new(0, 250, 0, 175)
 FavCmdsManagerFrame.Visible = false
 FavCmdsManagerFrame.ZIndex = 20
@@ -5429,12 +5439,12 @@ table.insert(text1, FavManagerAdd)
 
 local FavCmdsPickerFrame = Instance.new("Frame")
 FavCmdsPickerFrame.Name = "FavCmdsPickerFrame"
--- Keep the picker independent from the Settings panel so it can be dragged on mobile.
-FavCmdsPickerFrame.Parent = ScaledHolder
+-- Use the same in-panel navigation as Edit Aliases and Waypoints; this is not a floating window.
+FavCmdsPickerFrame.Parent = Settings
 FavCmdsPickerFrame.Active = true
 FavCmdsPickerFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 FavCmdsPickerFrame.BorderSizePixel = 0
-FavCmdsPickerFrame.Position = UDim2.new(0, 0, 0, 175)
+FavCmdsPickerFrame.Position = UDim2.new(0, 0, 0, 200)
 FavCmdsPickerFrame.Size = UDim2.new(0, 250, 0, 175)
 FavCmdsPickerFrame.Visible = false
 FavCmdsPickerFrame.ZIndex = 30
@@ -5808,22 +5818,10 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
-local function getFavPickerSettingsPosition()
-	local scaleFactor = (Scale and Scale.Scale) or 1
-	if scaleFactor <= 0 then scaleFactor = 1 end
-	local relativePosition = Settings.AbsolutePosition - ScaledHolder.AbsolutePosition
-	return UDim2.new(0, math.floor(relativePosition.X / scaleFactor + 0.5), 0, math.floor(relativePosition.Y / scaleFactor + 0.5))
-end
-
-local function getFavPickerExitPosition(xOffset)
-	local visiblePosition = getFavPickerSettingsPosition()
-	return UDim2.new(0, xOffset or visiblePosition.X.Offset, 0, visiblePosition.Y.Offset + FavCmdsPickerFrame.Size.Y.Offset)
-end
-
 local function openFavManager()
 	refreshFavoriteManagerRows()
 	FavCmdsManagerFrame.Visible = true
-	FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 175)
+	FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 200)
 	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
 	task.wait(0.5)
 	SettingsHolder.Visible = false
@@ -5831,7 +5829,7 @@ end
 
 local function closeFavManager()
 	SettingsHolder.Visible = true
-	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
+	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 	task.delay(0.52, function()
 		if FavCmdsManagerFrame then FavCmdsManagerFrame.Visible = false end
 	end)
@@ -5841,11 +5839,10 @@ local function openFavPicker()
 	selectedFavoriteCommand = nil
 	FavPickerSearch.Text = ""
 	refreshFavoritePickerRows()
-	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
-	local targetPosition = getFavPickerSettingsPosition()
-	FavCmdsPickerFrame.Position = getFavPickerExitPosition(targetPosition.X.Offset)
+	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
+	FavCmdsPickerFrame.Position = UDim2.new(0, 0, 0, 200)
 	FavCmdsPickerFrame.Visible = true
-	FavCmdsPickerFrame:TweenPosition(targetPosition, "InOut", "Quart", 0.5, true, nil)
+	FavCmdsPickerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
 	task.delay(0.52, function()
 		if FavCmdsManagerFrame and FavCmdsPickerFrame.Visible then
 			FavCmdsManagerFrame.Visible = false
@@ -5855,9 +5852,9 @@ end
 
 local function returnToFavManager()
 	FavCmdsManagerFrame.Visible = true
-	FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 175)
+	FavCmdsManagerFrame.Position = UDim2.new(0, 0, 0, 200)
 	FavCmdsManagerFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
-	FavCmdsPickerFrame:TweenPosition(getFavPickerExitPosition(FavCmdsPickerFrame.Position.X.Offset), "InOut", "Quart", 0.5, true, nil)
+	FavCmdsPickerFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 	task.delay(0.52, function()
 		if FavCmdsPickerFrame then FavCmdsPickerFrame.Visible = false end
 	end)
@@ -5907,54 +5904,6 @@ local function cancelFavoritePickerSelection()
 	selectedFavoriteCommand = nil
 	returnToFavManager()
 end
-
--- Drag the add-command dialog from its title bar; constrain it to the visible screen.
-local favoritePickerWindowDrag = nil
-FavPickerTitle.InputBegan:Connect(function(input)
-	if not FavCmdsPickerFrame.Visible then return end
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		favoritePickerWindowDrag = {
-			dragging = true,
-			dragInput = nil,
-			dragStart = input.Position,
-			startPosition = FavCmdsPickerFrame.Position,
-			touchInput = input.UserInputType == Enum.UserInputType.Touch and input or nil,
-		}
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End and favoritePickerWindowDrag then
-				favoritePickerWindowDrag = nil
-			end
-		end)
-	end
-end)
-
-FavPickerTitle.InputChanged:Connect(function(input)
-	local drag = favoritePickerWindowDrag
-	if drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		drag.dragInput = input
-	end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	local drag = favoritePickerWindowDrag
-	if not drag or not drag.dragging or not FavCmdsPickerFrame.Visible then return end
-	local isMouseMove = drag.touchInput == nil and input.UserInputType == Enum.UserInputType.MouseMovement
-	local isTouchMove = drag.touchInput ~= nil and input == drag.dragInput
-	if not isMouseMove and not isTouchMove then return end
-
-	local scaleFactor = (Scale and Scale.Scale) or 1
-	if scaleFactor <= 0 then scaleFactor = 1 end
-	local delta = input.Position - drag.dragStart
-	local logicalWidth = ScaledHolder.AbsoluteSize.X / scaleFactor
-	local logicalHeight = ScaledHolder.AbsoluteSize.Y / scaleFactor
-	local frameWidth = FavCmdsPickerFrame.Size.X.Offset
-	local frameHeight = FavCmdsPickerFrame.Size.Y.Offset
-	local x = drag.startPosition.X.Offset + delta.X / scaleFactor
-	local y = drag.startPosition.Y.Offset + delta.Y / scaleFactor
-	x = math.clamp(x, 0, math.max(0, logicalWidth - frameWidth))
-	y = math.clamp(y, 0, math.max(0, logicalHeight - frameHeight))
-	FavCmdsPickerFrame.Position = UDim2.new(0, math.floor(x + 0.5), 0, math.floor(y + 0.5))
-end)
 
 FavCmdsButton.MouseButton1Click:Connect(openFavManager)
 FavManagerClose.MouseButton1Click:Connect(closeFavManager)
@@ -6716,7 +6665,7 @@ Cmdbar.FocusLost:Connect(function(enterpressed)
 		IndexContents('',true,false,false)
 		if SettingsOpen == true then
 			wait(0.2)
-			Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
+			Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 			CMDsF.Visible = false
 			setSettingsBackdrop(true)
 		end
@@ -6734,8 +6683,8 @@ Cmdbar.Focused:Connect(function()
 		-- Settings owns the panel while open; never restore the command-list backdrop from focus events.
 		setSettingsBackdrop(true)
 		CMDsF.Visible = false
-		Settings.Size = UDim2.new(0, 250, 0, 175)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.2, true, nil)
+		Settings.Size = UDim2.new(0, 250, 0, 200)
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.2, true, nil)
 		return
 	end
 	tabComplete = UserInputService.InputBegan:Connect(function(input,gameProcessed)
@@ -7534,7 +7483,7 @@ end)
 
 Close_4.MouseButton1Click:Connect(function()
 	SettingsHolder.Visible = true
-	PluginsFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
+	PluginsFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 end)
 
 local TeleportCheck = false
@@ -8593,12 +8542,12 @@ end)
 addcmd('waypoints',{'positions'},function(args, speaker)
 	if SettingsOpen == false then setSettingsOpenState(true)
 		setSettingsBackdrop(true)
-		Settings:TweenPosition(UDim2.new(0, 0, 0, 45), "InOut", "Quart", 0.5, true, nil)
+		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
 		CMDsF.Visible = false
 	end
-	KeybindsFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
-	AliasesFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
-	PluginsFrame:TweenPosition(UDim2.new(0, 0, 0, 175), "InOut", "Quart", 0.5, true, nil)
+	KeybindsFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
+	AliasesFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
+	PluginsFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 	PositionsFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
 	wait(0.5)
 	SettingsHolder.Visible = false
