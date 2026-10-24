@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.2.1"
+currentVersion = "1.2.2"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -220,6 +220,10 @@ PositionsFrame = Instance.new("Frame")
 Close_3 = Instance.new("TextButton")
 Delete_5 = Instance.new("TextButton")
 AddWaypointButton = Instance.new("TextButton")
+WaypointHoverFrame = Instance.new("Frame")
+WaypointHoverHeader = Instance.new("TextButton")
+WaypointHoverClose = Instance.new("TextButton")
+WaypointHoverButton = Instance.new("TextButton")
 WaypointAddDialog = Instance.new("Frame")
 WaypointAddDialogTitle = Instance.new("TextLabel")
 WaypointNameInput = Instance.new("TextBox")
@@ -235,6 +239,7 @@ Example_4 = Instance.new("Frame")
 Text_5 = Instance.new("TextLabel")
 Delete_6 = Instance.new("TextButton")
 TP = Instance.new("TextButton")
+WaypointHoverRowButton = Instance.new("TextButton")
 AliasesFrame = Instance.new("Frame")
 Close_2 = Instance.new("TextButton")
 Delete_3 = Instance.new("TextButton")
@@ -1292,6 +1297,20 @@ TP.ZIndex = 10
 table.insert(shade3,TP)
 table.insert(text2,TP)
 
+WaypointHoverRowButton.Name = "Hover"
+WaypointHoverRowButton.Parent = Text_5
+WaypointHoverRowButton.BackgroundColor3 = Color3.fromRGB(78, 78, 79)
+WaypointHoverRowButton.BorderSizePixel = 0
+WaypointHoverRowButton.Position = UDim2.new(0, 110, 0, 0)
+WaypointHoverRowButton.Size = UDim2.new(0, 40, 0, 20)
+WaypointHoverRowButton.Font = Enum.Font.SourceSans
+WaypointHoverRowButton.TextSize = 12
+WaypointHoverRowButton.Text = "Hover"
+WaypointHoverRowButton.TextColor3 = Color3.new(0, 0, 0)
+WaypointHoverRowButton.ZIndex = 10
+table.insert(shade3, WaypointHoverRowButton)
+table.insert(text2, WaypointHoverRowButton)
+
 AliasesFrame.Name = "AliasesFrame"
 AliasesFrame.Parent = Settings
 AliasesFrame.Active = true
@@ -1967,6 +1986,64 @@ WaypointAddCancel.TextColor3 = Color3.new(1, 1, 1)
 WaypointAddCancel.ZIndex = 32
 table.insert(shade2, WaypointAddCancel)
 table.insert(text1, WaypointAddCancel)
+
+-- Floating waypoint hover panel, independent from the Settings window.
+WaypointHoverFrame.Name = "WaypointHoverFrame"
+WaypointHoverFrame.Parent = PARENT
+WaypointHoverFrame.Active = true
+WaypointHoverFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
+WaypointHoverFrame.BorderSizePixel = 0
+WaypointHoverFrame.AnchorPoint = Vector2.new(1, 0)
+WaypointHoverFrame.Position = UDim2.new(1, -12, 0, 45)
+WaypointHoverFrame.Size = UDim2.new(0, 200, 0, 76)
+WaypointHoverFrame.Visible = false
+WaypointHoverFrame.ZIndex = 80
+table.insert(shade1, WaypointHoverFrame)
+
+WaypointHoverHeader.Name = "Header"
+WaypointHoverHeader.Parent = WaypointHoverFrame
+WaypointHoverHeader.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointHoverHeader.BorderSizePixel = 0
+WaypointHoverHeader.Position = UDim2.new(0, 0, 0, 0)
+WaypointHoverHeader.Size = UDim2.new(1, 0, 0, 22)
+WaypointHoverHeader.Font = Enum.Font.SourceSans
+WaypointHoverHeader.TextSize = 14
+WaypointHoverHeader.Text = "Waypoint Hover"
+WaypointHoverHeader.TextColor3 = Color3.new(1, 1, 1)
+WaypointHoverHeader.TextXAlignment = Enum.TextXAlignment.Left
+WaypointHoverHeader.ZIndex = 81
+table.insert(shade2, WaypointHoverHeader)
+table.insert(text1, WaypointHoverHeader)
+
+WaypointHoverClose.Name = "Close"
+WaypointHoverClose.Parent = WaypointHoverHeader
+WaypointHoverClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointHoverClose.BorderSizePixel = 0
+WaypointHoverClose.Position = UDim2.new(1, -22, 0, 1)
+WaypointHoverClose.Size = UDim2.new(0, 21, 0, 20)
+WaypointHoverClose.Font = Enum.Font.SourceSansBold
+WaypointHoverClose.TextSize = 14
+WaypointHoverClose.Text = "X"
+WaypointHoverClose.TextColor3 = Color3.new(1, 1, 1)
+WaypointHoverClose.ZIndex = 82
+table.insert(shade2, WaypointHoverClose)
+table.insert(text1, WaypointHoverClose)
+
+WaypointHoverButton.Name = "GotoWaypoint"
+WaypointHoverButton.Parent = WaypointHoverFrame
+WaypointHoverButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointHoverButton.BorderSizePixel = 0
+WaypointHoverButton.Position = UDim2.new(0, 6, 0, 28)
+WaypointHoverButton.Size = UDim2.new(1, -12, 0, 42)
+WaypointHoverButton.Font = Enum.Font.SourceSans
+WaypointHoverButton.TextSize = 18
+WaypointHoverButton.Text = "Waypoint"
+WaypointHoverButton.TextColor3 = Color3.new(1, 1, 1)
+WaypointHoverButton.TextScaled = true
+WaypointHoverButton.TextWrapped = true
+WaypointHoverButton.ZIndex = 81
+table.insert(shade2, WaypointHoverButton)
+table.insert(text1, WaypointHoverButton)
 
 ToPartFrame.Name = randomString()
 ToPartFrame.Parent = ScaledHolder
@@ -7212,6 +7289,58 @@ WaypointClearCancelButton.MouseButton1Click:Connect(function()
 	returnToWaypointsPanel()
 end)
 
+local hoveredWaypointName = nil
+local waypointHoverDrag = {dragging = false, dragInput = nil, dragStart = nil, startPosition = nil}
+
+local function showWaypointHover(name)
+	hoveredWaypointName = tostring(name or "")
+	WaypointHoverButton.Text = hoveredWaypointName
+	WaypointHoverFrame.Visible = true
+end
+
+WaypointHoverClose.MouseButton1Click:Connect(function()
+	WaypointHoverFrame.Visible = false
+	hoveredWaypointName = nil
+end)
+
+WaypointHoverButton.MouseButton1Click:Connect(function()
+	if hoveredWaypointName and hoveredWaypointName ~= "" then
+		-- Reuse the exact command used by each row's Goto button.
+		execCmd("loadpos "..hoveredWaypointName)
+	end
+end)
+
+-- Drag the floating panel by its title bar, without affecting the large Goto button.
+WaypointHoverHeader.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		waypointHoverDrag.dragging = true
+		waypointHoverDrag.dragStart = input.Position
+		waypointHoverDrag.startPosition = WaypointHoverFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				waypointHoverDrag.dragging = false
+			end
+		end)
+	end
+end)
+
+WaypointHoverHeader.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		waypointHoverDrag.dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == waypointHoverDrag.dragInput and waypointHoverDrag.dragging then
+		local delta = input.Position - waypointHoverDrag.dragStart
+		local startPosition = waypointHoverDrag.startPosition
+		WaypointHoverFrame.Position = UDim2.new(
+			startPosition.X.Scale, startPosition.X.Offset + delta.X,
+			startPosition.Y.Scale, startPosition.Y.Offset + delta.Y
+		)
+	end
+end)
+
 function refreshwaypoints()
 	if #WayPoints > 0 or #pWayPoints > 0 then
 		PositionsHint:Destroy()
@@ -7235,12 +7364,18 @@ function refreshwaypoints()
 			table.insert(text2,newpoint.Text.Delete)
 			table.insert(shade3,newpoint.Text.TP)
 			table.insert(text2,newpoint.Text.TP)
+			table.insert(shade3,newpoint.Text.Hover)
+			table.insert(text2,newpoint.Text.Hover)
 			Holder_4.CanvasSize = UDim2.new(0,0,0, Position + 30)
+			local waypointName = tostring(WayPoints[i].NAME)
 			newpoint.Text.Delete.MouseButton1Click:Connect(function()
 				execCmd('dpos '..WayPoints[i].NAME)
 			end)
 			newpoint.Text.TP.MouseButton1Click:Connect(function()
 				execCmd("loadpos "..WayPoints[i].NAME)
+			end)
+			newpoint.Text.Hover.MouseButton1Click:Connect(function()
+				showWaypointHover(waypointName)
 			end)
 			num = num+1
 		end
@@ -7258,12 +7393,18 @@ function refreshwaypoints()
 			table.insert(text2,newpoint.Text.Delete)
 			table.insert(shade3,newpoint.Text.TP)
 			table.insert(text2,newpoint.Text.TP)
+			table.insert(shade3,newpoint.Text.Hover)
+			table.insert(text2,newpoint.Text.Hover)
 			Holder_4.CanvasSize = UDim2.new(0,0,0, Position + 30)
+			local waypointName = tostring(pWayPoints[i].NAME)
 			newpoint.Text.Delete.MouseButton1Click:Connect(function()
 				execCmd('dpos '..pWayPoints[i].NAME)
 			end)
 			newpoint.Text.TP.MouseButton1Click:Connect(function()
 				execCmd("loadpos "..pWayPoints[i].NAME)
+			end)
+			newpoint.Text.Hover.MouseButton1Click:Connect(function()
+				showWaypointHover(waypointName)
 			end)
 			num = num+1
 		end
