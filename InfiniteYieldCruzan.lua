@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.1.9"
+currentVersion = "1.2.0"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -1192,7 +1192,7 @@ Delete_5.Name = "Delete"
 Delete_5.Parent = PositionsFrame
 Delete_5.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Delete_5.BorderSizePixel = 0
-Delete_5.Position = UDim2.new(0, 5, 0, 150)
+Delete_5.Position = UDim2.new(0, 5, 0, 175)
 Delete_5.Size = UDim2.new(0, 40, 0, 20)
 Delete_5.Font = Enum.Font.SourceSans
 Delete_5.TextSize = 14
@@ -4232,6 +4232,7 @@ local function openWaypointClearConfirmation()
 	waypointPanelTransitionToken += 1
 	local token = waypointPanelTransitionToken
 	waypointPanelState = "clearConfirm"
+	SettingsHolder.Visible = false
 	PositionsFrame.Visible = true
 	WaypointClearConfirmFrame.Visible = true
 	WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
@@ -4247,6 +4248,7 @@ local function returnToWaypointsPanel()
 	waypointPanelTransitionToken += 1
 	local token = waypointPanelTransitionToken
 	waypointPanelState = "waypoints"
+	SettingsHolder.Visible = false
 	PositionsFrame.Visible = true
 	PositionsFrame.Position = waypointPanelHiddenPosition
 	PositionsFrame:TweenPosition(waypointPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
