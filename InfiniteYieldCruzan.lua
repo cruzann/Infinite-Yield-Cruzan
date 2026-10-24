@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.1.6"
+currentVersion = "1.1.7"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -235,6 +235,11 @@ AliasCommandInput = Instance.new("TextBox")
 AliasShortcutInput = Instance.new("TextBox")
 AliasAddDone = Instance.new("TextButton")
 AliasAddCancel = Instance.new("TextButton")
+AliasClearConfirmFrame = Instance.new("Frame")
+AliasClearConfirmTitle = Instance.new("TextLabel")
+AliasClearConfirmMessage = Instance.new("TextLabel")
+AliasClearConfirmButton = Instance.new("TextButton")
+AliasClearCancelButton = Instance.new("TextButton")
 Holder_3 = Instance.new("ScrollingFrame")
 Example_3 = Instance.new("Frame")
 Text_4 = Instance.new("TextLabel")
@@ -1329,16 +1334,16 @@ AddAliasButton.ZIndex = 12
 table.insert(shade2,AddAliasButton)
 table.insert(text1,AddAliasButton)
 
--- Compact in-panel alias dialog matching the existing dark UI.
+-- Alias creation is a separate page inside Settings, matching the Fav cmds picker navigation.
 AliasAddDialog.Name = "AliasAddDialog"
-AliasAddDialog.Parent = AliasesFrame
+AliasAddDialog.Parent = Settings
 AliasAddDialog.Active = true
 AliasAddDialog.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 AliasAddDialog.BorderSizePixel = 0
-AliasAddDialog.Position = UDim2.new(0, 15, 0, 24)
-AliasAddDialog.Size = UDim2.new(0, 220, 0, 142)
+AliasAddDialog.Position = UDim2.new(0, 0, 0, 200)
+AliasAddDialog.Size = UDim2.new(0, 250, 0, 200)
 AliasAddDialog.Visible = false
-AliasAddDialog.ZIndex = 20
+AliasAddDialog.ZIndex = 30
 table.insert(shade1,AliasAddDialog)
 
 AliasAddDialogTitle.Name = "Title"
@@ -1351,7 +1356,7 @@ AliasAddDialogTitle.Font = Enum.Font.SourceSans
 AliasAddDialogTitle.TextSize = 14
 AliasAddDialogTitle.Text = "Add Alias"
 AliasAddDialogTitle.TextColor3 = Color3.new(1, 1, 1)
-AliasAddDialogTitle.ZIndex = 21
+AliasAddDialogTitle.ZIndex = 31
 table.insert(shade2,AliasAddDialogTitle)
 table.insert(text1,AliasAddDialogTitle)
 
@@ -1360,8 +1365,8 @@ AliasCommandInput.Parent = AliasAddDialog
 AliasCommandInput.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 AliasCommandInput.BorderSizePixel = 0
 AliasCommandInput.ClearTextOnFocus = false
-AliasCommandInput.Position = UDim2.new(0, 8, 0, 30)
-AliasCommandInput.Size = UDim2.new(1, -16, 0, 22)
+AliasCommandInput.Position = UDim2.new(0, 8, 0, 40)
+AliasCommandInput.Size = UDim2.new(1, -16, 0, 24)
 AliasCommandInput.Font = Enum.Font.SourceSans
 AliasCommandInput.TextSize = 14
 AliasCommandInput.Text = ""
@@ -1369,7 +1374,7 @@ AliasCommandInput.PlaceholderText = "Command name (e.g. fly)"
 AliasCommandInput.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
 AliasCommandInput.TextColor3 = Color3.new(1, 1, 1)
 AliasCommandInput.TextXAlignment = Enum.TextXAlignment.Left
-AliasCommandInput.ZIndex = 21
+AliasCommandInput.ZIndex = 31
 table.insert(shade2,AliasCommandInput)
 table.insert(text1,AliasCommandInput)
 
@@ -1378,8 +1383,8 @@ AliasShortcutInput.Parent = AliasAddDialog
 AliasShortcutInput.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 AliasShortcutInput.BorderSizePixel = 0
 AliasShortcutInput.ClearTextOnFocus = false
-AliasShortcutInput.Position = UDim2.new(0, 8, 0, 58)
-AliasShortcutInput.Size = UDim2.new(1, -16, 0, 22)
+AliasShortcutInput.Position = UDim2.new(0, 8, 0, 72)
+AliasShortcutInput.Size = UDim2.new(1, -16, 0, 24)
 AliasShortcutInput.Font = Enum.Font.SourceSans
 AliasShortcutInput.TextSize = 14
 AliasShortcutInput.Text = ""
@@ -1387,7 +1392,7 @@ AliasShortcutInput.PlaceholderText = "Shortcut / alias"
 AliasShortcutInput.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
 AliasShortcutInput.TextColor3 = Color3.new(1, 1, 1)
 AliasShortcutInput.TextXAlignment = Enum.TextXAlignment.Left
-AliasShortcutInput.ZIndex = 21
+AliasShortcutInput.ZIndex = 31
 table.insert(shade2,AliasShortcutInput)
 table.insert(text1,AliasShortcutInput)
 
@@ -1395,13 +1400,13 @@ AliasAddDone.Name = "Done"
 AliasAddDone.Parent = AliasAddDialog
 AliasAddDone.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 AliasAddDone.BorderSizePixel = 0
-AliasAddDone.Position = UDim2.new(0, 8, 0, 108)
-AliasAddDone.Size = UDim2.new(0, 96, 0, 22)
+AliasAddDone.Position = UDim2.new(0, 25, 0, 175)
+AliasAddDone.Size = UDim2.new(0, 90, 0, 20)
 AliasAddDone.Font = Enum.Font.SourceSans
 AliasAddDone.TextSize = 14
 AliasAddDone.Text = "Done"
 AliasAddDone.TextColor3 = Color3.new(1, 1, 1)
-AliasAddDone.ZIndex = 21
+AliasAddDone.ZIndex = 32
 table.insert(shade2,AliasAddDone)
 table.insert(text1,AliasAddDone)
 
@@ -1409,15 +1414,85 @@ AliasAddCancel.Name = "Cancel"
 AliasAddCancel.Parent = AliasAddDialog
 AliasAddCancel.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 AliasAddCancel.BorderSizePixel = 0
-AliasAddCancel.Position = UDim2.new(0, 116, 0, 108)
-AliasAddCancel.Size = UDim2.new(0, 96, 0, 22)
+AliasAddCancel.Position = UDim2.new(0, 135, 0, 175)
+AliasAddCancel.Size = UDim2.new(0, 90, 0, 20)
 AliasAddCancel.Font = Enum.Font.SourceSans
 AliasAddCancel.TextSize = 14
 AliasAddCancel.Text = "Cancel"
 AliasAddCancel.TextColor3 = Color3.new(1, 1, 1)
-AliasAddCancel.ZIndex = 21
+AliasAddCancel.ZIndex = 32
 table.insert(shade2,AliasAddCancel)
 table.insert(text1,AliasAddCancel)
+
+-- Dedicated confirmation page: aliases are not cleared until Confirm is pressed.
+AliasClearConfirmFrame.Name = "AliasClearConfirmFrame"
+AliasClearConfirmFrame.Parent = Settings
+AliasClearConfirmFrame.Active = true
+AliasClearConfirmFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
+AliasClearConfirmFrame.BorderSizePixel = 0
+AliasClearConfirmFrame.Position = UDim2.new(0, 0, 0, 200)
+AliasClearConfirmFrame.Size = UDim2.new(0, 250, 0, 200)
+AliasClearConfirmFrame.Visible = false
+AliasClearConfirmFrame.ZIndex = 30
+table.insert(shade1, AliasClearConfirmFrame)
+
+AliasClearConfirmTitle.Name = "Title"
+AliasClearConfirmTitle.Parent = AliasClearConfirmFrame
+AliasClearConfirmTitle.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AliasClearConfirmTitle.BorderSizePixel = 0
+AliasClearConfirmTitle.Position = UDim2.new(0, 0, 0, 0)
+AliasClearConfirmTitle.Size = UDim2.new(1, 0, 0, 22)
+AliasClearConfirmTitle.Font = Enum.Font.SourceSans
+AliasClearConfirmTitle.TextSize = 14
+AliasClearConfirmTitle.Text = "Clear all aliases?"
+AliasClearConfirmTitle.TextColor3 = Color3.new(1, 1, 1)
+AliasClearConfirmTitle.ZIndex = 31
+table.insert(shade2, AliasClearConfirmTitle)
+table.insert(text1, AliasClearConfirmTitle)
+
+AliasClearConfirmMessage.Name = "Message"
+AliasClearConfirmMessage.Parent = AliasClearConfirmFrame
+AliasClearConfirmMessage.BackgroundTransparency = 1
+AliasClearConfirmMessage.BorderSizePixel = 0
+AliasClearConfirmMessage.Position = UDim2.new(0, 10, 0, 48)
+AliasClearConfirmMessage.Size = UDim2.new(1, -20, 0, 65)
+AliasClearConfirmMessage.Font = Enum.Font.SourceSans
+AliasClearConfirmMessage.TextSize = 14
+AliasClearConfirmMessage.Text = "This will remove every saved alias.\nDo you want to continue?"
+AliasClearConfirmMessage.TextColor3 = Color3.new(1, 1, 1)
+AliasClearConfirmMessage.TextWrapped = true
+AliasClearConfirmMessage.TextXAlignment = Enum.TextXAlignment.Center
+AliasClearConfirmMessage.TextYAlignment = Enum.TextYAlignment.Center
+AliasClearConfirmMessage.ZIndex = 31
+table.insert(text1, AliasClearConfirmMessage)
+
+AliasClearConfirmButton.Name = "Confirm"
+AliasClearConfirmButton.Parent = AliasClearConfirmFrame
+AliasClearConfirmButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AliasClearConfirmButton.BorderSizePixel = 0
+AliasClearConfirmButton.Position = UDim2.new(0, 25, 0, 175)
+AliasClearConfirmButton.Size = UDim2.new(0, 90, 0, 20)
+AliasClearConfirmButton.Font = Enum.Font.SourceSans
+AliasClearConfirmButton.TextSize = 14
+AliasClearConfirmButton.Text = "Confirm"
+AliasClearConfirmButton.TextColor3 = Color3.new(1, 1, 1)
+AliasClearConfirmButton.ZIndex = 32
+table.insert(shade2, AliasClearConfirmButton)
+table.insert(text1, AliasClearConfirmButton)
+
+AliasClearCancelButton.Name = "Cancel"
+AliasClearCancelButton.Parent = AliasClearConfirmFrame
+AliasClearCancelButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AliasClearCancelButton.BorderSizePixel = 0
+AliasClearCancelButton.Position = UDim2.new(0, 135, 0, 175)
+AliasClearCancelButton.Size = UDim2.new(0, 90, 0, 20)
+AliasClearCancelButton.Font = Enum.Font.SourceSans
+AliasClearCancelButton.TextSize = 14
+AliasClearCancelButton.Text = "Cancel"
+AliasClearCancelButton.TextColor3 = Color3.new(1, 1, 1)
+AliasClearCancelButton.ZIndex = 32
+table.insert(shade2, AliasClearCancelButton)
+table.insert(text1, AliasClearCancelButton)
 
 Holder_3.Name = "Holder"
 Holder_3.Parent = AliasesFrame
@@ -3973,32 +4048,119 @@ Delete.MouseButton1Click:Connect(function()
 	notify('Keybinds Updated','Removed all keybinds')
 end)
 
-Close_2.MouseButton1Click:Connect(function()
-	AliasAddDialog.Visible = false
-	SettingsHolder.Visible = true
-	AliasesFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
-end)
+local aliasPanelTransitionToken = 0
+local aliasPanelState = "settings"
+local aliasPanelHiddenPosition = UDim2.new(0, 0, 0, 200)
+local aliasPanelShownPosition = UDim2.new(0, 0, 0, 0)
 
-Aliases.MouseButton1Click:Connect(function()
-	AliasAddDialog.Visible = false
-	AliasesFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
-	wait(0.5)
-	SettingsHolder.Visible = false
-end)
+local function openAliasesPanel()
+    aliasPanelTransitionToken += 1
+    local token = aliasPanelTransitionToken
+    aliasPanelState = "aliases"
+    AliasAddDialog.Visible = false
+    AliasClearConfirmFrame.Visible = false
+    AliasAddDialog.Position = aliasPanelHiddenPosition
+    AliasClearConfirmFrame.Position = aliasPanelHiddenPosition
+    AliasesFrame.Visible = true
+    AliasesFrame.Position = aliasPanelHiddenPosition
+    AliasesFrame:TweenPosition(aliasPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
+    task.delay(0.52, function()
+        if token ~= aliasPanelTransitionToken or aliasPanelState ~= "aliases" then return end
+        SettingsHolder.Visible = false
+    end)
+end
 
-AddAliasButton.MouseButton1Click:Connect(function()
-	AliasCommandInput.Text = ""
-	AliasShortcutInput.Text = ""
-	AliasAddDialog.Visible = true
-	AliasCommandInput:CaptureFocus()
-end)
+local function returnToAliasesPanel()
+    aliasPanelTransitionToken += 1
+    local token = aliasPanelTransitionToken
+    aliasPanelState = "aliases"
+    SettingsHolder.Visible = false
+    AliasesFrame.Visible = true
+    AliasesFrame.Position = aliasPanelHiddenPosition
+    AliasesFrame:TweenPosition(aliasPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
+    if AliasAddDialog.Visible then
+        AliasAddDialog:TweenPosition(aliasPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+    end
+    if AliasClearConfirmFrame.Visible then
+        AliasClearConfirmFrame:TweenPosition(aliasPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+    end
+    task.delay(0.52, function()
+        if token ~= aliasPanelTransitionToken or aliasPanelState ~= "aliases" then return end
+        AliasAddDialog.Visible = false
+        AliasClearConfirmFrame.Visible = false
+        AliasAddDialog.Position = aliasPanelHiddenPosition
+        AliasClearConfirmFrame.Position = aliasPanelHiddenPosition
+    end)
+end
+
+local function openAliasAddPanel()
+    aliasPanelTransitionToken += 1
+    local token = aliasPanelTransitionToken
+    aliasPanelState = "add"
+    SettingsHolder.Visible = false
+    AliasCommandInput.Text = ""
+    AliasShortcutInput.Text = ""
+    AliasClearConfirmFrame.Visible = false
+    AliasClearConfirmFrame.Position = aliasPanelHiddenPosition
+    AliasesFrame.Visible = true
+    AliasesFrame:TweenPosition(aliasPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+    AliasAddDialog.Visible = true
+    AliasAddDialog.Position = aliasPanelHiddenPosition
+    AliasAddDialog:TweenPosition(aliasPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
+    task.delay(0.52, function()
+        if token ~= aliasPanelTransitionToken or aliasPanelState ~= "add" then return end
+        AliasesFrame.Visible = false
+        AliasCommandInput:CaptureFocus()
+    end)
+end
+
+local function openAliasClearConfirmation()
+    aliasPanelTransitionToken += 1
+    local token = aliasPanelTransitionToken
+    aliasPanelState = "clearConfirm"
+    SettingsHolder.Visible = false
+    AliasAddDialog.Visible = false
+    AliasAddDialog.Position = aliasPanelHiddenPosition
+    AliasesFrame.Visible = true
+    AliasesFrame:TweenPosition(aliasPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+    AliasClearConfirmFrame.Visible = true
+    AliasClearConfirmFrame.Position = aliasPanelHiddenPosition
+    AliasClearConfirmFrame:TweenPosition(aliasPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
+    task.delay(0.52, function()
+        if token ~= aliasPanelTransitionToken or aliasPanelState ~= "clearConfirm" then return end
+        AliasesFrame.Visible = false
+    end)
+end
+
+local function closeAliasesSection()
+    aliasPanelTransitionToken += 1
+    local token = aliasPanelTransitionToken
+    aliasPanelState = "settings"
+    SettingsHolder.Visible = true
+    AliasesFrame:TweenPosition(aliasPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+    if AliasAddDialog.Visible then AliasAddDialog:TweenPosition(aliasPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil) end
+    if AliasClearConfirmFrame.Visible then AliasClearConfirmFrame:TweenPosition(aliasPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil) end
+    task.delay(0.52, function()
+        if token ~= aliasPanelTransitionToken or aliasPanelState ~= "settings" then return end
+        AliasesFrame.Visible = false
+        AliasAddDialog.Visible = false
+        AliasClearConfirmFrame.Visible = false
+        AliasesFrame.Position = aliasPanelHiddenPosition
+        AliasAddDialog.Position = aliasPanelHiddenPosition
+        AliasClearConfirmFrame.Position = aliasPanelHiddenPosition
+    end)
+end
+
+Close_2.MouseButton1Click:Connect(closeAliasesSection)
+Aliases.MouseButton1Click:Connect(openAliasesPanel)
+AddAliasButton.MouseButton1Click:Connect(openAliasAddPanel)
 
 AliasAddCancel.MouseButton1Click:Connect(function()
-	AliasAddDialog.Visible = false
-	AliasCommandInput.Text = ""
-	AliasShortcutInput.Text = ""
-	AliasCommandInput:ReleaseFocus()
-	AliasShortcutInput:ReleaseFocus()
+    AliasCommandInput:ReleaseFocus()
+    AliasShortcutInput:ReleaseFocus()
+    AliasCommandInput.Text = ""
+    AliasShortcutInput.Text = ""
+    returnToAliasesPanel()
 end)
 
 Close_3.MouseButton1Click:Connect(function()
@@ -4152,20 +4314,29 @@ AliasAddDone.MouseButton1Click:Connect(function()
 	aliases[#aliases + 1] = {CMD = canonicalCommand, ALIAS = aliasInput}
 	updatesaves()
 	refreshaliases()
-	AliasAddDialog.Visible = false
 	AliasCommandInput:ReleaseFocus()
 	AliasShortcutInput:ReleaseFocus()
 	AliasCommandInput.Text = ""
 	AliasShortcutInput.Text = ""
+	returnToAliasesPanel()
 	notify("Aliases Modified", "Added '" .. aliasInput .. "' as an alias to '" .. canonicalCommand .. "'.", 4)
 end)
 
-Delete_3.MouseButton1Click:Connect(function()
+Delete_3.MouseButton1Click:Connect(openAliasClearConfirmation)
+
+AliasClearConfirmButton.MouseButton1Click:Connect(function()
+	-- Destructive action occurs only after an explicit confirmation.
 	customAlias = {}
 	aliases = {}
-	notify('Aliases Modified','Removed all aliases')
 	updatesaves()
 	refreshaliases()
+	returnToAliasesPanel()
+	notify('Aliases Modified','Removed all aliases', 4)
+end)
+
+AliasClearCancelButton.MouseButton1Click:Connect(function()
+	-- Cancel only closes the confirmation page; it does not mutate aliases.
+	returnToAliasesPanel()
 end)
 
 function CamViewport()
@@ -8265,6 +8436,10 @@ addcmd('waypoints',{'positions'},function(args, speaker)
 	end
 	KeybindsFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 	AliasesFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
+	AliasAddDialog.Visible = false
+	AliasAddDialog.Position = UDim2.new(0, 0, 0, 200)
+	AliasClearConfirmFrame.Visible = false
+	AliasClearConfirmFrame.Position = UDim2.new(0, 0, 0, 200)
 	PluginsFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 	PositionsFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
 	wait(0.5)
