@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.1.8"
+currentVersion = "1.1.9"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -219,6 +219,11 @@ ExitImage_2 = Instance.new("ImageLabel")
 PositionsFrame = Instance.new("Frame")
 Close_3 = Instance.new("TextButton")
 Delete_5 = Instance.new("TextButton")
+WaypointClearConfirmFrame = Instance.new("Frame")
+WaypointClearConfirmTitle = Instance.new("TextLabel")
+WaypointClearConfirmMessage = Instance.new("TextLabel")
+WaypointClearConfirmButton = Instance.new("TextButton")
+WaypointClearCancelButton = Instance.new("TextButton")
 Holder_4 = Instance.new("ScrollingFrame")
 Example_4 = Instance.new("Frame")
 Text_5 = Instance.new("TextLabel")
@@ -1187,7 +1192,7 @@ Delete_5.Name = "Delete"
 Delete_5.Parent = PositionsFrame
 Delete_5.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 Delete_5.BorderSizePixel = 0
-Delete_5.Position = UDim2.new(0, 50, 0, 175)
+Delete_5.Position = UDim2.new(0, 5, 0, 150)
 Delete_5.Size = UDim2.new(0, 40, 0, 20)
 Delete_5.Font = Enum.Font.SourceSans
 Delete_5.TextSize = 14
@@ -1799,6 +1804,76 @@ PositionsHint.TextStrokeColor3 = Color3.new(1, 1, 1)
 PositionsHint.TextWrapped = true
 PositionsHint.ZIndex = 10
 table.insert(text1,PositionsHint)
+
+-- Dedicated confirmation page: saved waypoints are cleared only after Confirm.
+WaypointClearConfirmFrame.Name = "WaypointClearConfirmFrame"
+WaypointClearConfirmFrame.Parent = Settings
+WaypointClearConfirmFrame.Active = true
+WaypointClearConfirmFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
+WaypointClearConfirmFrame.BorderSizePixel = 0
+WaypointClearConfirmFrame.Position = UDim2.new(0, 0, 0, 200)
+WaypointClearConfirmFrame.Size = UDim2.new(0, 250, 0, 200)
+WaypointClearConfirmFrame.Visible = false
+WaypointClearConfirmFrame.ZIndex = 30
+table.insert(shade1, WaypointClearConfirmFrame)
+
+WaypointClearConfirmTitle.Name = "Title"
+WaypointClearConfirmTitle.Parent = WaypointClearConfirmFrame
+WaypointClearConfirmTitle.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointClearConfirmTitle.BorderSizePixel = 0
+WaypointClearConfirmTitle.Position = UDim2.new(0, 0, 0, 0)
+WaypointClearConfirmTitle.Size = UDim2.new(1, 0, 0, 22)
+WaypointClearConfirmTitle.Font = Enum.Font.SourceSans
+WaypointClearConfirmTitle.TextSize = 14
+WaypointClearConfirmTitle.Text = "Clear all waypoints?"
+WaypointClearConfirmTitle.TextColor3 = Color3.new(1, 1, 1)
+WaypointClearConfirmTitle.ZIndex = 31
+table.insert(shade2, WaypointClearConfirmTitle)
+table.insert(text1, WaypointClearConfirmTitle)
+
+WaypointClearConfirmMessage.Name = "Message"
+WaypointClearConfirmMessage.Parent = WaypointClearConfirmFrame
+WaypointClearConfirmMessage.BackgroundTransparency = 1
+WaypointClearConfirmMessage.BorderSizePixel = 0
+WaypointClearConfirmMessage.Position = UDim2.new(0, 10, 0, 48)
+WaypointClearConfirmMessage.Size = UDim2.new(1, -20, 0, 65)
+WaypointClearConfirmMessage.Font = Enum.Font.SourceSans
+WaypointClearConfirmMessage.TextSize = 14
+WaypointClearConfirmMessage.Text = "This will remove all saved waypoints.\nDo you want to continue?"
+WaypointClearConfirmMessage.TextColor3 = Color3.new(1, 1, 1)
+WaypointClearConfirmMessage.TextWrapped = true
+WaypointClearConfirmMessage.TextXAlignment = Enum.TextXAlignment.Center
+WaypointClearConfirmMessage.TextYAlignment = Enum.TextYAlignment.Center
+WaypointClearConfirmMessage.ZIndex = 31
+table.insert(text1, WaypointClearConfirmMessage)
+
+WaypointClearConfirmButton.Name = "Confirm"
+WaypointClearConfirmButton.Parent = WaypointClearConfirmFrame
+WaypointClearConfirmButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointClearConfirmButton.BorderSizePixel = 0
+WaypointClearConfirmButton.Position = UDim2.new(0, 25, 0, 175)
+WaypointClearConfirmButton.Size = UDim2.new(0, 90, 0, 20)
+WaypointClearConfirmButton.Font = Enum.Font.SourceSans
+WaypointClearConfirmButton.TextSize = 14
+WaypointClearConfirmButton.Text = "Confirm"
+WaypointClearConfirmButton.TextColor3 = Color3.new(1, 1, 1)
+WaypointClearConfirmButton.ZIndex = 32
+table.insert(shade2, WaypointClearConfirmButton)
+table.insert(text1, WaypointClearConfirmButton)
+
+WaypointClearCancelButton.Name = "Cancel"
+WaypointClearCancelButton.Parent = WaypointClearConfirmFrame
+WaypointClearCancelButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointClearCancelButton.BorderSizePixel = 0
+WaypointClearCancelButton.Position = UDim2.new(0, 135, 0, 175)
+WaypointClearCancelButton.Size = UDim2.new(0, 90, 0, 20)
+WaypointClearCancelButton.Font = Enum.Font.SourceSans
+WaypointClearCancelButton.TextSize = 14
+WaypointClearCancelButton.Text = "Cancel"
+WaypointClearCancelButton.TextColor3 = Color3.new(1, 1, 1)
+WaypointClearCancelButton.ZIndex = 32
+table.insert(shade2, WaypointClearCancelButton)
+table.insert(text1, WaypointClearCancelButton)
 
 ToPartFrame.Name = randomString()
 ToPartFrame.Parent = ScaledHolder
@@ -4148,15 +4223,71 @@ AliasAddCancel.MouseButton1Click:Connect(function()
     returnToAliasesPanel()
 end)
 
+local waypointPanelTransitionToken = 0
+local waypointPanelState = "hidden"
+local waypointPanelHiddenPosition = UDim2.new(0, 0, 0, 200)
+local waypointPanelShownPosition = UDim2.new(0, 0, 0, 0)
+
+local function openWaypointClearConfirmation()
+	waypointPanelTransitionToken += 1
+	local token = waypointPanelTransitionToken
+	waypointPanelState = "clearConfirm"
+	PositionsFrame.Visible = true
+	WaypointClearConfirmFrame.Visible = true
+	WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
+	PositionsFrame:TweenPosition(waypointPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+	WaypointClearConfirmFrame:TweenPosition(waypointPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
+	task.delay(0.52, function()
+		if token ~= waypointPanelTransitionToken or waypointPanelState ~= "clearConfirm" then return end
+		PositionsFrame.Visible = false
+	end)
+end
+
+local function returnToWaypointsPanel()
+	waypointPanelTransitionToken += 1
+	local token = waypointPanelTransitionToken
+	waypointPanelState = "waypoints"
+	PositionsFrame.Visible = true
+	PositionsFrame.Position = waypointPanelHiddenPosition
+	PositionsFrame:TweenPosition(waypointPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
+	if WaypointClearConfirmFrame.Visible then
+		WaypointClearConfirmFrame:TweenPosition(waypointPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+	end
+	task.delay(0.52, function()
+		if token ~= waypointPanelTransitionToken or waypointPanelState ~= "waypoints" then return end
+		WaypointClearConfirmFrame.Visible = false
+		WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
+	end)
+end
+
 Close_3.MouseButton1Click:Connect(function()
+	waypointPanelTransitionToken += 1
+	local token = waypointPanelTransitionToken
+	waypointPanelState = "hidden"
 	SettingsHolder.Visible = true
-	PositionsFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
+	PositionsFrame:TweenPosition(waypointPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+	if WaypointClearConfirmFrame.Visible then
+		WaypointClearConfirmFrame:TweenPosition(waypointPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+	end
+	task.delay(0.52, function()
+		if token ~= waypointPanelTransitionToken or waypointPanelState ~= "hidden" then return end
+		WaypointClearConfirmFrame.Visible = false
+		WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
+	end)
 end)
 
 Positions.MouseButton1Click:Connect(function()
-	PositionsFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
-	wait(0.5)
-	SettingsHolder.Visible = false
+	waypointPanelTransitionToken += 1
+	local token = waypointPanelTransitionToken
+	waypointPanelState = "waypoints"
+	WaypointClearConfirmFrame.Visible = false
+	WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
+	PositionsFrame.Visible = true
+	PositionsFrame:TweenPosition(waypointPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
+	task.delay(0.52, function()
+		if token ~= waypointPanelTransitionToken or waypointPanelState ~= "waypoints" then return end
+		SettingsHolder.Visible = false
+	end)
 end)
 
 local selectionBox = Instance.new("SelectionBox")
@@ -6885,8 +7016,17 @@ function unkeybind(cmd,key)
 	end
 end
 
-PositionsFrame.Delete.MouseButton1Click:Connect(function()
+PositionsFrame.Delete.MouseButton1Click:Connect(openWaypointClearConfirmation)
+
+WaypointClearConfirmButton.MouseButton1Click:Connect(function()
+	if waypointPanelState ~= "clearConfirm" then return end
 	execCmd('cpos')
+	returnToWaypointsPanel()
+end)
+
+WaypointClearCancelButton.MouseButton1Click:Connect(function()
+	if waypointPanelState ~= "clearConfirm" then return end
+	returnToWaypointsPanel()
 end)
 
 function refreshwaypoints()
@@ -8410,6 +8550,11 @@ addcmd('waypointpos',{'wpp','setwaypointposition','setpos','setwaypoint','setway
 end)
 
 addcmd('waypoints',{'positions'},function(args, speaker)
+	waypointPanelTransitionToken += 1
+	waypointPanelState = "waypoints"
+	WaypointClearConfirmFrame.Visible = false
+	WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
+	PositionsFrame.Visible = true
 	if SettingsOpen == false then setSettingsOpenState(true)
 		setSettingsBackdrop(true)
 		Settings:TweenPosition(UDim2.new(0, 0, 0, 20), "InOut", "Quart", 0.5, true, nil)
