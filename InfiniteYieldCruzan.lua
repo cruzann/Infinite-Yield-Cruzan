@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.1.5"
+currentVersion = "1.1.6"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -228,6 +228,13 @@ TP = Instance.new("TextButton")
 AliasesFrame = Instance.new("Frame")
 Close_2 = Instance.new("TextButton")
 Delete_3 = Instance.new("TextButton")
+AddAliasButton = Instance.new("TextButton")
+AliasAddDialog = Instance.new("Frame")
+AliasAddDialogTitle = Instance.new("TextLabel")
+AliasCommandInput = Instance.new("TextBox")
+AliasShortcutInput = Instance.new("TextBox")
+AliasAddDone = Instance.new("TextButton")
+AliasAddCancel = Instance.new("TextButton")
 Holder_3 = Instance.new("ScrollingFrame")
 Example_3 = Instance.new("Frame")
 Text_4 = Instance.new("TextLabel")
@@ -1307,6 +1314,111 @@ Delete_3.ZIndex = 10
 table.insert(shade2,Delete_3)
 table.insert(text1,Delete_3)
 
+-- Add button beside Clear for creating aliases through the UI.
+AddAliasButton.Name = "AddAliasButton"
+AddAliasButton.Parent = AliasesFrame
+AddAliasButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AddAliasButton.BorderSizePixel = 0
+AddAliasButton.Position = UDim2.new(0, 50, 0, 175)
+AddAliasButton.Size = UDim2.new(0, 40, 0, 20)
+AddAliasButton.Font = Enum.Font.SourceSans
+AddAliasButton.TextSize = 14
+AddAliasButton.Text = "Add"
+AddAliasButton.TextColor3 = Color3.new(1, 1, 1)
+AddAliasButton.ZIndex = 12
+table.insert(shade2,AddAliasButton)
+table.insert(text1,AddAliasButton)
+
+-- Compact in-panel alias dialog matching the existing dark UI.
+AliasAddDialog.Name = "AliasAddDialog"
+AliasAddDialog.Parent = AliasesFrame
+AliasAddDialog.Active = true
+AliasAddDialog.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
+AliasAddDialog.BorderSizePixel = 0
+AliasAddDialog.Position = UDim2.new(0, 15, 0, 24)
+AliasAddDialog.Size = UDim2.new(0, 220, 0, 142)
+AliasAddDialog.Visible = false
+AliasAddDialog.ZIndex = 20
+table.insert(shade1,AliasAddDialog)
+
+AliasAddDialogTitle.Name = "Title"
+AliasAddDialogTitle.Parent = AliasAddDialog
+AliasAddDialogTitle.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AliasAddDialogTitle.BorderSizePixel = 0
+AliasAddDialogTitle.Position = UDim2.new(0, 0, 0, 0)
+AliasAddDialogTitle.Size = UDim2.new(1, 0, 0, 22)
+AliasAddDialogTitle.Font = Enum.Font.SourceSans
+AliasAddDialogTitle.TextSize = 14
+AliasAddDialogTitle.Text = "Add Alias"
+AliasAddDialogTitle.TextColor3 = Color3.new(1, 1, 1)
+AliasAddDialogTitle.ZIndex = 21
+table.insert(shade2,AliasAddDialogTitle)
+table.insert(text1,AliasAddDialogTitle)
+
+AliasCommandInput.Name = "CommandInput"
+AliasCommandInput.Parent = AliasAddDialog
+AliasCommandInput.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AliasCommandInput.BorderSizePixel = 0
+AliasCommandInput.ClearTextOnFocus = false
+AliasCommandInput.Position = UDim2.new(0, 8, 0, 30)
+AliasCommandInput.Size = UDim2.new(1, -16, 0, 22)
+AliasCommandInput.Font = Enum.Font.SourceSans
+AliasCommandInput.TextSize = 14
+AliasCommandInput.Text = ""
+AliasCommandInput.PlaceholderText = "Command name (e.g. fly)"
+AliasCommandInput.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+AliasCommandInput.TextColor3 = Color3.new(1, 1, 1)
+AliasCommandInput.TextXAlignment = Enum.TextXAlignment.Left
+AliasCommandInput.ZIndex = 21
+table.insert(shade2,AliasCommandInput)
+table.insert(text1,AliasCommandInput)
+
+AliasShortcutInput.Name = "ShortcutInput"
+AliasShortcutInput.Parent = AliasAddDialog
+AliasShortcutInput.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AliasShortcutInput.BorderSizePixel = 0
+AliasShortcutInput.ClearTextOnFocus = false
+AliasShortcutInput.Position = UDim2.new(0, 8, 0, 58)
+AliasShortcutInput.Size = UDim2.new(1, -16, 0, 22)
+AliasShortcutInput.Font = Enum.Font.SourceSans
+AliasShortcutInput.TextSize = 14
+AliasShortcutInput.Text = ""
+AliasShortcutInput.PlaceholderText = "Shortcut / alias"
+AliasShortcutInput.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+AliasShortcutInput.TextColor3 = Color3.new(1, 1, 1)
+AliasShortcutInput.TextXAlignment = Enum.TextXAlignment.Left
+AliasShortcutInput.ZIndex = 21
+table.insert(shade2,AliasShortcutInput)
+table.insert(text1,AliasShortcutInput)
+
+AliasAddDone.Name = "Done"
+AliasAddDone.Parent = AliasAddDialog
+AliasAddDone.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AliasAddDone.BorderSizePixel = 0
+AliasAddDone.Position = UDim2.new(0, 8, 0, 108)
+AliasAddDone.Size = UDim2.new(0, 96, 0, 22)
+AliasAddDone.Font = Enum.Font.SourceSans
+AliasAddDone.TextSize = 14
+AliasAddDone.Text = "Done"
+AliasAddDone.TextColor3 = Color3.new(1, 1, 1)
+AliasAddDone.ZIndex = 21
+table.insert(shade2,AliasAddDone)
+table.insert(text1,AliasAddDone)
+
+AliasAddCancel.Name = "Cancel"
+AliasAddCancel.Parent = AliasAddDialog
+AliasAddCancel.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AliasAddCancel.BorderSizePixel = 0
+AliasAddCancel.Position = UDim2.new(0, 116, 0, 108)
+AliasAddCancel.Size = UDim2.new(0, 96, 0, 22)
+AliasAddCancel.Font = Enum.Font.SourceSans
+AliasAddCancel.TextSize = 14
+AliasAddCancel.Text = "Cancel"
+AliasAddCancel.TextColor3 = Color3.new(1, 1, 1)
+AliasAddCancel.ZIndex = 21
+table.insert(shade2,AliasAddCancel)
+table.insert(text1,AliasAddCancel)
+
 Holder_3.Name = "Holder"
 Holder_3.Parent = AliasesFrame
 Holder_3.BackgroundTransparency = 1
@@ -1591,7 +1703,7 @@ AliasHint.Position = UDim2.new(0, 25, 0, 40)
 AliasHint.Size = UDim2.new(0, 200, 0, 50)
 AliasHint.Font = Enum.Font.SourceSansItalic
 AliasHint.TextSize = 16
-AliasHint.Text = "Add aliases by using the 'addalias' command"
+AliasHint.Text = "Use Add to create a new alias"
 AliasHint.TextColor3 = Color3.new(1, 1, 1)
 AliasHint.TextStrokeColor3 = Color3.new(1, 1, 1)
 AliasHint.TextWrapped = true
@@ -3862,14 +3974,31 @@ Delete.MouseButton1Click:Connect(function()
 end)
 
 Close_2.MouseButton1Click:Connect(function()
+	AliasAddDialog.Visible = false
 	SettingsHolder.Visible = true
 	AliasesFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 end)
 
 Aliases.MouseButton1Click:Connect(function()
+	AliasAddDialog.Visible = false
 	AliasesFrame:TweenPosition(UDim2.new(0, 0, 0, 0), "InOut", "Quart", 0.5, true, nil)
 	wait(0.5)
 	SettingsHolder.Visible = false
+end)
+
+AddAliasButton.MouseButton1Click:Connect(function()
+	AliasCommandInput.Text = ""
+	AliasShortcutInput.Text = ""
+	AliasAddDialog.Visible = true
+	AliasCommandInput:CaptureFocus()
+end)
+
+AliasAddCancel.MouseButton1Click:Connect(function()
+	AliasAddDialog.Visible = false
+	AliasCommandInput.Text = ""
+	AliasShortcutInput.Text = ""
+	AliasCommandInput:ReleaseFocus()
+	AliasShortcutInput:ReleaseFocus()
 end)
 
 Close_3.MouseButton1Click:Connect(function()
@@ -3972,6 +4101,65 @@ end)
 
 cmds={}
 customAlias = {}
+
+local function trimAliasInput(value)
+	return tostring(value or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function isValidAliasToken(value)
+	return value ~= "" and #value <= 32 and value:match("^[%w_%-]+$") ~= nil
+end
+
+AliasAddDone.MouseButton1Click:Connect(function()
+	local commandInput = string.lower(trimAliasInput(AliasCommandInput.Text))
+	local aliasInput = string.lower(trimAliasInput(AliasShortcutInput.Text))
+
+	if commandInput == "" or aliasInput == "" then
+		notify("Alias Error", "Enter both a command and a shortcut.", 4)
+		return
+	end
+
+	if not isValidAliasToken(aliasInput) then
+		notify("Alias Error", "Shortcut may contain only letters, numbers, underscores, or hyphens (max 32 characters).", 4)
+		return
+	end
+
+	local command = findCmd and findCmd(commandInput) or nil
+	if type(command) ~= "table" or type(command.NAME) ~= "string" or command.NAME == "" then
+		notify("Alias Error", "Command '" .. commandInput .. "' was not found.", 4)
+		return
+	end
+
+	local aliasExists = false
+	if findCmd and findCmd(aliasInput) then
+		aliasExists = true
+	end
+	if not aliasExists then
+		for _, existing in ipairs(aliases or {}) do
+			if type(existing) == "table" and string.lower(tostring(existing.ALIAS or "")) == aliasInput then
+				aliasExists = true
+				break
+			end
+		end
+	end
+	if aliasExists then
+		notify("Alias Error", "Shortcut '" .. aliasInput .. "' is already used by a command or alias.", 4)
+		return
+	end
+
+	local canonicalCommand = string.lower(command.NAME)
+	customAlias[aliasInput] = command
+	aliases[#aliases + 1] = {CMD = canonicalCommand, ALIAS = aliasInput}
+	updatesaves()
+	refreshaliases()
+	AliasAddDialog.Visible = false
+	AliasCommandInput:ReleaseFocus()
+	AliasShortcutInput:ReleaseFocus()
+	AliasCommandInput.Text = ""
+	AliasShortcutInput.Text = ""
+	notify("Aliases Modified", "Added '" .. aliasInput .. "' as an alias to '" .. canonicalCommand .. "'.", 4)
+end)
+
 Delete_3.MouseButton1Click:Connect(function()
 	customAlias = {}
 	aliases = {}
