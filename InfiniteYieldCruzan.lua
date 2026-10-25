@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.3.3"
+currentVersion = "1.3.4"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -4802,12 +4802,33 @@ function updateCamera(child, parent)
 end
 CamMoved = workspace.CurrentCamera.AncestryChanged:Connect(updateCamera)
 
+local wasStayOpen = StayOpen
+local SWIPE_DOWN_HIDE_THRESHOLD = IsOnMobile and 54 or 64
+
 function dragMain(dragpoint,gui)
 	task.spawn(function()
-		local dragging
+		local dragging = false
 		local dragInput
 		local dragStart = Vector3.new(0,0,0)
 		local startPos
+		local gestureMode = nil
+
+		local function resetGesture()
+			dragging = false
+			dragInput = nil
+			gestureMode = nil
+		end
+
+		local function hideFromSwipeDown()
+			if gui ~= Holder then return end
+			-- Hide only the main panel. Keep the floating opener and the Keep Menu Open
+			-- preference intact so the user can restore the menu as usual.
+			isHidden = true
+			wasStayOpen = StayOpen
+			holderHideToken += 1
+			gui:TweenPosition(UDim2.new(1, gui.Position.X.Offset, 1, 0), "Out", "Quad", 0.10, true, nil)
+		end
+
 		local function update(input)
 			local pos = -250
 			local delta = input.Position - dragStart
@@ -4836,26 +4857,60 @@ function dragMain(dragpoint,gui)
 				TweenService:Create(Notification, TweenInfo.new(.20), {Position = Position2}):Play()
 			end
 		end
+
 		dragpoint.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				dragging = true
 				dragStart = input.Position
 				startPos = gui.Position
+				dragInput = nil
+				gestureMode = nil
 
 				input.Changed:Connect(function()
 					if input.UserInputState == Enum.UserInputState.End then
-						dragging = false
+						resetGesture()
 					end
 				end)
 			end
 		end)
+
 		dragpoint.InputChanged:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 				dragInput = input
 			end
 		end)
+
 		IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputChanged:Connect(function(input)
-			if input == dragInput and dragging then
+			if input ~= dragInput or not dragging then return end
+			local delta = input.Position - dragStart
+			local absX = math.abs(delta.X)
+			local absY = math.abs(delta.Y)
+
+			if gestureMode == nil then
+				-- Ignore taps and small jitter. Lock to an axis before moving the panel.
+				if absX < 10 and absY < 10 then return end
+				if delta.Y > 0 and delta.Y >= SWIPE_DOWN_HIDE_THRESHOLD and delta.Y >= absX * 1.25 then
+					gestureMode = "swipeDown"
+					hideFromSwipeDown()
+					resetGesture()
+					return
+				elseif absX >= 10 and absX >= absY * 1.2 then
+					gestureMode = "horizontal"
+				elseif absY >= 10 and absY > absX * 1.2 then
+					gestureMode = "vertical"
+				else
+					return
+				end
+			elseif gestureMode == "vertical" then
+				if delta.Y > 0 and delta.Y >= SWIPE_DOWN_HIDE_THRESHOLD and delta.Y >= absX * 1.25 then
+					gestureMode = "swipeDown"
+					hideFromSwipeDown()
+					resetGesture()
+				end
+				return
+			end
+
+			if gestureMode == "horizontal" then
 				update(input)
 			end
 		end))
@@ -9713,7 +9768,7 @@ addcmd('unguidelete',{'noguidelete'},function(args, speaker)
 	notify('GUI Delete Disabled','GUI backspace delete has been disabled')
 end)
 
-local wasStayOpen = StayOpen
+wasStayOpen = StayOpen
 addcmd('hideiy',{},function(args, speaker)
 	isHidden = true
 	wasStayOpen = StayOpen
