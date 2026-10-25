@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.2.3"
+currentVersion = "1.2.4"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -1987,18 +1987,25 @@ WaypointAddCancel.ZIndex = 32
 table.insert(shade2, WaypointAddCancel)
 table.insert(text1, WaypointAddCancel)
 
--- Floating waypoint hover panel, independent from the Settings window.
-WaypointHoverFrame.Name = "WaypointHoverFrame"
+-- Floating waypoint hover panel template; each opened Waypoint gets its own clone.
+local waypointHoverFrames = {}
+WaypointHoverFrame.Name = "WaypointHoverFrameTemplate"
 WaypointHoverFrame.Parent = PARENT
 WaypointHoverFrame.Active = true
 WaypointHoverFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
-WaypointHoverFrame.BorderSizePixel = 0
-WaypointHoverFrame.AnchorPoint = Vector2.new(1, 0)
-WaypointHoverFrame.Position = UDim2.new(1, -12, 0, 45)
-WaypointHoverFrame.Size = UDim2.new(0, 120, 0, 52)
+WaypointHoverFrame.BorderSizePixel = 1
+WaypointHoverFrame.BorderColor3 = Color3.fromRGB(78, 78, 79)
+WaypointHoverFrame.ClipsDescendants = true
+WaypointHoverFrame.AnchorPoint = Vector2.new(0, 0)
+WaypointHoverFrame.Position = UDim2.new(1, -108, 0, 45)
+WaypointHoverFrame.Size = UDim2.new(0, 96, 0, 44)
 WaypointHoverFrame.Visible = false
 WaypointHoverFrame.ZIndex = 80
 table.insert(shade1, WaypointHoverFrame)
+table.insert(waypointHoverFrames, WaypointHoverFrame)
+local waypointHoverFrameCorner = Instance.new("UICorner")
+waypointHoverFrameCorner.CornerRadius = UDim.new(0, 6)
+waypointHoverFrameCorner.Parent = WaypointHoverFrame
 
 WaypointHoverHeader.Name = "Header"
 WaypointHoverHeader.Parent = WaypointHoverFrame
@@ -2008,35 +2015,41 @@ WaypointHoverHeader.Position = UDim2.new(0, 0, 0, 0)
 WaypointHoverHeader.Size = UDim2.new(1, 0, 0, 18)
 WaypointHoverHeader.Font = Enum.Font.SourceSans
 WaypointHoverHeader.TextSize = 12
-WaypointHoverHeader.Text = "Waypoint Hover"
+WaypointHoverHeader.Text = "Waypoint"
 WaypointHoverHeader.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverHeader.TextXAlignment = Enum.TextXAlignment.Left
 WaypointHoverHeader.ZIndex = 81
 table.insert(shade2, WaypointHoverHeader)
 table.insert(text1, WaypointHoverHeader)
+local waypointHoverHeaderCorner = Instance.new("UICorner")
+waypointHoverHeaderCorner.CornerRadius = UDim.new(0, 5)
+waypointHoverHeaderCorner.Parent = WaypointHoverHeader
 
 WaypointHoverClose.Name = "Close"
 WaypointHoverClose.Parent = WaypointHoverHeader
 WaypointHoverClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverClose.BorderSizePixel = 0
-WaypointHoverClose.Position = UDim2.new(1, -20, 0, 1)
-WaypointHoverClose.Size = UDim2.new(0, 19, 0, 16)
+WaypointHoverClose.Position = UDim2.new(1, -18, 0, 1)
+WaypointHoverClose.Size = UDim2.new(0, 17, 0, 16)
 WaypointHoverClose.Font = Enum.Font.SourceSansBold
-WaypointHoverClose.TextSize = 12
+WaypointHoverClose.TextSize = 11
 WaypointHoverClose.Text = "X"
 WaypointHoverClose.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverClose.ZIndex = 82
 table.insert(shade2, WaypointHoverClose)
 table.insert(text1, WaypointHoverClose)
+local waypointHoverCloseCorner = Instance.new("UICorner")
+waypointHoverCloseCorner.CornerRadius = UDim.new(0, 3)
+waypointHoverCloseCorner.Parent = WaypointHoverClose
 
 WaypointHoverButton.Name = "GotoWaypoint"
 WaypointHoverButton.Parent = WaypointHoverFrame
 WaypointHoverButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverButton.BorderSizePixel = 0
 WaypointHoverButton.Position = UDim2.new(0, 4, 0, 22)
-WaypointHoverButton.Size = UDim2.new(1, -8, 0, 26)
+WaypointHoverButton.Size = UDim2.new(1, -8, 0, 17)
 WaypointHoverButton.Font = Enum.Font.SourceSans
-WaypointHoverButton.TextSize = 14
+WaypointHoverButton.TextSize = 12
 WaypointHoverButton.Text = "Waypoint"
 WaypointHoverButton.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverButton.TextScaled = true
@@ -2044,6 +2057,13 @@ WaypointHoverButton.TextWrapped = true
 WaypointHoverButton.ZIndex = 81
 table.insert(shade2, WaypointHoverButton)
 table.insert(text1, WaypointHoverButton)
+local waypointHoverButtonCorner = Instance.new("UICorner")
+waypointHoverButtonCorner.CornerRadius = UDim.new(0, 4)
+waypointHoverButtonCorner.Parent = WaypointHoverButton
+local waypointHoverTextConstraint = Instance.new("UITextSizeConstraint")
+waypointHoverTextConstraint.MinTextSize = 8
+waypointHoverTextConstraint.MaxTextSize = 12
+waypointHoverTextConstraint.Parent = WaypointHoverButton
 
 ToPartFrame.Name = randomString()
 ToPartFrame.Parent = ScaledHolder
@@ -3350,6 +3370,7 @@ currentScroll = Color3.fromRGB(78,78,79)
 defaultGuiScale = IsOnMobile and 0.9 or 1
 local autoHideDelay = 1.5
 local prefix = ';' -- Fixed internal shortcut; commands entered in Command Bar need no prefix.
+local waypointHoverPositions = {}
 favoriteCommands = {}
 defaultsettings = {
 	autoHideDelay = 1.5;
@@ -3363,6 +3384,7 @@ defaultsettings = {
 	binds = {};
 	WayPoints = {};
 	PluginsTable = {};
+	waypointHoverPositions = waypointHoverPositions;
 	favoriteCommands = {};
 	currentShade1 = {currentShade1.R,currentShade1.G,currentShade1.B};
 	currentShade2 = {currentShade2.R,currentShade2.G,currentShade2.B};
@@ -3545,6 +3567,20 @@ function saves()
 					if vtype(json.binds, "table") then binds = json.binds else binds = {} end
 					if vtype(json.spawnCmds, "table") then spawnCmds = json.spawnCmds end
 					if vtype(json.WayPoints, "table") then AllWaypoints = json.WayPoints else WayPoints = {} AllWaypoints = {} end
+					if vtype(json.waypointHoverPositions, "table") then
+						local validWaypointHoverPositions = {}
+						for waypointKey, savedPosition in pairs(json.waypointHoverPositions) do
+							if type(waypointKey) == "string" and type(savedPosition) == "table" then
+								local savedX, savedY = tonumber(savedPosition.x), tonumber(savedPosition.y)
+								if savedX and savedY and math.abs(savedX) < 100000 and math.abs(savedY) < 100000 then
+									validWaypointHoverPositions[string.lower(waypointKey)] = {x = math.floor(savedX), y = math.floor(savedY)}
+								end
+							end
+						end
+						waypointHoverPositions = validWaypointHoverPositions
+					else
+						waypointHoverPositions = {}
+					end
 					if vtype(json.PluginsTable, "table") then PluginsTable = json.PluginsTable else PluginsTable = {} end
 					if vtype(json.currentShade1, "table") then currentShade1 = Color3.new(json.currentShade1[1],json.currentShade1[2],json.currentShade1[3]) end
 					if vtype(json.currentShade2, "table") then currentShade2 = Color3.new(json.currentShade2[1],json.currentShade2[2],json.currentShade2[3]) end
@@ -3619,6 +3655,7 @@ function updatesaves()
 			binds = binds or {};
 			WayPoints = AllWaypoints;
 			PluginsTable = PluginsTable;
+			waypointHoverPositions = waypointHoverPositions;
 			favoriteCommands = favoriteCommands or {};
 			currentShade1 = {currentShade1.R,currentShade1.G,currentShade1.B};
 			currentShade2 = {currentShade2.R,currentShade2.G,currentShade2.B};
@@ -4020,6 +4057,9 @@ function updateColors(color,ctype)
 	elseif ctype == shade3 then
 		for i,v in pairs(shade3) do
 			v.BackgroundColor3 = color
+		end
+		for _, waypointFrame in ipairs(waypointHoverFrames) do
+			if waypointFrame and waypointFrame.Parent then waypointFrame.BorderColor3 = color end
 		end
 		currentShade3 = color
 	elseif ctype == text1 then
@@ -7289,27 +7329,116 @@ WaypointClearCancelButton.MouseButton1Click:Connect(function()
 	returnToWaypointsPanel()
 end)
 
--- Each waypoint Hover window owns its waypoint target, drag state, and close action.
--- The original frame above remains an invisible style template; every click creates
--- an independent copy so opening one waypoint never replaces another one.
+-- Independent Waypoint Hover windows with bounded movement and saved positions.
 local waypointHoverWindows = {}
 local waypointHoverWindowCounter = 0
+local waypointHoverWindowSize = Vector2.new(96, 44)
+local waypointHoverWindowGap = 8
+local waypointHoverViewportConnection = nil
+local waypointHoverCameraConnection = nil
 
-local function removeWaypointHoverStyleEntry(list, item)
-	for index = #list, 1, -1 do
-		if list[index] == item then
-			table.remove(list, index)
-		end
+local function normalizeWaypointHoverKey(name)
+	local normalized = tostring(name or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	return string.lower(normalized)
+end
+
+local function getWaypointHoverBounds(frame)
+	local camera = workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+	local topLeftInset, bottomRightInset = Vector2.new(0, 0), Vector2.new(0, 0)
+	local insetOk, insetTop, insetBottom = pcall(function()
+		return GuiService:GetGuiInset()
+	end)
+	if insetOk and insetTop and insetBottom then
+		topLeftInset, bottomRightInset = insetTop, insetBottom
+	end
+
+	local rootOrigin = Vector2.new(0, 0)
+	if PARENT and PARENT:IsA("ScreenGui") then
+		rootOrigin = PARENT.IgnoreGuiInset and Vector2.new(0, 0) or topLeftInset
+	elseif PARENT and PARENT:IsA("GuiObject") then
+		rootOrigin = PARENT.AbsolutePosition
+	end
+
+	local width = frame and frame.Size.X.Offset or waypointHoverWindowSize.X
+	local height = frame and frame.Size.Y.Offset or waypointHoverWindowSize.Y
+	local minX = topLeftInset.X - rootOrigin.X
+	local minY = topLeftInset.Y - rootOrigin.Y
+	local maxX = viewport.X - bottomRightInset.X - rootOrigin.X - width
+	local maxY = viewport.Y - bottomRightInset.Y - rootOrigin.Y - height
+	local availableWidth = math.max(1, viewport.X - topLeftInset.X - bottomRightInset.X)
+	local availableHeight = math.max(1, viewport.Y - topLeftInset.Y - bottomRightInset.Y)
+	if maxX < minX then maxX = minX end
+	if maxY < minY then maxY = minY end
+	return minX, minY, maxX, maxY, availableWidth, availableHeight
+end
+
+local function fitWaypointHoverFrameToViewport(frame)
+	if not frame then return end
+	local _, _, _, _, availableWidth, availableHeight = getWaypointHoverBounds(frame)
+	local width = math.max(1, math.floor(math.min(waypointHoverWindowSize.X, availableWidth)))
+	local height = math.max(1, math.floor(math.min(waypointHoverWindowSize.Y, availableHeight)))
+	frame.Size = UDim2.new(0, width, 0, height)
+	local header = frame:FindFirstChild("Header")
+	local gotoButton = frame:FindFirstChild("GotoWaypoint")
+	local closeButton = header and header:FindFirstChild("Close")
+	local headerHeight = math.min(18, height)
+	if header then header.Size = UDim2.new(1, 0, 0, headerHeight) end
+	if closeButton then
+		local closeWidth = math.min(17, math.max(1, width - 4))
+		closeButton.Position = UDim2.new(1, -closeWidth, 0, 1)
+		closeButton.Size = UDim2.new(0, closeWidth, 0, math.max(1, math.min(16, headerHeight - 1)))
+	end
+	if gotoButton then
+		local horizontalMargin = math.min(4, math.max(1, math.floor(width / 4)))
+		local buttonY = math.min(22, headerHeight + 4)
+		local buttonHeight = math.max(1, height - buttonY - 5)
+		gotoButton.Position = UDim2.new(0, horizontalMargin, 0, buttonY)
+		gotoButton.Size = UDim2.new(1, -horizontalMargin * 2, 0, buttonHeight)
 	end
 end
 
-local function removeWaypointHoverWindow(state)
+local function clampWaypointHoverPosition(frame, x, y)
+	local minX, minY, maxX, maxY = getWaypointHoverBounds(frame)
+	x = math.max(minX, math.min(maxX, tonumber(x) or minX))
+	y = math.max(minY, math.min(maxY, tonumber(y) or minY))
+	return math.floor(x + 0.5), math.floor(y + 0.5)
+end
+
+local function removeWaypointHoverStyleEntry(list, item)
+	for index = #list, 1, -1 do
+		if list[index] == item then table.remove(list, index) end
+	end
+end
+
+local function persistWaypointHoverPosition(state, forceSave)
+	if not state or not state.frame or not state.frame.Parent then return false end
+	local position = state.frame.Position
+	local x, y = clampWaypointHoverPosition(state.frame, position.X.Offset, position.Y.Offset)
+	state.frame.Position = UDim2.new(0, x, 0, y)
+	local previous = waypointHoverPositions[state.key]
+	local changed = not previous or previous.x ~= x or previous.y ~= y
+	if changed then waypointHoverPositions[state.key] = {x = x, y = y} end
+	if (changed or forceSave) and type(updatesaves) == "function" then updatesaves() end
+	return changed
+end
+
+local function disconnectWaypointHoverState(state)
 	if not state then return end
 	if state.endConnection then
-		state.endConnection:Disconnect()
+		pcall(function() state.endConnection:Disconnect() end)
 		state.endConnection = nil
 	end
+	for _, connection in ipairs(state.connections or {}) do
+		pcall(function() connection:Disconnect() end)
+	end
+	state.connections = {}
+end
 
+local function removeWaypointHoverWindow(state, savePosition)
+	if not state then return end
+	if savePosition then persistWaypointHoverPosition(state, true) end
+	disconnectWaypointHoverState(state)
 	removeWaypointHoverStyleEntry(shade1, state.frame)
 	removeWaypointHoverStyleEntry(shade2, state.header)
 	removeWaypointHoverStyleEntry(shade2, state.closeButton)
@@ -7317,134 +7446,212 @@ local function removeWaypointHoverWindow(state)
 	removeWaypointHoverStyleEntry(text1, state.header)
 	removeWaypointHoverStyleEntry(text1, state.closeButton)
 	removeWaypointHoverStyleEntry(text1, state.gotoButton)
-
-	for index = #waypointHoverWindows, 1, -1 do
-		if waypointHoverWindows[index] == state then
-			table.remove(waypointHoverWindows, index)
-		end
-	end
-	if state.frame and state.frame.Parent then
-		state.frame:Destroy()
-	end
+	removeWaypointHoverStyleEntry(waypointHoverFrames, state.frame)
+	if waypointHoverWindows[state.key] == state then waypointHoverWindows[state.key] = nil end
+	if state.frame and state.frame.Parent then state.frame:Destroy() end
 end
 
-local function getWaypointHoverSlot()
-	local occupied = {}
-	for _, state in ipairs(waypointHoverWindows) do
-		if state.frame and state.frame.Parent then
-			occupied[state.slot] = true
-		end
-	end
-
-	local slot = 0
-	while occupied[slot] do
-		slot += 1
-	end
-	return slot
+local function waypointHoverRectsOverlap(x1, y1, width1, height1, x2, y2, width2, height2)
+	return not (x1 + width1 + waypointHoverWindowGap <= x2
+		or x2 + width2 + waypointHoverWindowGap <= x1
+		or y1 + height1 + waypointHoverWindowGap <= y2
+		or y2 + height2 + waypointHoverWindowGap <= y1)
 end
 
-local function showWaypointHover(name)
-	local waypointName = tostring(name or "")
-	if waypointName == "" then return end
-
-	local slot = getWaypointHoverSlot()
-	local viewportSize = Vector2.new(800, 600)
-	if workspace.CurrentCamera then
-		viewportSize = workspace.CurrentCamera.ViewportSize
+local function findDefaultWaypointHoverPosition(frame)
+	local minX, minY, maxX = getWaypointHoverBounds(frame)
+	local baseX = maxX - 12
+	local baseY = minY + 45
+	local selectedX, selectedY = clampWaypointHoverPosition(frame, baseX, baseY)
+	local width, height = frame.Size.X.Offset, frame.Size.Y.Offset
+	for attempt = 0, 23 do
+		local candidateX = baseX - ((attempt % 3) * (width + waypointHoverWindowGap))
+		local candidateY = baseY + (math.floor(attempt / 3) * (height + waypointHoverWindowGap))
+		candidateX, candidateY = clampWaypointHoverPosition(frame, candidateX, candidateY)
+		local overlaps = false
+		for _, otherState in pairs(waypointHoverWindows) do
+			if otherState.frame and otherState.frame.Visible and otherState.frame.Parent then
+				local otherPosition = otherState.frame.Position
+				local otherSize = otherState.frame.Size
+				if waypointHoverRectsOverlap(candidateX, candidateY, width, height,
+					otherPosition.X.Offset, otherPosition.Y.Offset, otherSize.X.Offset, otherSize.Y.Offset) then
+					overlaps = true
+					break
+				end
+			end
+		end
+		selectedX, selectedY = candidateX, candidateY
+		if not overlaps then return candidateX, candidateY end
 	end
-	local rowsPerColumn = math.max(1, math.floor((viewportSize.Y - 100) / 60))
-	local row = slot % rowsPerColumn
-	local column = math.floor(slot / rowsPerColumn)
+	return selectedX, selectedY
+end
+
+local function registerWaypointHoverStyle(state)
+	table.insert(shade1, state.frame)
+	table.insert(shade2, state.header)
+	table.insert(shade2, state.closeButton)
+	table.insert(shade2, state.gotoButton)
+	table.insert(text1, state.header)
+	table.insert(text1, state.closeButton)
+	table.insert(text1, state.gotoButton)
+end
+
+local function createWaypointHoverWindow(name, key)
 	local frame = WaypointHoverFrame:Clone()
 	local header = frame:FindFirstChild("Header")
 	local closeButton = header and header:FindFirstChild("Close")
 	local gotoButton = frame:FindFirstChild("GotoWaypoint")
 	if not header or not closeButton or not gotoButton then
 		frame:Destroy()
-		return
+		return nil
 	end
 
 	waypointHoverWindowCounter += 1
-	frame.Name = "WaypointHover_" .. tostring(waypointHoverWindowCounter)
-	frame.AnchorPoint = Vector2.new(1, 0)
-	frame.Position = UDim2.new(1, -(12 + column * 128), 0, 45 + row * 60)
-	frame.Visible = true
-	header.Text = waypointName
-	gotoButton.Text = waypointName
+	local safeName = tostring(name):gsub("[^%w_%-]", "_")
+	frame.Name = "WaypointHover_" .. safeName .. "_" .. tostring(waypointHoverWindowCounter)
+	frame.AnchorPoint = Vector2.new(0, 0)
+	frame.Size = UDim2.new(0, waypointHoverWindowSize.X, 0, waypointHoverWindowSize.Y)
+	frame.Visible = false
+	frame.ZIndex = 80
+	header.Text = "Waypoint"
+	gotoButton.Text = name
 	frame.Parent = PARENT
+	fitWaypointHoverFrameToViewport(frame)
+	frame.BorderColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
+	table.insert(waypointHoverFrames, frame)
 
 	local state = {
+		key = key,
 		frame = frame,
 		header = header,
 		closeButton = closeButton,
 		gotoButton = gotoButton,
-		waypointName = waypointName,
-		slot = slot,
+		waypointName = name,
+		connections = {},
 		dragging = false,
 		dragInput = nil,
 		dragStart = nil,
 		startPosition = nil,
 		endConnection = nil,
 	}
-	table.insert(waypointHoverWindows, state)
+	registerWaypointHoverStyle(state)
 
-	-- Register cloned UI elements so the existing theme controls still update them.
-	table.insert(shade1, frame)
-	table.insert(shade2, header)
-	table.insert(shade2, closeButton)
-	table.insert(shade2, gotoButton)
-	table.insert(text1, header)
-	table.insert(text1, closeButton)
-	table.insert(text1, gotoButton)
-
-	closeButton.MouseButton1Click:Connect(function()
-		removeWaypointHoverWindow(state)
+	state.connections[#state.connections + 1] = closeButton.MouseButton1Click:Connect(function()
+		removeWaypointHoverWindow(state, true)
 	end)
-
-	gotoButton.MouseButton1Click:Connect(function()
-		if state.waypointName ~= "" then
-			-- Match the exact command used by this waypoint row's Goto button.
+	state.connections[#state.connections + 1] = gotoButton.MouseButton1Click:Connect(function()
+		if state.waypointName ~= "" and waypointHoverWindows[key] == state then
+			-- Keep the existing Goto command and bind it to this window's Waypoint.
 			execCmd("loadpos " .. state.waypointName)
 		end
 	end)
-
-	-- Drag this window by its own header; other open windows keep their positions.
-	header.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			state.dragging = true
-			state.dragStart = input.Position
-			state.startPosition = frame.Position
-			state.endConnection = input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					state.dragging = false
-					if state.endConnection then
-						state.endConnection:Disconnect()
-						state.endConnection = nil
-					end
+	state.connections[#state.connections + 1] = header.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+		state.dragging = true
+		state.dragStart = input.Position
+		state.startPosition = frame.Position
+		if state.endConnection then pcall(function() state.endConnection:Disconnect() end) end
+		state.endConnection = input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				state.dragging = false
+				if state.endConnection then
+					pcall(function() state.endConnection:Disconnect() end)
+					state.endConnection = nil
 				end
-			end)
-		end
+				persistWaypointHoverPosition(state, true)
+			end
+		end)
 	end)
-
-	header.InputChanged:Connect(function(input)
+	state.connections[#state.connections + 1] = header.InputChanged:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			state.dragInput = input
 		end
 	end)
+	return state
 end
 
+local function showWaypointHover(name)
+	local waypointName = tostring(name or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	if waypointName == "" then return end
+	local key = normalizeWaypointHoverKey(waypointName)
+	local existing = waypointHoverWindows[key]
+	if existing then
+		-- Re-hovering an open Waypoint replaces only that Waypoint's prior window.
+		removeWaypointHoverWindow(existing, true)
+	end
+
+	local state = createWaypointHoverWindow(waypointName, key)
+	if not state then return end
+	local savedPosition = waypointHoverPositions[key]
+	local x, y
+	if type(savedPosition) == "table" and tonumber(savedPosition.x) and tonumber(savedPosition.y) then
+		x, y = clampWaypointHoverPosition(state.frame, savedPosition.x, savedPosition.y)
+	else
+		x, y = findDefaultWaypointHoverPosition(state.frame)
+	end
+	state.frame.Position = UDim2.new(0, x, 0, y)
+	waypointHoverWindows[key] = state
+	state.frame.Visible = true
+	local wasSaved = type(savedPosition) == "table" and savedPosition.x == x and savedPosition.y == y
+	if not wasSaved then
+		waypointHoverPositions[key] = {x = x, y = y}
+		if type(updatesaves) == "function" then updatesaves() end
+	end
+end
+
+local function clampAllWaypointHoverWindows()
+	local changed = false
+	fitWaypointHoverFrameToViewport(WaypointHoverFrame)
+	-- Clamp saved entries even when their corresponding window is currently closed.
+	for key, savedPosition in pairs(waypointHoverPositions) do
+		if type(savedPosition) == "table" then
+			local x, y = clampWaypointHoverPosition(WaypointHoverFrame, savedPosition.x, savedPosition.y)
+			if savedPosition.x ~= x or savedPosition.y ~= y then
+				waypointHoverPositions[key] = {x = x, y = y}
+				changed = true
+			end
+		end
+	end
+	-- The live window position takes priority; keep its saved position in sync.
+	for key, state in pairs(waypointHoverWindows) do
+		if state.frame and state.frame.Parent then
+			fitWaypointHoverFrameToViewport(state.frame)
+			local position = state.frame.Position
+			local x, y = clampWaypointHoverPosition(state.frame, position.X.Offset, position.Y.Offset)
+			if x ~= position.X.Offset or y ~= position.Y.Offset then
+				state.frame.Position = UDim2.new(0, x, 0, y)
+				waypointHoverPositions[key] = {x = x, y = y}
+				changed = true
+			end
+		end
+	end
+	if changed and type(updatesaves) == "function" then updatesaves() end
+end
+
+local function bindWaypointHoverCamera()
+	if waypointHoverViewportConnection then
+		pcall(function() waypointHoverViewportConnection:Disconnect() end)
+		waypointHoverViewportConnection = nil
+	end
+	local camera = workspace.CurrentCamera
+	if camera then
+		waypointHoverViewportConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(clampAllWaypointHoverWindows)
+	end
+	clampAllWaypointHoverWindows()
+end
+
+waypointHoverCameraConnection = workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(bindWaypointHoverCamera)
 UserInputService.InputChanged:Connect(function(input)
-	for _, state in ipairs(waypointHoverWindows) do
+	for _, state in pairs(waypointHoverWindows) do
 		if state.dragging and input == state.dragInput and state.frame and state.frame.Parent then
 			local delta = input.Position - state.dragStart
 			local startPosition = state.startPosition
-			state.frame.Position = UDim2.new(
-				startPosition.X.Scale, startPosition.X.Offset + delta.X,
-				startPosition.Y.Scale, startPosition.Y.Offset + delta.Y
-			)
+			local x, y = clampWaypointHoverPosition(state.frame, startPosition.X.Offset + delta.X, startPosition.Y.Offset + delta.Y)
+			state.frame.Position = UDim2.new(0, x, 0, y)
 		end
 	end
 end)
+bindWaypointHoverCamera()
 
 function refreshwaypoints()
 	if #WayPoints > 0 or #pWayPoints > 0 then
