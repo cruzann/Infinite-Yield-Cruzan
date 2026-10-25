@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.3.4"
+currentVersion = "1.3.5"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -4821,12 +4821,12 @@ function dragMain(dragpoint,gui)
 
 		local function hideFromSwipeDown()
 			if gui ~= Holder then return end
-			-- Hide only the main panel. Keep the floating opener and the Keep Menu Open
-			-- preference intact so the user can restore the menu as usual.
+			-- Use the same target position, easing, and duration as the normal idle auto-hide.
+			-- Keep the floating opener and the Keep Menu Open preference intact.
 			isHidden = true
 			wasStayOpen = StayOpen
 			holderHideToken += 1
-			gui:TweenPosition(UDim2.new(1, gui.Position.X.Offset, 1, 0), "Out", "Quad", 0.10, true, nil)
+			gui:TweenPosition(UDim2.new(1, gui.Position.X.Offset, 1, minimizeNum), "InOut", "Quart", 0.5, true, nil)
 		end
 
 		local function update(input)
@@ -15403,8 +15403,12 @@ if IsOnMobile then
 	UICorner.CornerRadius = UDim.new(0.5, 0)
 	UICorner.Parent = QuickCapture
 	QuickCapture.MouseButton1Click:Connect(function()
+		local settingsWereOpen = SettingsOpen == true
 		isHidden = false
-		Cmdbar:CaptureFocus()
+		-- When reopening from Settings, show the panel but leave the keyboard closed.
+		if not settingsWereOpen then
+			Cmdbar:CaptureFocus()
+		end
 		maximizeHolder()
 	end)
 	table.insert(shade1, QuickCapture)
