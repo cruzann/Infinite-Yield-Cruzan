@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.3.1"
+currentVersion = "1.3.2"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -2457,9 +2457,35 @@ function create(data)
 	for _,v in pairs(data) do
 		for prop,val in pairs(v[3]) do
 			if type(val) == "table" then
-				insts[v[1]][prop] = insts[val[1]]
+				local referencedInstance = insts[val[1]]
+				local assigned, assignError = pcall(function()
+					insts[v[1]][prop] = referencedInstance
+				end)
+				if not assigned then
+					warn("Infinite Yield Cruzan: could not set GUI property " .. tostring(prop) .. ": " .. tostring(assignError))
+				end
 			else
-				insts[v[1]][prop] = val
+				-- Older serialized UI tables encode Font as its legacy numeric enum value.
+				-- Convert it to Enum.Font when required by the current Roblox API.
+				if prop == "Font" and type(val) == "number" then
+					pcall(function()
+						for _, fontItem in ipairs(Enum.Font:GetEnumItems()) do
+							if fontItem.Value == val then
+								val = fontItem
+								break
+							end
+						end
+					end)
+				end
+				local assigned, assignError = pcall(function()
+					insts[v[1]][prop] = val
+				end)
+				if not assigned then
+					-- A nonessential UI property from an older serializer must not abort
+					-- the full script start; leave that property at its Roblox default.
+					warn("Infinite Yield Cruzan: skipped unsupported GUI property " .. tostring(prop) ..
+						" on " .. tostring(v[2]) .. ": " .. tostring(assignError))
+				end
 			end
 		end
 	end
@@ -15089,116 +15115,226 @@ IY_RELOAD_INSTANCE_STATE.Cleanup = cleanupIYReloadInstance
 IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_ACTIVE_STATE = IY_RELOAD_INSTANCE_STATE
 
 addcmd("reload", {}, function(args, speaker)
-    if IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_RELOAD_BUSY then
+    local shared = IY_RELOAD_INSTANCE_STATE.sharedEnv
+    if shared.IY_CRUZAN_RELOAD_BUSY then
         notify("Reload", "A reload is already in progress.", 4)
         return
     end
-    IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_RELOAD_BUSY = true
+    shared.IY_CRUZAN_RELOAD_BUSY = true
 
     task.spawn(function()
+        local previousState = shared.IY_CRUZAN_ACTIVE_STATE or IY_RELOAD_INSTANCE_STATE
+        local oldGuiEnabled, oldScaledVisible
+        local stagingEnv
+
         local function finishReloadLock()
-            pcall(function() IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_RELOAD_BUSY = nil end)
-        end
-        local function failReload(message)
-            finishReloadLock()
-            sendIYReloadNotice("Reload failed", message, 8)
+            pcall(function() shared.IY_CRUZAN_RELOAD_BUSY = nil end)
         end
 
+        local function sendFailure(message, fullDetail)
+            if fullDetail then
+                pcall(function() warn("Infinite Yield Cruzan reload failed: " .. tostring(fullDetail)) end)
+            end
+            local short = tostring(message or "Unknown reload error"):gsub("[\r\n].*", "")
+            if #short > 135 then short = short:sub(1, 132) .. "..." end
+            finishReloadLock()
+            sendIYReloadNotice("Reload failed", short, 8)
+        end
+
+        local function restorePreviousInstance()
+            pcall(function()
+                shared.IY_CRUZAN_ACTIVE_STATE = previousState
+                shared.IY_LOADED = true
+                rawset(_G, "IY_LOADED", true)
+            end)
+            if oldGuiEnabled ~= nil then
+                pcall(function() if previousState.gui and previousState.gui.Parent then previousState.gui.Enabled = oldGuiEnabled end end)
+            end
+            if oldScaledVisible ~= nil then
+                pcall(function() if previousState.scaledHolder and previousState.scaledHolder.Parent then previousState.scaledHolder.Visible = oldScaledVisible end end)
+            end
+        end
+
+        local function disconnectSafe(connection)
+            if connection then pcall(function() connection:Disconnect() end) end
+        end
+
+        -- If a candidate fails during initialization, remove only resources created by
+        -- that candidate. Do not call its normal Cleanup until it is fully initialized,
+        -- because its cleanup would also inspect shared globals owned by the old instance.
+        local function cleanupStagedCandidate(state)
+            if type(state) ~= "table" or state == previousState then return end
+            state.running = false
+            if type(state.connections) == "table" then
+                for _, connection in ipairs(state.connections) do disconnectSafe(connection) end
+                table.clear(state.connections)
+            end
+            local connectionNames = {
+                "RolewatchConnection", "flyKeyDown", "flyKeyUp", "mfly1", "mfly2", "CFloop",
+                "swimbeat", "brightLoop", "espLoopFunc", "lcLoopFunc", "invisflingStepped",
+                "antifling", "tpwalking", "xrayLoop", "stareLoop", "headSit", "bangLoop",
+                "carpetLoop", "floatingFunc", "cancelAutoClick", "cancelAutoKeyPress",
+                "deleteGuiInput", "IYMouseConnection", "lastTextBoxCon", "pinNotification",
+                "freezingua", "autoRejoinConnection", "invisFix", "infJump", "flyjump",
+                "tpwalk", "antivoidloop", "alignmentKeys", "networkPaused"
+            }
+            if type(stagingEnv) == "table" then
+                for _, name in ipairs(connectionNames) do
+                    local connection = rawget(stagingEnv, name)
+                    if connection then disconnectSafe(connection); pcall(function() rawset(stagingEnv, name, nil) end) end
+                end
+                local modConnections = rawget(stagingEnv, "HumanModCons")
+                if type(modConnections) == "table" then
+                    for _, group in pairs(modConnections) do
+                        if type(group) == "table" then
+                            for _, connection in pairs(group) do disconnectSafe(connection) end
+                        else
+                            disconnectSafe(group)
+                        end
+                    end
+                    pcall(function() rawset(stagingEnv, "HumanModCons", nil) end)
+                end
+                for _, name in ipairs({"selectionBox", "selected"}) do
+                    local object = rawget(stagingEnv, name)
+                    pcall(function() if object and object.Parent then object:Destroy() end end)
+                end
+            end
+            for _, object in ipairs(state.ownedInstances or {}) do
+                pcall(function() if object and object.Parent then object:Destroy() end end)
+            end
+            state.ownedInstances = {}
+            pcall(function() if state.gui and state.gui.Parent then state.gui:Destroy() end end)
+            pcall(function() if state.scaledHolder and state.scaledHolder.Parent then state.scaledHolder:Destroy() end end)
+            pcall(function() if state.quickCapture and state.quickCapture.Parent then state.quickCapture:Destroy() end end)
+            state.cleaned = true
+        end
+
+        sendIYReloadNotice("Reload", "Fetching the latest Cruzan version from GitHub...", 3)
         if type(game.HttpGet) ~= "function" then
-            failReload("This environment does not support game:HttpGet.")
+            sendFailure("This executor does not support game:HttpGet. The current script was kept running.")
             return
         end
-        local requestOk, remoteSource = pcall(function()
-            return game:HttpGet(IY_RELOAD_INSTANCE_STATE.sourceUrl)
-        end)
+
+        -- Add a unique query to avoid reusing a cached response while keeping the
+        -- required raw GitHub file as the only source.
+        local requestUrl = IY_RELOAD_INSTANCE_STATE.sourceUrl
+        pcall(function() requestUrl = requestUrl .. "?reload=" .. HttpService:GenerateGUID(false) end)
+        local requestOk, remoteSource = pcall(function() return game:HttpGet(requestUrl) end)
         if not requestOk then
-            failReload("Could not contact GitHub: " .. tostring(remoteSource))
+            sendFailure("Could not contact GitHub; the current script is still running.", remoteSource)
             return
         end
         if type(remoteSource) ~= "string" or #remoteSource < 100000 then
-            failReload("GitHub returned an empty or incomplete script.")
+            sendFailure("GitHub returned an empty or incomplete script. The current script was kept running.")
             return
         end
         if not remoteSource:find("IY_CRUZAN_RELOAD_V1", 1, true)
             or not remoteSource:find("function addcmd", 1, true)
             or not remoteSource:find("currentVersion", 1, true)
             or not remoteSource:find(IY_RELOAD_INSTANCE_STATE.sourceUrl, 1, true) then
-            failReload("The GitHub file does not contain the expected Cruzan reload-enabled build. Upload this version to GitHub first.")
+            sendFailure("The downloaded file is not a valid reload-enabled Cruzan build. The current script was kept running.")
             return
         end
         if type(loadstring) ~= "function" then
-            failReload("This executor does not provide loadstring, so the downloaded script cannot be validated.")
+            sendFailure("This executor does not provide loadstring. The current script was kept running.")
             return
         end
+        if type(setfenv) ~= "function" then
+            sendFailure("This executor lacks setfenv, so safe reload cannot be staged. The current script was kept running.")
+            return
+        end
+
         local compileOk, newChunk, compileError = pcall(function()
             local chunk, err = loadstring(remoteSource)
             return chunk, err
         end)
         if not compileOk then
-            failReload("Could not validate the downloaded code: " .. tostring(newChunk))
+            sendFailure("Could not validate the downloaded code. The current script was kept running.", newChunk)
             return
         end
         if type(newChunk) ~= "function" then
-            failReload("The downloaded script has a syntax/compile error: " .. tostring(compileError))
+            sendFailure("The downloaded script has a syntax/compile error. The current script was kept running.", compileError)
             return
         end
-
         local remoteVersion = remoteSource:match('currentVersion%s*=%s*"([^"]+)"')
             or remoteSource:match("currentVersion%s*=%s*'([^']+)'") or "unknown"
 
-        -- Persist the current user's settings before disconnecting the running instance.
-        pcall(function() updatesaves() end)
+        -- Make a private global environment for the new instance. This avoids sharing
+        -- stale globals with the running instance and allows a failed startup to be
+        -- discarded without destroying the old UI or command connections.
+        local globalEnvironment = _G
+        stagingEnv = setmetatable({IY_LOADED = false, _G = globalEnvironment}, {
+            __index = function(_, key)
+                if key == "IY_LOADED" then return false end
+                local value = shared[key]
+                if value ~= nil then return value end
+                return globalEnvironment[key]
+            end
+        })
+        local envSetOk, envSetError = pcall(setfenv, newChunk, stagingEnv)
+        if not envSetOk then
+            sendFailure("Could not isolate the downloaded script; the current script was kept running.", envSetError)
+            return
+        end
+
+        -- Persist settings before starting the candidate, but never clean the old UI yet.
+        local settingsOk, settingsError = pcall(function() updatesaves() end)
+        if not settingsOk then
+            sendFailure("Could not save the current settings; the current script was kept running.", settingsError)
+            return
+        end
         task.wait()
         local saveDeadline = tick() + 8
         while cooldown and tick() < saveDeadline do task.wait(0.1) end
         if cooldown then
-            failReload("Settings are still being saved. The current script was left running; try again shortly.")
+            sendFailure("Settings are still being saved. The current script was kept running; try again shortly.")
             return
         end
 
-        sendIYReloadNotice("Reload", "Validated Cruzan v" .. remoteVersion .. ". Restarting script...", 3)
-        local previousState = IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_ACTIVE_STATE or IY_RELOAD_INSTANCE_STATE
-        local cleanupOk, cleanupError = pcall(function()
-            if previousState and type(previousState.Cleanup) == "function" then
-                previousState.Cleanup()
-            else
-                cleanupIYReloadInstance()
+        -- Hide the old UI during staging; restore it if the new script fails.
+        pcall(function()
+            if previousState.gui and previousState.gui.Parent then
+                oldGuiEnabled = previousState.gui.Enabled
+                previousState.gui.Enabled = false
+            elseif previousState.scaledHolder and previousState.scaledHolder.Parent then
+                oldScaledVisible = previousState.scaledHolder.Visible
+                previousState.scaledHolder.Visible = false
             end
         end)
-        -- Cleanup is best-effort; the new source has already been fetched and compiled.
-        local cleanupWarning = not cleanupOk and (" Cleanup warning: " .. tostring(cleanupError)) or ""
-        pcall(function() IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_LOADED = nil end)
-        pcall(function() IY_RELOAD_INSTANCE_STATE.scriptEnv.IY_LOADED = nil end)
-        pcall(function() rawset(_G, "IY_LOADED", nil) end)
 
         local runOk, runError = pcall(newChunk)
-        local newState = IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_ACTIVE_STATE
+        local newState = shared.IY_CRUZAN_ACTIVE_STATE
         local started = runOk
             and type(newState) == "table"
             and newState ~= previousState
             and newState.ready == true
-            and IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_LOADED
+            and shared.IY_LOADED
 
         if not started then
-            if type(newState) == "table" and newState ~= previousState then
-                if type(newState.Cleanup) == "function" then
-                    pcall(newState.Cleanup)
-                else
-                    pcall(function() if newState.gui and newState.gui.Parent then newState.gui:Destroy() end end)
-                    pcall(function() if newState.scaledHolder and newState.scaledHolder.Parent then newState.scaledHolder:Destroy() end end)
-                end
-            end
-            pcall(function() IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_LOADED = nil end)
-            pcall(function() IY_RELOAD_INSTANCE_STATE.scriptEnv.IY_LOADED = nil end)
-            pcall(function() rawset(_G, "IY_LOADED", nil) end)
-            finishReloadLock()
-            local detail = tostring(runError or "Initialization did not complete successfully.")
-            sendIYReloadNotice("Reload failed", "The new script did not start successfully: " .. detail .. ". The old instance was cleaned up; automatic rollback is unavailable." .. cleanupWarning, 10)
+            cleanupStagedCandidate(newState)
+            restorePreviousInstance()
+            local detail = tostring(runError or "The candidate did not report ready.")
+            sendFailure("The repository version failed during startup; the previous version was restored. Error: " .. detail, detail)
             return
         end
 
+        -- The candidate is fully ready; only now stop and remove the previous instance.
+        local cleanupOk, cleanupError = pcall(function()
+            if previousState and type(previousState.Cleanup) == "function" then
+                previousState.Cleanup()
+            elseif previousState ~= IY_RELOAD_INSTANCE_STATE then
+                error("The previous instance has no cleanup handler.")
+            end
+        end)
+        local cleanupWarning = not cleanupOk and (" Old-instance cleanup warning: " .. tostring(cleanupError)) or ""
+
+        -- Old cleanup clears these shared flags; restore the values for the new instance.
+        shared.IY_CRUZAN_ACTIVE_STATE = newState
+        shared.IY_LOADED = true
+        pcall(function() rawset(_G, "IY_LOADED", true) end)
+        pcall(function() rawset(stagingEnv, "IY_LOADED", true) end)
         finishReloadLock()
-        sendIYReloadNotice("Reload complete", "Successfully started Cruzan v" .. remoteVersion .. "." .. cleanupWarning, 5)
+        sendIYReloadNotice("Reload complete", "Started Cruzan v" .. remoteVersion .. " from GitHub." .. cleanupWarning, 5)
     end)
 end)
 end
