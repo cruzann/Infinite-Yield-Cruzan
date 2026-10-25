@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.2.7"
+currentVersion = "1.2.8"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -2014,8 +2014,8 @@ WaypointHoverFrame.BorderSizePixel = 1
 WaypointHoverFrame.BorderColor3 = Color3.fromRGB(78, 78, 79)
 WaypointHoverFrame.ClipsDescendants = true
 WaypointHoverFrame.AnchorPoint = Vector2.new(0, 0)
-WaypointHoverFrame.Position = UDim2.new(1, -94, 0, 45)
-WaypointHoverFrame.Size = UDim2.new(0, 82, 0, 38)
+WaypointHoverFrame.Position = UDim2.new(1, -82, 0, 45)
+WaypointHoverFrame.Size = UDim2.new(0, 70, 0, 38)
 WaypointHoverFrame.Visible = false
 WaypointHoverFrame.ZIndex = 80
 table.insert(shade1, WaypointHoverFrame)
@@ -2039,17 +2039,17 @@ WaypointHoverClose.Name = "Close"
 WaypointHoverClose.Parent = WaypointHoverFrame
 WaypointHoverClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverClose.BorderSizePixel = 0
-WaypointHoverClose.Position = UDim2.new(1, -17, 0, 2)
-WaypointHoverClose.Size = UDim2.new(0, 14, 0, 14)
+WaypointHoverClose.Position = UDim2.new(1, -18, 0, 0)
+WaypointHoverClose.Size = UDim2.new(0, 18, 0, 18)
 WaypointHoverClose.Font = Enum.Font.SourceSansBold
-WaypointHoverClose.TextSize = 10
+WaypointHoverClose.TextSize = 12
 WaypointHoverClose.Text = "X"
 WaypointHoverClose.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverClose.ZIndex = 84
 table.insert(shade2, WaypointHoverClose)
 table.insert(text1, WaypointHoverClose)
 local waypointHoverCloseCorner = Instance.new("UICorner")
-waypointHoverCloseCorner.CornerRadius = UDim.new(0, 4)
+waypointHoverCloseCorner.CornerRadius = UDim.new(0, 6)
 waypointHoverCloseCorner.Parent = WaypointHoverClose
 
 WaypointHoverButton.Name = "GotoWaypoint"
@@ -2059,10 +2059,12 @@ WaypointHoverButton.BorderSizePixel = 0
 WaypointHoverButton.Position = UDim2.new(0, 0, 0, 0)
 WaypointHoverButton.Size = UDim2.new(1, 0, 1, 0)
 WaypointHoverButton.Font = Enum.Font.SourceSans
-WaypointHoverButton.TextSize = 12
+WaypointHoverButton.TextSize = 14
 WaypointHoverButton.Text = "Waypoint"
 WaypointHoverButton.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverButton.TextScaled = true
+WaypointHoverButton.TextXAlignment = Enum.TextXAlignment.Center
+WaypointHoverButton.TextYAlignment = Enum.TextYAlignment.Center
 WaypointHoverButton.TextWrapped = true
 WaypointHoverButton.ZIndex = 81
 table.insert(shade2, WaypointHoverButton)
@@ -2072,11 +2074,11 @@ waypointHoverButtonCorner.CornerRadius = UDim.new(0, 5)
 waypointHoverButtonCorner.Parent = WaypointHoverButton
 local waypointHoverTextConstraint = Instance.new("UITextSizeConstraint")
 waypointHoverTextConstraint.MinTextSize = 8
-waypointHoverTextConstraint.MaxTextSize = 11
+waypointHoverTextConstraint.MaxTextSize = 14
 waypointHoverTextConstraint.Parent = WaypointHoverButton
 local waypointHoverButtonPadding = Instance.new("UIPadding")
 waypointHoverButtonPadding.PaddingLeft = UDim.new(0, 3)
-waypointHoverButtonPadding.PaddingRight = UDim.new(0, 12)
+waypointHoverButtonPadding.PaddingRight = UDim.new(0, 3)
 waypointHoverButtonPadding.Parent = WaypointHoverButton
 
 ToPartFrame.Name = randomString()
@@ -7374,7 +7376,7 @@ end)
 -- Independent Waypoint Hover windows with unrestricted movement and saved positions.
 local waypointHoverWindows = {}
 local waypointHoverWindowCounter = 0
-local waypointHoverWindowSize = Vector2.new(82, 38)
+local waypointHoverWindowSize = Vector2.new(70, 38)
 local waypointHoverWindowGap = 8
 
 local function normalizeWaypointHoverKey(name)
@@ -7534,10 +7536,13 @@ local function createWaypointHoverWindow(name, key)
 	gotoButton.Size = UDim2.new(1, 0, 1, 0)
 	gotoButton.Text = name
 	gotoButton.ZIndex = 81
+	gotoButton.TextXAlignment = Enum.TextXAlignment.Center
+	gotoButton.TextYAlignment = Enum.TextYAlignment.Center
 	closeButton.Parent = frame
-	closeButton.Position = UDim2.new(1, -17, 0, 2)
-	closeButton.Size = UDim2.new(0, 14, 0, 14)
+	closeButton.Position = UDim2.new(1, -18, 0, 0)
+	closeButton.Size = UDim2.new(0, 18, 0, 18)
 	closeButton.ZIndex = 84
+	closeButton.TextSize = 12
 	frame.Parent = PARENT
 	frame.BorderColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
 	table.insert(waypointHoverFrames, frame)
