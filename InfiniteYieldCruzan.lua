@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.2.8"
+currentVersion = "1.2.9"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -2038,11 +2038,13 @@ WaypointHoverHeader.ZIndex = 81
 WaypointHoverClose.Name = "Close"
 WaypointHoverClose.Parent = WaypointHoverFrame
 WaypointHoverClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointHoverClose.BackgroundTransparency = 1
 WaypointHoverClose.BorderSizePixel = 0
-WaypointHoverClose.Position = UDim2.new(1, -18, 0, 0)
-WaypointHoverClose.Size = UDim2.new(0, 18, 0, 18)
+WaypointHoverClose.AutoButtonColor = false
+WaypointHoverClose.Position = UDim2.new(1, -17, 0, 0)
+WaypointHoverClose.Size = UDim2.new(0, 17, 0, 17)
 WaypointHoverClose.Font = Enum.Font.SourceSansBold
-WaypointHoverClose.TextSize = 12
+WaypointHoverClose.TextSize = 14
 WaypointHoverClose.Text = "X"
 WaypointHoverClose.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverClose.ZIndex = 84
@@ -2056,10 +2058,11 @@ WaypointHoverButton.Name = "GotoWaypoint"
 WaypointHoverButton.Parent = WaypointHoverFrame
 WaypointHoverButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverButton.BorderSizePixel = 0
+WaypointHoverButton.AutoButtonColor = false
 WaypointHoverButton.Position = UDim2.new(0, 0, 0, 0)
 WaypointHoverButton.Size = UDim2.new(1, 0, 1, 0)
-WaypointHoverButton.Font = Enum.Font.SourceSans
-WaypointHoverButton.TextSize = 14
+WaypointHoverButton.Font = Enum.Font.SourceSansBold
+WaypointHoverButton.TextSize = 16
 WaypointHoverButton.Text = "Waypoint"
 WaypointHoverButton.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverButton.TextScaled = true
@@ -2073,8 +2076,8 @@ local waypointHoverButtonCorner = Instance.new("UICorner")
 waypointHoverButtonCorner.CornerRadius = UDim.new(0, 5)
 waypointHoverButtonCorner.Parent = WaypointHoverButton
 local waypointHoverTextConstraint = Instance.new("UITextSizeConstraint")
-waypointHoverTextConstraint.MinTextSize = 8
-waypointHoverTextConstraint.MaxTextSize = 14
+waypointHoverTextConstraint.MinTextSize = 9
+waypointHoverTextConstraint.MaxTextSize = 18
 waypointHoverTextConstraint.Parent = WaypointHoverButton
 local waypointHoverButtonPadding = Instance.new("UIPadding")
 waypointHoverButtonPadding.PaddingLeft = UDim.new(0, 3)
@@ -7535,14 +7538,21 @@ local function createWaypointHoverWindow(name, key)
 	gotoButton.Position = UDim2.new(0, 0, 0, 0)
 	gotoButton.Size = UDim2.new(1, 0, 1, 0)
 	gotoButton.Text = name
+	gotoButton.Font = Enum.Font.SourceSansBold
+	gotoButton.TextSize = 16
+	gotoButton.TextScaled = true
+	gotoButton.AutoButtonColor = false
 	gotoButton.ZIndex = 81
 	gotoButton.TextXAlignment = Enum.TextXAlignment.Center
 	gotoButton.TextYAlignment = Enum.TextYAlignment.Center
 	closeButton.Parent = frame
-	closeButton.Position = UDim2.new(1, -18, 0, 0)
-	closeButton.Size = UDim2.new(0, 18, 0, 18)
+	closeButton.BackgroundTransparency = 1
+	closeButton.BorderSizePixel = 0
+	closeButton.AutoButtonColor = false
+	closeButton.Position = UDim2.new(1, -17, 0, 0)
+	closeButton.Size = UDim2.new(0, 17, 0, 17)
 	closeButton.ZIndex = 84
-	closeButton.TextSize = 12
+	closeButton.TextSize = 14
 	frame.Parent = PARENT
 	frame.BorderColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
 	table.insert(waypointHoverFrames, frame)
@@ -7649,8 +7659,11 @@ local function showWaypointHover(name)
 	local key = normalizeWaypointHoverKey(waypointName)
 	local existing = waypointHoverWindows[key]
 	if existing then
-		-- Re-hovering an open Waypoint replaces only that Waypoint's prior window.
-		removeWaypointHoverWindow(existing, true)
+		-- Re-hovering an already-open Waypoint fully replaces its old window and resets
+		-- only this Waypoint's saved position so it respawns at the default location.
+		removeWaypointHoverWindow(existing, false)
+		waypointHoverPositions[key] = nil
+		if type(updatesaves) == "function" then updatesaves() end
 	end
 
 	local state = createWaypointHoverWindow(waypointName, key)
