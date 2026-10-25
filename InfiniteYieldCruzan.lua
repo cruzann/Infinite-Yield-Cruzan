@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.3.5"
+currentVersion = "1.3.6"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -15390,7 +15390,7 @@ if IsOnMobile then
 	QuickCapture.Parent = PARENT
 	QuickCapture.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 	QuickCapture.BackgroundTransparency = 0.14
-	QuickCapture.Position = UDim2.new(1, -44, 0, 12)
+	QuickCapture.Position = UDim2.new(1, -44, 0, 4)
 	QuickCapture.Size = UDim2.new(0, 32, 0, 33)
 	QuickCapture.Font = Enum.Font.SourceSansBold
 	QuickCapture.Text = "IY"
