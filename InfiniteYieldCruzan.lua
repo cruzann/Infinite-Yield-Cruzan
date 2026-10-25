@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.2.6"
+currentVersion = "1.2.7"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -227,6 +227,7 @@ WaypointHoverButton = Instance.new("TextButton")
 WaypointAddDialog = Instance.new("Frame")
 WaypointAddDialogTitle = Instance.new("TextLabel")
 WaypointNameInput = Instance.new("TextBox")
+WaypointNameHint = Instance.new("TextLabel")
 WaypointAddDone = Instance.new("TextButton")
 WaypointAddCancel = Instance.new("TextButton")
 WaypointClearConfirmFrame = Instance.new("Frame")
@@ -1922,7 +1923,7 @@ WaypointAddDialog.Active = true
 WaypointAddDialog.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
 WaypointAddDialog.BorderSizePixel = 0
 WaypointAddDialog.Position = UDim2.new(0, 0, 0, 200)
-WaypointAddDialog.Size = UDim2.new(0, 250, 0, 200)
+WaypointAddDialog.Size = UDim2.new(0, 250, 0, 162)
 WaypointAddDialog.Visible = false
 WaypointAddDialog.ZIndex = 30
 table.insert(shade1, WaypointAddDialog)
@@ -1932,7 +1933,7 @@ WaypointAddDialogTitle.Parent = WaypointAddDialog
 WaypointAddDialogTitle.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointAddDialogTitle.BorderSizePixel = 0
 WaypointAddDialogTitle.Position = UDim2.new(0, 0, 0, 0)
-WaypointAddDialogTitle.Size = UDim2.new(1, 0, 0, 22)
+WaypointAddDialogTitle.Size = UDim2.new(1, 0, 0, 24)
 WaypointAddDialogTitle.Font = Enum.Font.SourceSans
 WaypointAddDialogTitle.TextSize = 14
 WaypointAddDialogTitle.Text = "Add Waypoint"
@@ -1946,12 +1947,12 @@ WaypointNameInput.Parent = WaypointAddDialog
 WaypointNameInput.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointNameInput.BorderSizePixel = 0
 WaypointNameInput.ClearTextOnFocus = false
-WaypointNameInput.Position = UDim2.new(0, 8, 0, 55)
-WaypointNameInput.Size = UDim2.new(1, -16, 0, 24)
+WaypointNameInput.Position = UDim2.new(0, 8, 0, 44)
+WaypointNameInput.Size = UDim2.new(1, -16, 0, 26)
 WaypointNameInput.Font = Enum.Font.SourceSans
 WaypointNameInput.TextSize = 14
 WaypointNameInput.Text = ""
-WaypointNameInput.PlaceholderText = "Waypoint name"
+WaypointNameInput.PlaceholderText = "Waypoint name (optional)"
 WaypointNameInput.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
 WaypointNameInput.TextColor3 = Color3.new(1, 1, 1)
 WaypointNameInput.TextXAlignment = Enum.TextXAlignment.Left
@@ -1959,12 +1960,28 @@ WaypointNameInput.ZIndex = 31
 table.insert(shade2, WaypointNameInput)
 table.insert(text1, WaypointNameInput)
 
+WaypointNameHint.Name = "WaypointNameHint"
+WaypointNameHint.Parent = WaypointAddDialog
+WaypointNameHint.BackgroundTransparency = 1
+WaypointNameHint.BorderSizePixel = 0
+WaypointNameHint.Position = UDim2.new(0, 8, 0, 76)
+WaypointNameHint.Size = UDim2.new(1, -16, 0, 30)
+WaypointNameHint.Font = Enum.Font.SourceSansItalic
+WaypointNameHint.TextSize = 12
+WaypointNameHint.Text = "Leave blank for the next available name (a, b, c...)."
+WaypointNameHint.TextColor3 = Color3.fromRGB(180, 180, 180)
+WaypointNameHint.TextWrapped = true
+WaypointNameHint.TextXAlignment = Enum.TextXAlignment.Left
+WaypointNameHint.TextYAlignment = Enum.TextYAlignment.Center
+WaypointNameHint.ZIndex = 31
+table.insert(text1, WaypointNameHint)
+
 WaypointAddDone.Name = "Done"
 WaypointAddDone.Parent = WaypointAddDialog
 WaypointAddDone.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointAddDone.BorderSizePixel = 0
-WaypointAddDone.Position = UDim2.new(0, 25, 0, 175)
-WaypointAddDone.Size = UDim2.new(0, 90, 0, 20)
+WaypointAddDone.Position = UDim2.new(0, 25, 0, 128)
+WaypointAddDone.Size = UDim2.new(0, 90, 0, 22)
 WaypointAddDone.Font = Enum.Font.SourceSans
 WaypointAddDone.TextSize = 14
 WaypointAddDone.Text = "Done"
@@ -1977,8 +1994,8 @@ WaypointAddCancel.Name = "Cancel"
 WaypointAddCancel.Parent = WaypointAddDialog
 WaypointAddCancel.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointAddCancel.BorderSizePixel = 0
-WaypointAddCancel.Position = UDim2.new(0, 135, 0, 175)
-WaypointAddCancel.Size = UDim2.new(0, 90, 0, 20)
+WaypointAddCancel.Position = UDim2.new(0, 135, 0, 128)
+WaypointAddCancel.Size = UDim2.new(0, 90, 0, 22)
 WaypointAddCancel.Font = Enum.Font.SourceSans
 WaypointAddCancel.TextSize = 14
 WaypointAddCancel.Text = "Cancel"
@@ -4481,6 +4498,7 @@ local function openWaypointAddPanel()
 	local token = waypointPanelTransitionToken
 	waypointPanelState = "add"
 	SettingsHolder.Visible = false
+	WaypointNameInput:ReleaseFocus()
 	WaypointNameInput.Text = ""
 	WaypointClearConfirmFrame.Visible = false
 	WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
@@ -4492,7 +4510,6 @@ local function openWaypointAddPanel()
 	task.delay(0.52, function()
 		if token ~= waypointPanelTransitionToken or waypointPanelState ~= "add" then return end
 		PositionsFrame.Visible = false
-		WaypointNameInput:CaptureFocus()
 	end)
 end
 
@@ -7262,6 +7279,35 @@ end
 PositionsFrame.Delete.MouseButton1Click:Connect(openWaypointClearConfirmation)
 AddWaypointButton.MouseButton1Click:Connect(openWaypointAddPanel)
 
+local function waypointNameIsTaken(candidateName)
+	local target = string.lower(tostring(candidateName or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+	for _, waypointList in ipairs({WayPoints or {}, pWayPoints or {}}) do
+		for _, existing in ipairs(waypointList) do
+			if type(existing) == "table" then
+				local existingName = string.lower(tostring(existing.NAME or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+				if existingName == target then return true end
+			end
+		end
+	end
+	return false
+end
+
+local function nextDefaultWaypointName()
+	local alphabet = "abcdefghijklmnopqrstuvwxyz"
+	local index = 1
+	while true do
+		local number = index
+		local name = ""
+		while number > 0 do
+			local letterIndex = ((number - 1) % #alphabet) + 1
+			name = alphabet:sub(letterIndex, letterIndex) .. name
+			number = math.floor((number - 1) / #alphabet)
+		end
+		if not waypointNameIsTaken(name) then return name end
+		index += 1
+	end
+end
+
 WaypointAddCancel.MouseButton1Click:Connect(function()
 	if waypointPanelState ~= "add" then return end
 	WaypointNameInput:ReleaseFocus()
@@ -7273,8 +7319,7 @@ WaypointAddDone.MouseButton1Click:Connect(function()
 	if waypointPanelState ~= "add" then return end
 	local WPName = tostring(WaypointNameInput.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
 	if WPName == "" then
-		notify("Waypoint Error", "Enter a waypoint name.", 4)
-		return
+		WPName = nextDefaultWaypointName()
 	end
 	local nameLength = utf8.len(WPName)
 	if not nameLength or nameLength > 64 or WPName:find("%c") then
