@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.2.0"
+currentVersion = "1.2.2"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -219,6 +219,16 @@ ExitImage_2 = Instance.new("ImageLabel")
 PositionsFrame = Instance.new("Frame")
 Close_3 = Instance.new("TextButton")
 Delete_5 = Instance.new("TextButton")
+AddWaypointButton = Instance.new("TextButton")
+WaypointHoverFrame = Instance.new("Frame")
+WaypointHoverHeader = Instance.new("TextButton")
+WaypointHoverClose = Instance.new("TextButton")
+WaypointHoverButton = Instance.new("TextButton")
+WaypointAddDialog = Instance.new("Frame")
+WaypointAddDialogTitle = Instance.new("TextLabel")
+WaypointNameInput = Instance.new("TextBox")
+WaypointAddDone = Instance.new("TextButton")
+WaypointAddCancel = Instance.new("TextButton")
 WaypointClearConfirmFrame = Instance.new("Frame")
 WaypointClearConfirmTitle = Instance.new("TextLabel")
 WaypointClearConfirmMessage = Instance.new("TextLabel")
@@ -229,6 +239,7 @@ Example_4 = Instance.new("Frame")
 Text_5 = Instance.new("TextLabel")
 Delete_6 = Instance.new("TextButton")
 TP = Instance.new("TextButton")
+WaypointHoverRowButton = Instance.new("TextButton")
 AliasesFrame = Instance.new("Frame")
 Close_2 = Instance.new("TextButton")
 Delete_3 = Instance.new("TextButton")
@@ -1202,6 +1213,21 @@ Delete_5.ZIndex = 10
 table.insert(shade2,Delete_5)
 table.insert(text1,Delete_5)
 
+-- Add button beside Clear for creating waypoints through the UI.
+AddWaypointButton.Name = "AddWaypointButton"
+AddWaypointButton.Parent = PositionsFrame
+AddWaypointButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AddWaypointButton.BorderSizePixel = 0
+AddWaypointButton.Position = UDim2.new(0, 50, 0, 175)
+AddWaypointButton.Size = UDim2.new(0, 40, 0, 20)
+AddWaypointButton.Font = Enum.Font.SourceSans
+AddWaypointButton.TextSize = 14
+AddWaypointButton.Text = "Add"
+AddWaypointButton.TextColor3 = Color3.new(1, 1, 1)
+AddWaypointButton.ZIndex = 12
+table.insert(shade2,AddWaypointButton)
+table.insert(text1,AddWaypointButton)
+
 Holder_4.Name = "Holder"
 Holder_4.Parent = PositionsFrame
 Holder_4.BackgroundTransparency = 1
@@ -1270,6 +1296,20 @@ TP.TextColor3 = Color3.new(0, 0, 0)
 TP.ZIndex = 10
 table.insert(shade3,TP)
 table.insert(text2,TP)
+
+WaypointHoverRowButton.Name = "Hover"
+WaypointHoverRowButton.Parent = Text_5
+WaypointHoverRowButton.BackgroundColor3 = Color3.fromRGB(78, 78, 79)
+WaypointHoverRowButton.BorderSizePixel = 0
+WaypointHoverRowButton.Position = UDim2.new(0, 110, 0, 0)
+WaypointHoverRowButton.Size = UDim2.new(0, 40, 0, 20)
+WaypointHoverRowButton.Font = Enum.Font.SourceSans
+WaypointHoverRowButton.TextSize = 12
+WaypointHoverRowButton.Text = "Hover"
+WaypointHoverRowButton.TextColor3 = Color3.new(0, 0, 0)
+WaypointHoverRowButton.ZIndex = 10
+table.insert(shade3, WaypointHoverRowButton)
+table.insert(text2, WaypointHoverRowButton)
 
 AliasesFrame.Name = "AliasesFrame"
 AliasesFrame.Parent = Settings
@@ -1874,6 +1914,136 @@ WaypointClearCancelButton.TextColor3 = Color3.new(1, 1, 1)
 WaypointClearCancelButton.ZIndex = 32
 table.insert(shade2, WaypointClearCancelButton)
 table.insert(text1, WaypointClearCancelButton)
+
+-- Waypoint creation page, styled to match the Add Alias dialog.
+WaypointAddDialog.Name = "WaypointAddDialog"
+WaypointAddDialog.Parent = Settings
+WaypointAddDialog.Active = true
+WaypointAddDialog.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
+WaypointAddDialog.BorderSizePixel = 0
+WaypointAddDialog.Position = UDim2.new(0, 0, 0, 200)
+WaypointAddDialog.Size = UDim2.new(0, 250, 0, 200)
+WaypointAddDialog.Visible = false
+WaypointAddDialog.ZIndex = 30
+table.insert(shade1, WaypointAddDialog)
+
+WaypointAddDialogTitle.Name = "Title"
+WaypointAddDialogTitle.Parent = WaypointAddDialog
+WaypointAddDialogTitle.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointAddDialogTitle.BorderSizePixel = 0
+WaypointAddDialogTitle.Position = UDim2.new(0, 0, 0, 0)
+WaypointAddDialogTitle.Size = UDim2.new(1, 0, 0, 22)
+WaypointAddDialogTitle.Font = Enum.Font.SourceSans
+WaypointAddDialogTitle.TextSize = 14
+WaypointAddDialogTitle.Text = "Add Waypoint"
+WaypointAddDialogTitle.TextColor3 = Color3.new(1, 1, 1)
+WaypointAddDialogTitle.ZIndex = 31
+table.insert(shade2, WaypointAddDialogTitle)
+table.insert(text1, WaypointAddDialogTitle)
+
+WaypointNameInput.Name = "WaypointNameInput"
+WaypointNameInput.Parent = WaypointAddDialog
+WaypointNameInput.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointNameInput.BorderSizePixel = 0
+WaypointNameInput.ClearTextOnFocus = false
+WaypointNameInput.Position = UDim2.new(0, 8, 0, 55)
+WaypointNameInput.Size = UDim2.new(1, -16, 0, 24)
+WaypointNameInput.Font = Enum.Font.SourceSans
+WaypointNameInput.TextSize = 14
+WaypointNameInput.Text = ""
+WaypointNameInput.PlaceholderText = "Waypoint name"
+WaypointNameInput.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+WaypointNameInput.TextColor3 = Color3.new(1, 1, 1)
+WaypointNameInput.TextXAlignment = Enum.TextXAlignment.Left
+WaypointNameInput.ZIndex = 31
+table.insert(shade2, WaypointNameInput)
+table.insert(text1, WaypointNameInput)
+
+WaypointAddDone.Name = "Done"
+WaypointAddDone.Parent = WaypointAddDialog
+WaypointAddDone.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointAddDone.BorderSizePixel = 0
+WaypointAddDone.Position = UDim2.new(0, 25, 0, 175)
+WaypointAddDone.Size = UDim2.new(0, 90, 0, 20)
+WaypointAddDone.Font = Enum.Font.SourceSans
+WaypointAddDone.TextSize = 14
+WaypointAddDone.Text = "Done"
+WaypointAddDone.TextColor3 = Color3.new(1, 1, 1)
+WaypointAddDone.ZIndex = 32
+table.insert(shade2, WaypointAddDone)
+table.insert(text1, WaypointAddDone)
+
+WaypointAddCancel.Name = "Cancel"
+WaypointAddCancel.Parent = WaypointAddDialog
+WaypointAddCancel.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointAddCancel.BorderSizePixel = 0
+WaypointAddCancel.Position = UDim2.new(0, 135, 0, 175)
+WaypointAddCancel.Size = UDim2.new(0, 90, 0, 20)
+WaypointAddCancel.Font = Enum.Font.SourceSans
+WaypointAddCancel.TextSize = 14
+WaypointAddCancel.Text = "Cancel"
+WaypointAddCancel.TextColor3 = Color3.new(1, 1, 1)
+WaypointAddCancel.ZIndex = 32
+table.insert(shade2, WaypointAddCancel)
+table.insert(text1, WaypointAddCancel)
+
+-- Floating waypoint hover panel, independent from the Settings window.
+WaypointHoverFrame.Name = "WaypointHoverFrame"
+WaypointHoverFrame.Parent = PARENT
+WaypointHoverFrame.Active = true
+WaypointHoverFrame.BackgroundColor3 = Color3.fromRGB(36, 36, 37)
+WaypointHoverFrame.BorderSizePixel = 0
+WaypointHoverFrame.AnchorPoint = Vector2.new(1, 0)
+WaypointHoverFrame.Position = UDim2.new(1, -12, 0, 45)
+WaypointHoverFrame.Size = UDim2.new(0, 200, 0, 76)
+WaypointHoverFrame.Visible = false
+WaypointHoverFrame.ZIndex = 80
+table.insert(shade1, WaypointHoverFrame)
+
+WaypointHoverHeader.Name = "Header"
+WaypointHoverHeader.Parent = WaypointHoverFrame
+WaypointHoverHeader.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointHoverHeader.BorderSizePixel = 0
+WaypointHoverHeader.Position = UDim2.new(0, 0, 0, 0)
+WaypointHoverHeader.Size = UDim2.new(1, 0, 0, 22)
+WaypointHoverHeader.Font = Enum.Font.SourceSans
+WaypointHoverHeader.TextSize = 14
+WaypointHoverHeader.Text = "Waypoint Hover"
+WaypointHoverHeader.TextColor3 = Color3.new(1, 1, 1)
+WaypointHoverHeader.TextXAlignment = Enum.TextXAlignment.Left
+WaypointHoverHeader.ZIndex = 81
+table.insert(shade2, WaypointHoverHeader)
+table.insert(text1, WaypointHoverHeader)
+
+WaypointHoverClose.Name = "Close"
+WaypointHoverClose.Parent = WaypointHoverHeader
+WaypointHoverClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointHoverClose.BorderSizePixel = 0
+WaypointHoverClose.Position = UDim2.new(1, -22, 0, 1)
+WaypointHoverClose.Size = UDim2.new(0, 21, 0, 20)
+WaypointHoverClose.Font = Enum.Font.SourceSansBold
+WaypointHoverClose.TextSize = 14
+WaypointHoverClose.Text = "X"
+WaypointHoverClose.TextColor3 = Color3.new(1, 1, 1)
+WaypointHoverClose.ZIndex = 82
+table.insert(shade2, WaypointHoverClose)
+table.insert(text1, WaypointHoverClose)
+
+WaypointHoverButton.Name = "GotoWaypoint"
+WaypointHoverButton.Parent = WaypointHoverFrame
+WaypointHoverButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointHoverButton.BorderSizePixel = 0
+WaypointHoverButton.Position = UDim2.new(0, 6, 0, 28)
+WaypointHoverButton.Size = UDim2.new(1, -12, 0, 42)
+WaypointHoverButton.Font = Enum.Font.SourceSans
+WaypointHoverButton.TextSize = 18
+WaypointHoverButton.Text = "Waypoint"
+WaypointHoverButton.TextColor3 = Color3.new(1, 1, 1)
+WaypointHoverButton.TextScaled = true
+WaypointHoverButton.TextWrapped = true
+WaypointHoverButton.ZIndex = 81
+table.insert(shade2, WaypointHoverButton)
+table.insert(text1, WaypointHoverButton)
 
 ToPartFrame.Name = randomString()
 ToPartFrame.Parent = ScaledHolder
@@ -4233,6 +4403,8 @@ local function openWaypointClearConfirmation()
 	local token = waypointPanelTransitionToken
 	waypointPanelState = "clearConfirm"
 	SettingsHolder.Visible = false
+	WaypointAddDialog.Visible = false
+	WaypointAddDialog.Position = waypointPanelHiddenPosition
 	PositionsFrame.Visible = true
 	WaypointClearConfirmFrame.Visible = true
 	WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
@@ -4252,6 +4424,9 @@ local function returnToWaypointsPanel()
 	PositionsFrame.Visible = true
 	PositionsFrame.Position = waypointPanelHiddenPosition
 	PositionsFrame:TweenPosition(waypointPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
+	if WaypointAddDialog.Visible then
+		WaypointAddDialog:TweenPosition(waypointPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+	end
 	if WaypointClearConfirmFrame.Visible then
 		WaypointClearConfirmFrame:TweenPosition(waypointPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
 	end
@@ -4259,6 +4434,28 @@ local function returnToWaypointsPanel()
 		if token ~= waypointPanelTransitionToken or waypointPanelState ~= "waypoints" then return end
 		WaypointClearConfirmFrame.Visible = false
 		WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
+		WaypointAddDialog.Visible = false
+		WaypointAddDialog.Position = waypointPanelHiddenPosition
+	end)
+end
+
+local function openWaypointAddPanel()
+	waypointPanelTransitionToken += 1
+	local token = waypointPanelTransitionToken
+	waypointPanelState = "add"
+	SettingsHolder.Visible = false
+	WaypointNameInput.Text = ""
+	WaypointClearConfirmFrame.Visible = false
+	WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
+	PositionsFrame.Visible = true
+	PositionsFrame:TweenPosition(waypointPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+	WaypointAddDialog.Visible = true
+	WaypointAddDialog.Position = waypointPanelHiddenPosition
+	WaypointAddDialog:TweenPosition(waypointPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
+	task.delay(0.52, function()
+		if token ~= waypointPanelTransitionToken or waypointPanelState ~= "add" then return end
+		PositionsFrame.Visible = false
+		WaypointNameInput:CaptureFocus()
 	end)
 end
 
@@ -4271,10 +4468,15 @@ Close_3.MouseButton1Click:Connect(function()
 	if WaypointClearConfirmFrame.Visible then
 		WaypointClearConfirmFrame:TweenPosition(waypointPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
 	end
+	if WaypointAddDialog.Visible then
+		WaypointAddDialog:TweenPosition(waypointPanelHiddenPosition, "InOut", "Quart", 0.5, true, nil)
+	end
 	task.delay(0.52, function()
 		if token ~= waypointPanelTransitionToken or waypointPanelState ~= "hidden" then return end
 		WaypointClearConfirmFrame.Visible = false
 		WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
+		WaypointAddDialog.Visible = false
+		WaypointAddDialog.Position = waypointPanelHiddenPosition
 	end)
 end)
 
@@ -4284,6 +4486,8 @@ Positions.MouseButton1Click:Connect(function()
 	waypointPanelState = "waypoints"
 	WaypointClearConfirmFrame.Visible = false
 	WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
+	WaypointAddDialog.Visible = false
+	WaypointAddDialog.Position = waypointPanelHiddenPosition
 	PositionsFrame.Visible = true
 	PositionsFrame:TweenPosition(waypointPanelShownPosition, "InOut", "Quart", 0.5, true, nil)
 	task.delay(0.52, function()
@@ -7019,6 +7223,60 @@ function unkeybind(cmd,key)
 end
 
 PositionsFrame.Delete.MouseButton1Click:Connect(openWaypointClearConfirmation)
+AddWaypointButton.MouseButton1Click:Connect(openWaypointAddPanel)
+
+WaypointAddCancel.MouseButton1Click:Connect(function()
+	if waypointPanelState ~= "add" then return end
+	WaypointNameInput:ReleaseFocus()
+	WaypointNameInput.Text = ""
+	returnToWaypointsPanel()
+end)
+
+WaypointAddDone.MouseButton1Click:Connect(function()
+	if waypointPanelState ~= "add" then return end
+	local WPName = tostring(WaypointNameInput.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	if WPName == "" then
+		notify("Waypoint Error", "Enter a waypoint name.", 4)
+		return
+	end
+	local nameLength = utf8.len(WPName)
+	if not nameLength or nameLength > 64 or WPName:find("%c") then
+		notify("Waypoint Error", "Name must be 1–64 characters and cannot contain control characters.", 4)
+		return
+	end
+
+	local nameLower = string.lower(WPName)
+	for _, existing in ipairs(WayPoints or {}) do
+		if type(existing) == "table" and string.lower(tostring(existing.NAME or ""):gsub("^%s+", ""):gsub("%s+$", "")) == nameLower then
+			notify("Waypoint Error", "A waypoint with that name already exists.", 4)
+			return
+		end
+	end
+	for _, existing in ipairs(pWayPoints or {}) do
+		if type(existing) == "table" and string.lower(tostring(existing.NAME or ""):gsub("^%s+", ""):gsub("%s+$", "")) == nameLower then
+			notify("Waypoint Error", "A waypoint with that name already exists.", 4)
+			return
+		end
+	end
+
+	local characterRoot = getRoot(Players.LocalPlayer.Character)
+	if not characterRoot then
+		notify("Waypoint Error", "Cannot save a waypoint because your character is not ready.", 4)
+		return
+	end
+
+	local coordinate = {math.floor(characterRoot.Position.X), math.floor(characterRoot.Position.Y), math.floor(characterRoot.Position.Z)}
+	WayPoints[#WayPoints + 1] = {NAME = WPName, COORD = {coordinate[1], coordinate[2], coordinate[3]}, GAME = PlaceId}
+	if AllWaypoints ~= nil then
+		AllWaypoints[#AllWaypoints + 1] = {NAME = WPName, COORD = {coordinate[1], coordinate[2], coordinate[3]}, GAME = PlaceId}
+	end
+	refreshwaypoints()
+	updatesaves()
+	WaypointNameInput:ReleaseFocus()
+	WaypointNameInput.Text = ""
+	returnToWaypointsPanel()
+	notify("Modified Waypoints", "Created waypoint: " .. WPName, 4)
+end)
 
 WaypointClearConfirmButton.MouseButton1Click:Connect(function()
 	if waypointPanelState ~= "clearConfirm" then return end
@@ -7029,6 +7287,58 @@ end)
 WaypointClearCancelButton.MouseButton1Click:Connect(function()
 	if waypointPanelState ~= "clearConfirm" then return end
 	returnToWaypointsPanel()
+end)
+
+local hoveredWaypointName = nil
+local waypointHoverDrag = {dragging = false, dragInput = nil, dragStart = nil, startPosition = nil}
+
+local function showWaypointHover(name)
+	hoveredWaypointName = tostring(name or "")
+	WaypointHoverButton.Text = hoveredWaypointName
+	WaypointHoverFrame.Visible = true
+end
+
+WaypointHoverClose.MouseButton1Click:Connect(function()
+	WaypointHoverFrame.Visible = false
+	hoveredWaypointName = nil
+end)
+
+WaypointHoverButton.MouseButton1Click:Connect(function()
+	if hoveredWaypointName and hoveredWaypointName ~= "" then
+		-- Reuse the exact command used by each row's Goto button.
+		execCmd("loadpos "..hoveredWaypointName)
+	end
+end)
+
+-- Drag the floating panel by its title bar, without affecting the large Goto button.
+WaypointHoverHeader.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		waypointHoverDrag.dragging = true
+		waypointHoverDrag.dragStart = input.Position
+		waypointHoverDrag.startPosition = WaypointHoverFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				waypointHoverDrag.dragging = false
+			end
+		end)
+	end
+end)
+
+WaypointHoverHeader.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		waypointHoverDrag.dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == waypointHoverDrag.dragInput and waypointHoverDrag.dragging then
+		local delta = input.Position - waypointHoverDrag.dragStart
+		local startPosition = waypointHoverDrag.startPosition
+		WaypointHoverFrame.Position = UDim2.new(
+			startPosition.X.Scale, startPosition.X.Offset + delta.X,
+			startPosition.Y.Scale, startPosition.Y.Offset + delta.Y
+		)
+	end
 end)
 
 function refreshwaypoints()
@@ -7054,12 +7364,18 @@ function refreshwaypoints()
 			table.insert(text2,newpoint.Text.Delete)
 			table.insert(shade3,newpoint.Text.TP)
 			table.insert(text2,newpoint.Text.TP)
+			table.insert(shade3,newpoint.Text.Hover)
+			table.insert(text2,newpoint.Text.Hover)
 			Holder_4.CanvasSize = UDim2.new(0,0,0, Position + 30)
+			local waypointName = tostring(WayPoints[i].NAME)
 			newpoint.Text.Delete.MouseButton1Click:Connect(function()
 				execCmd('dpos '..WayPoints[i].NAME)
 			end)
 			newpoint.Text.TP.MouseButton1Click:Connect(function()
 				execCmd("loadpos "..WayPoints[i].NAME)
+			end)
+			newpoint.Text.Hover.MouseButton1Click:Connect(function()
+				showWaypointHover(waypointName)
 			end)
 			num = num+1
 		end
@@ -7077,12 +7393,18 @@ function refreshwaypoints()
 			table.insert(text2,newpoint.Text.Delete)
 			table.insert(shade3,newpoint.Text.TP)
 			table.insert(text2,newpoint.Text.TP)
+			table.insert(shade3,newpoint.Text.Hover)
+			table.insert(text2,newpoint.Text.Hover)
 			Holder_4.CanvasSize = UDim2.new(0,0,0, Position + 30)
+			local waypointName = tostring(pWayPoints[i].NAME)
 			newpoint.Text.Delete.MouseButton1Click:Connect(function()
 				execCmd('dpos '..pWayPoints[i].NAME)
 			end)
 			newpoint.Text.TP.MouseButton1Click:Connect(function()
 				execCmd("loadpos "..pWayPoints[i].NAME)
+			end)
+			newpoint.Text.Hover.MouseButton1Click:Connect(function()
+				showWaypointHover(waypointName)
 			end)
 			num = num+1
 		end
@@ -8556,6 +8878,8 @@ addcmd('waypoints',{'positions'},function(args, speaker)
 	waypointPanelState = "waypoints"
 	WaypointClearConfirmFrame.Visible = false
 	WaypointClearConfirmFrame.Position = waypointPanelHiddenPosition
+	WaypointAddDialog.Visible = false
+	WaypointAddDialog.Position = waypointPanelHiddenPosition
 	PositionsFrame.Visible = true
 	if SettingsOpen == false then setSettingsOpenState(true)
 		setSettingsBackdrop(true)
