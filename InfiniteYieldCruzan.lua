@@ -4,6 +4,37 @@ if IY_LOADED and not _G.IY_DEBUG then
 end
 
 pcall(function() getgenv().IY_LOADED = true end)
+
+local IY_RELOAD_INSTANCE_STATE = {
+    sourceUrl = "https://raw.githubusercontent.com/cruzann/Infinite-Yield-Cruzan/master/InfiniteYieldCruzan.lua",
+    sharedEnv = _G,
+    scriptEnv = _G,
+    connections = {},
+    ownedInstances = {},
+    gui = nil,
+    scaledHolder = nil,
+    quickCapture = nil,
+    cleaned = false,
+    cleaning = false,
+    running = true,
+    ready = false,
+    teleportCheck = false,
+    teleportQueueSource = nil,
+}
+pcall(function()
+    if type(getgenv) == "function" then IY_RELOAD_INSTANCE_STATE.sharedEnv = getgenv() end
+end)
+pcall(function()
+    if type(getfenv) == "function" then IY_RELOAD_INSTANCE_STATE.scriptEnv = getfenv() end
+end)
+IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_ACTIVE_STATE = IY_RELOAD_INSTANCE_STATE
+IY_RELOAD_INSTANCE_STATE.TrackConnection = function(connection)
+    if connection then
+        IY_RELOAD_INSTANCE_STATE.connections[#IY_RELOAD_INSTANCE_STATE.connections + 1] = connection
+    end
+    return connection
+end
+
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 function missing(t, f, fallback)
@@ -153,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.3.0"
+currentVersion = "1.3.1"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -327,6 +358,7 @@ PARENT = nil
 MAX_DISPLAY_ORDER = 1.7976931348623157e308
 if gethui then
     local Main = Instance.new("ScreenGui")
+    IY_RELOAD_INSTANCE_STATE.gui = Main
     Main.Name = randomString()
     Main.ResetOnSpawn = false
     Main.DisplayOrder = MAX_DISPLAY_ORDER
@@ -334,6 +366,7 @@ if gethui then
     PARENT = Main
 elseif (not is_sirhurt_closure) and syn_protect_gui then
     local Main = Instance.new("ScreenGui")
+    IY_RELOAD_INSTANCE_STATE.gui = Main
     Main.Name = randomString()
     Main.ResetOnSpawn = false
     Main.DisplayOrder = MAX_DISPLAY_ORDER
@@ -344,6 +377,7 @@ elseif COREGUI:FindFirstChild("RobloxGui") then
     PARENT = COREGUI.RobloxGui
 else
     local Main = Instance.new("ScreenGui")
+    IY_RELOAD_INSTANCE_STATE.gui = Main
     Main.Name = randomString()
     Main.ResetOnSpawn = false
     Main.DisplayOrder = MAX_DISPLAY_ORDER
@@ -362,6 +396,7 @@ ScaledHolder.Name = randomString()
 ScaledHolder.Size = UDim2.fromScale(1, 1)
 ScaledHolder.BackgroundTransparency = 1
 ScaledHolder.Parent = PARENT
+IY_RELOAD_INSTANCE_STATE.scaledHolder = ScaledHolder
 Scale.Name = randomString()
 
 Holder.Name = randomString()
@@ -2684,11 +2719,11 @@ function dragGUI(gui)
 				dragInput = input
 			end
 		end)
-		UserInputService.InputChanged:Connect(function(input)
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputChanged:Connect(function(input)
 			if input == dragInput and dragging then
 				update(input)
 			end
-		end)
+		end))
 	end)
 end
 
@@ -4029,13 +4064,13 @@ function CreateJoinLabel(player, userId)
     info2.Text = string.gsub(info2.Text, "Loading...", splitDates[2] .. "/" .. splitDates[3] .. "/" .. splitDates[1])
 end
 
-IYMouse.KeyDown:Connect(function(Key)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(IYMouse.KeyDown:Connect(function(Key)
 	if (Key==prefix) then
 		RunService.RenderStepped:Wait()
 		Cmdbar:CaptureFocus()
 		maximizeHolder()
 	end
-end)
+end))
 
 Holder.MouseEnter:Connect(function()
 	maximizeHolder()
@@ -4285,7 +4320,7 @@ if isLegacyChat then
 	end
 end
 
-Players.PlayerRemoving:Connect(function(player)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.PlayerRemoving:Connect(function(player)
 	if ESPenabled or CHMSenabled or COREGUI:FindFirstChild(player.Name..'_LC') then
 		for i,v in pairs(COREGUI:GetChildren()) do
 			if v.Name == player.Name..'_ESP' or v.Name == player.Name..'_LC' or v.Name == player.Name..'_CHMS' then
@@ -4303,7 +4338,7 @@ Players.PlayerRemoving:Connect(function(player)
 		notify('Spectate','View turned off (player left)')
 	end
 	eventEditor.FireEvent("OnLeave", player.Name)
-end)
+end))
 
 Exit.MouseButton1Down:Connect(function()
 	logs:TweenPosition(UDim2.new(0, 0, 1, 10), "InOut", "Quart", 0.3, true, nil)
@@ -4793,11 +4828,11 @@ function dragMain(dragpoint,gui)
 				dragInput = input
 			end
 		end)
-		UserInputService.InputChanged:Connect(function(input)
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputChanged:Connect(function(input)
 			if input == dragInput and dragging then
 				update(input)
 			end
-		end)
+		end))
 	end)
 end
 
@@ -4910,7 +4945,7 @@ task.spawn(function()
 		local function chatboxFocused()
 			canvasPos = CMDsF.CanvasPosition
 		end
-		local chatboxFocusedC = chatbox.Focused:Connect(chatboxFocused)
+		local chatboxFocusedC = IY_RELOAD_INSTANCE_STATE.TrackConnection(chatbox.Focused:Connect(chatboxFocused))
 
 		local function Index()
 			if chatbox.Text:lower():sub(1,1) == prefix then
@@ -4930,7 +4965,7 @@ task.spawn(function()
 				end
 			end
 		end
-		local chatboxFunc = chatbox:GetPropertyChangedSignal("Text"):Connect(Index)
+		local chatboxFunc = IY_RELOAD_INSTANCE_STATE.TrackConnection(chatbox:GetPropertyChangedSignal("Text"):Connect(Index))
 
 		local function chatboxFocusLost(enterpressed)
 			if not enterpressed or chatbox.Text:lower():sub(1,1) ~= prefix then
@@ -4939,20 +4974,20 @@ task.spawn(function()
 			CMDsF.CanvasPosition = canvasPos
 			minimizeHolder()
 		end
-		local chatboxFocusLostC = chatbox.FocusLost:Connect(chatboxFocusLost)
+		local chatboxFocusLostC = IY_RELOAD_INSTANCE_STATE.TrackConnection(chatbox.FocusLost:Connect(chatboxFocusLost))
 
-		PlayerGui:WaitForChild("Chat").Frame.ChatBarParentFrame.ChildAdded:Connect(function(newbar)
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(PlayerGui:WaitForChild("Chat").Frame.ChatBarParentFrame.ChildAdded:Connect(function(newbar)
 			wait()
 			if newbar:FindFirstChild('BoxFrame') then
 				chatbox = PlayerGui:WaitForChild("Chat").Frame.ChatBarParentFrame.Frame.BoxFrame.Frame.ChatBar
 				if chatboxFocusedC then chatboxFocusedC:Disconnect() end
-				chatboxFocusedC = chatbox.Focused:Connect(chatboxFocused)
+				chatboxFocusedC = IY_RELOAD_INSTANCE_STATE.TrackConnection(chatbox.Focused:Connect(chatboxFocused))
 				if chatboxFunc then chatboxFunc:Disconnect() end
-				chatboxFunc = chatbox:GetPropertyChangedSignal("Text"):Connect(Index)
+				chatboxFunc = IY_RELOAD_INSTANCE_STATE.TrackConnection(chatbox:GetPropertyChangedSignal("Text"):Connect(Index))
 				if chatboxFocusLostC then chatboxFocusLostC:Disconnect() end
-				chatboxFocusLostC = chatbox.FocusLost:Connect(chatboxFocusLost)
+				chatboxFocusLostC = IY_RELOAD_INSTANCE_STATE.TrackConnection(chatbox.FocusLost:Connect(chatboxFocusLost))
 			end
-		end)
+		end))
 		--else
 		--print('Custom chat detected. Will not provide suggestions for commands typed in the chat.')
 	end
@@ -5020,6 +5055,7 @@ CMDs[#CMDs + 1] = {NAME = 'guidelete', DESC = 'Enables backspace to delete GUI'}
 CMDs[#CMDs + 1] = {NAME = 'unguidelete / noguidelete', DESC = 'Disables guidelete'}
 CMDs[#CMDs + 1] = {NAME = 'hideiy', DESC = 'Hides the main IY GUI'}
 CMDs[#CMDs + 1] = {NAME = 'showiy / unhideiy', DESC = 'Shows IY again'}
+CMDs[#CMDs + 1] = {NAME = 'reload', DESC = 'Fetches the latest Infinite Yield Cruzan script from GitHub and reloads it'}
 CMDs[#CMDs + 1] = {NAME = 'keepiy', DESC = 'Auto execute IY when you teleport through servers'}
 CMDs[#CMDs + 1] = {NAME = 'unkeepiy', DESC = 'Disable keepiy'}
 CMDs[#CMDs + 1] = {NAME = 'togglekeepiy', DESC = 'Toggles keepiy'}
@@ -5999,7 +6035,7 @@ FavPickerLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function
 	FavPickerList.CanvasSize = UDim2.new(0, 0, 0, math.max(0, FavPickerLayout.AbsoluteContentSize.Y + 2))
 end)
 
-UserInputService.InputChanged:Connect(function(input)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputChanged:Connect(function(input)
 	local drag = favoriteDragState
 	if not drag then return end
 
@@ -6027,9 +6063,9 @@ UserInputService.InputChanged:Connect(function(input)
 			orderedRow.LayoutOrder = order
 		end
 	end
-end)
+end))
 
-UserInputService.InputEnded:Connect(function(input)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputEnded:Connect(function(input)
 	local drag = favoriteDragState
 	if not drag then return end
 
@@ -6053,7 +6089,7 @@ UserInputService.InputEnded:Connect(function(input)
 		reorderCommandEntries()
 		updatesaves()
 	end
-end)
+end))
 
 -- Serialize Fav cmds panel transitions. Older delayed callbacks must not hide
 -- a panel after the user has already returned to another view.
@@ -6277,11 +6313,11 @@ local lastDeath
 function onDied()
 	task.spawn(function()
 		if pcall(function() Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid') end) and Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid') then
-			Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').Died:Connect(function()
+			IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').Died:Connect(function()
 				if getRoot(Players.LocalPlayer.Character) then
 					lastDeath = getRoot(Players.LocalPlayer.Character).CFrame
 				end
-			end)
+			end))
 		else
 			wait(2)
 			onDied()
@@ -6291,7 +6327,7 @@ end
 
 Clip = true
 spDelay = 0.1
-Players.LocalPlayer.CharacterAdded:Connect(function()
+IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.LocalPlayer.CharacterAdded:Connect(function()
 	NOFLY()
 	floating = false
 
@@ -6309,7 +6345,7 @@ Players.LocalPlayer.CharacterAdded:Connect(function()
 	end)
 
 	onDied()
-end)
+end))
 
 onDied()
 
@@ -6870,18 +6906,18 @@ end
 
 lastTextBoxString,lastTextBoxCon,lastEnteredString = nil,nil,nil
 
-UserInputService.TextBoxFocused:Connect(function(obj)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.TextBoxFocused:Connect(function(obj)
 	if lastTextBoxCon then lastTextBoxCon:Disconnect() end
 	if obj == Cmdbar then lastTextBoxString = nil return end
 	lastTextBoxString = obj.Text
-	lastTextBoxCon = obj:GetPropertyChangedSignal("Text"):Connect(function()
+	lastTextBoxCon = IY_RELOAD_INSTANCE_STATE.TrackConnection(obj:GetPropertyChangedSignal("Text"):Connect(function()
 		if not (UserInputService:IsKeyDown(Enum.KeyCode.Return) or UserInputService:IsKeyDown(Enum.KeyCode.KeypadEnter)) then
 			lastTextBoxString = obj.Text
 		end
-	end)
-end)
+	end))
+end))
 
-UserInputService.InputBegan:Connect(function(input,gameProcessed)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputBegan:Connect(function(input,gameProcessed)
 	if gameProcessed then
 		if Cmdbar and Cmdbar:IsFocused() then
 			if input.KeyCode == Enum.KeyCode.Up then
@@ -6899,16 +6935,16 @@ UserInputService.InputBegan:Connect(function(input,gameProcessed)
 			lastEnteredString = lastTextBoxString
 		end
 	end
-end)
+end))
 
-Players.LocalPlayer.Chatted:Connect(function()
+IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.LocalPlayer.Chatted:Connect(function()
 	wait()
 	if lastEnteredString then
 		local message = lastEnteredString
 		lastEnteredString = nil
 		do_exec(message, Players.LocalPlayer)
 	end
-end)
+end))
 
 Cmdbar.PlaceholderText = "Command Bar"
 Cmdbar:GetPropertyChangedSignal("Text"):Connect(function()
@@ -7730,7 +7766,7 @@ end
 
 -- Dragging follows the actual mouse/touch movement. A normal short tap still
 -- performs Goto; a dragged gesture suppresses Goto so the window moves safely.
-UserInputService.InputChanged:Connect(function(input)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputChanged:Connect(function(input)
 	-- Only the window that originally received the press may drag. This prevents
 	-- a fast touch crossing other open Waypoints from moving those windows too.
 	local state = activeWaypointHoverDragState
@@ -7755,7 +7791,7 @@ UserInputService.InputChanged:Connect(function(input)
 			state.frame.Position = UDim2.new(0, x, 0, y)
 		end
 	end
-end)
+end))
 
 function refreshwaypoints()
 	if #WayPoints > 0 or #pWayPoints > 0 then
@@ -7964,8 +8000,8 @@ function onInputEnded(input,gameProcessed)
 	end
 end
 
-UserInputService.InputBegan:Connect(onInputBegan)
-UserInputService.InputEnded:Connect(onInputEnded)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputBegan:Connect(onInputBegan))
+IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputEnded:Connect(onInputEnded))
 
 ClickTP.Select.MouseButton1Click:Connect(function()
 	if keySelected then
@@ -8016,7 +8052,7 @@ local function clicktpFunc()
 	end)
 end
 
-IYMouse.Button1Down:Connect(function()
+IY_RELOAD_INSTANCE_STATE.TrackConnection(IYMouse.Button1Down:Connect(function()
 	for i,v in pairs(binds) do
 		if v.COMMAND == 'clicktp' then
 			local input = v.KEY
@@ -8038,7 +8074,7 @@ IYMouse.Button1Down:Connect(function()
 			end
 		end
 	end
-end)
+end))
 
 PluginsGUI = PluginEditor.background
 
@@ -8236,13 +8272,64 @@ Close_4.MouseButton1Click:Connect(function()
 	PluginsFrame:TweenPosition(UDim2.new(0, 0, 0, 200), "InOut", "Quart", 0.5, true, nil)
 end)
 
-local TeleportCheck = false
-Players.LocalPlayer.OnTeleport:Connect(function(State)
-	if KeepInfYield and (not TeleportCheck) and queueteleport then
-		TeleportCheck = true
-		queueteleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()")
-	end
+IY_RELOAD_INSTANCE_STATE.teleportCheck = false
+IY_RELOAD_INSTANCE_STATE.teleportQueueSource = [[
+local sourceUrl = "https://raw.githubusercontent.com/cruzann/Infinite-Yield-Cruzan/master/InfiniteYieldCruzan.lua"
+local sharedEnv = _G
+pcall(function() if type(getgenv) == "function" then sharedEnv = getgenv() end end)
+local success, failure = pcall(function()
+    local source = game:HttpGet(sourceUrl)
+    if type(source) ~= "string" or #source < 100000 then
+        error("GitHub returned an empty or incomplete Cruzan script.")
+    end
+    if not source:find("IY_CRUZAN_RELOAD_V1", 1, true) then
+        error("The GitHub file does not contain the current reload-enabled build. Upload the latest InfiniteYieldCruzan.lua first.")
+    end
+    if type(loadstring) ~= "function" then
+        error("This executor does not provide loadstring.")
+    end
+    local chunk, compileError = loadstring(source)
+    if type(chunk) ~= "function" then
+        error("Cruzan script failed syntax validation: " .. tostring(compileError))
+    end
+    local oldState = sharedEnv.IY_CRUZAN_ACTIVE_STATE
+    if oldState and type(oldState.SaveSettings) == "function" then
+        local saveCallOk, saveResult, saveError = pcall(oldState.SaveSettings)
+        if not saveCallOk or saveResult == false then
+            warn("Infinite Yield Cruzan: settings save before teleport reload was incomplete: " .. tostring(saveError or saveResult))
+        end
+    end
+    if oldState and type(oldState.Cleanup) == "function" then
+        pcall(oldState.Cleanup)
+    end
+    pcall(function() sharedEnv.IY_LOADED = nil end)
+    pcall(function() _G.IY_LOADED = nil end)
+    chunk()
 end)
+if not success then
+    warn("Infinite Yield Cruzan auto-reload failed: " .. tostring(failure))
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Infinite Yield Cruzan",
+            Text = "Auto-reload failed: " .. tostring(failure),
+            Duration = 8,
+        })
+    end)
+end
+]]
+IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.LocalPlayer.OnTeleport:Connect(function(State)
+	if KeepInfYield and (not IY_RELOAD_INSTANCE_STATE.teleportCheck) then
+		IY_RELOAD_INSTANCE_STATE.teleportCheck = true
+		if not queueteleport then
+			notify("KeepIY", "This executor does not support queued teleport execution; Cruzan cannot auto-reload after teleport.", 7)
+			return
+		end
+		local queueSuccess, queueError = pcall(queueteleport, IY_RELOAD_INSTANCE_STATE.teleportQueueSource)
+		if not queueSuccess then
+			notify("KeepIY", "Could not queue Cruzan after teleport: " .. tostring(queueError), 6)
+		end
+	end
+end))
 
 addcmd('addalias',{},function(args, speaker)
 	if #args < 2 then return end
@@ -8736,7 +8823,8 @@ addcmd("inviteprompt", {}, function(args, speaker)
 end)
 
 addcmd("autorejoin", {"autorj"}, function(args, speaker)
-	GuiService.ErrorMessageChanged:Connect(function()
+	if autoRejoinConnection then pcall(function() autoRejoinConnection:Disconnect() end) end
+	autoRejoinConnection = GuiService.ErrorMessageChanged:Connect(function()
 		execCmd("rejoin")
 	end)
 	notify("Auto Rejoin", "Auto rejoin enabled")
@@ -9792,7 +9880,7 @@ addcmd("antilag", {"boostfps", "lowgraphics"}, function(args, speaker)
 			v.Enabled = false
 		end
 	end
-	workspace.DescendantAdded:Connect(function(child)
+	IY_RELOAD_INSTANCE_STATE.TrackConnection(workspace.DescendantAdded:Connect(function(child)
 		task.spawn(function()
 			if child:IsA("ForceField") or child:IsA("Sparkles") or child:IsA("Smoke") or child:IsA("Fire") or child:IsA("Beam") then
 				RunService.Heartbeat:Wait()
@@ -9801,7 +9889,7 @@ addcmd("antilag", {"boostfps", "lowgraphics"}, function(args, speaker)
 				child.CastShadow = false
 			end
 		end)
-	end)
+	end))
 end)
 
 addcmd("setfpscap", {"fpscap", "maxfps"}, function(args, speaker)
@@ -10057,12 +10145,12 @@ end)
 
 fcRunning = false
 local Camera = workspace.CurrentCamera
-workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+IY_RELOAD_INSTANCE_STATE.TrackConnection(workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
 	local newCamera = workspace.CurrentCamera
 	if newCamera then
 		Camera = newCamera
 	end
-end)
+end))
 
 local INPUT_PRIORITY = Enum.ContextActionPriority.High.Value
 
@@ -10433,7 +10521,7 @@ addcmd("enableshiftlock", {"enablesl", "shiftlock"}, function(args, speaker)
 	local function enableShiftlock() 
 		speaker.DevEnableMouseLock = true 
 	end
-	speaker:GetPropertyChangedSignal("DevEnableMouseLock"):Connect(enableShiftlock)
+	IY_RELOAD_INSTANCE_STATE.TrackConnection(speaker:GetPropertyChangedSignal("DevEnableMouseLock"):Connect(enableShiftlock))
 	enableShiftlock()
 	notify("Shiftlock", "Shift lock should now be available")
 end)
@@ -11332,7 +11420,7 @@ addcmd('invisible',{'invis'},function(args, speaker)
 	InvisibleCharacter.Name = ""
 	local CF
 
-	local invisFix = RunService.Stepped:Connect(function()
+	local invisFix = IY_RELOAD_INSTANCE_STATE.TrackConnection(RunService.Stepped:Connect(function()
 		pcall(function()
 			local IsInteger
 			if tostring(Void):find'-' then
@@ -11356,7 +11444,7 @@ addcmd('invisible',{'invis'},function(args, speaker)
 				end
 			end
 		end)
-	end)
+	end))
 
 	for i,v in pairs(InvisibleCharacter:GetDescendants())do
 		if v:IsA("BasePart") then
@@ -12052,16 +12140,17 @@ end)
 
 addcmd("tptool", {"teleporttool"}, function(args, speaker)
     local TpTool = Instance.new("Tool")
+    table.insert(IY_RELOAD_INSTANCE_STATE.ownedInstances, TpTool)
     TpTool.Name = "Teleport Tool"
     TpTool.RequiresHandle = false
     TpTool.Parent = speaker:FindFirstChildOfClass("Backpack")
-    TpTool.Activated:Connect(function()
+    IY_RELOAD_INSTANCE_STATE.TrackConnection(TpTool.Activated:Connect(function()
         local root = getRoot(speaker.Character)
         local pos = IYMouse.Hit
         if not root or not pos then return end
         root.CFrame = CFrame.new(pos.X, pos.Y + 3, pos.Z, select(4, root.CFrame:components()))
         breakVelocity()
-    end)
+    end))
 end)
 
 addcmd("thru", {}, function(args, speaker)
@@ -12867,7 +12956,7 @@ local specifictoolremoval = {}
 addcmd('removespecifictool',{},function(args, speaker)
 	if args[1] and speaker:FindFirstChildOfClass("Backpack") then
 		local tool = string.lower(getstring(1, args))
-		local RST = RunService.RenderStepped:Connect(function()
+		local RST = IY_RELOAD_INSTANCE_STATE.TrackConnection(RunService.RenderStepped:Connect(function()
 			if speaker:FindFirstChildOfClass("Backpack") then
 				for i,v in pairs(speaker:FindFirstChildOfClass("Backpack"):GetChildren()) do
 					if v.Name:lower() == tool then
@@ -12875,7 +12964,7 @@ addcmd('removespecifictool',{},function(args, speaker)
 					end
 				end
 			end
-		end)
+		end))
 		specifictoolremoval[tool] = RST
 	end
 end)
@@ -13586,9 +13675,9 @@ addcmd("walkfling", {}, function(args, speaker)
 	execCmd("unwalkfling")
 	local humanoid = speaker.Character:FindFirstChildWhichIsA("Humanoid")
 	if humanoid then
-		humanoid.Died:Connect(function()
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(humanoid.Died:Connect(function()
 			execCmd("unwalkfling")
-		end)
+		end))
 	end
 
 	execCmd("noclip nonotify")
@@ -14507,9 +14596,9 @@ addcmd("jerk", {}, function(args, speaker)
 		end
 	end
 
-	tool.Equipped:Connect(function() jorkin = true end)
-	tool.Unequipped:Connect(stopTomfoolery)
-	humanoid.Died:Connect(stopTomfoolery)
+	IY_RELOAD_INSTANCE_STATE.TrackConnection(tool.Equipped:Connect(function() jorkin = true end))
+	IY_RELOAD_INSTANCE_STATE.TrackConnection(tool.Unequipped:Connect(stopTomfoolery))
+	IY_RELOAD_INSTANCE_STATE.TrackConnection(humanoid.Died:Connect(stopTomfoolery))
 
 	while task.wait() do
 		if not jorkin then continue end
@@ -14838,9 +14927,285 @@ addcmd("debug", {}, function(args, speaker)
     return _G.IY_DEBUG and "Enabled" or "Disabled"
 end)
 
+-- IY_CRUZAN_RELOAD_V1
+do
+local function sendIYReloadNotice(title, message, duration)
+    local sent = pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = tostring(title or "Infinite Yield Reload"),
+            Text = tostring(message or ""),
+            Duration = duration or 6,
+        })
+    end)
+    if not sent then
+        pcall(function() warn(tostring(title or "Infinite Yield Reload") .. ": " .. tostring(message or "")) end)
+    end
+end
+
+local function disconnectIYConnectionSafe(connection)
+    if connection then pcall(function() connection:Disconnect() end) end
+end
+
+local function cleanupIYReloadInstance()
+    local state = IY_RELOAD_INSTANCE_STATE
+    if state.cleaned then return true end
+    if state.cleaning then return true end
+    state.cleaning = true
+    state.running = false
+
+    -- Stop repeating command loops and restore states that otherwise survive GUI destruction.
+    pcall(function() lastBreakTime = math.huge end)
+    pcall(function() autoKeyPressing = false end)
+    pcall(function() floating = false end)
+    pcall(function() loopgoto = nil end)
+    pcall(function() flinging = false; walkflinging = false end)
+    pcall(function() FLYING = false end)
+    pcall(function() ESPenabled = false; CHMSenabled = false end)
+    pcall(function() Clip = true end)
+    pcall(function() if type(NOFY) == "function" then NOFY() end end)
+    pcall(function() if type(unmobilefly) == "function" then unmobilefly(Players.LocalPlayer) end end)
+    pcall(function()
+        if Noclipping then Noclipping:Disconnect(); Noclipping = nil end
+        for part in pairs(NoclipParts or {}) do
+            if typeof(part) == "Instance" and part:IsA("BasePart") and part.Parent then
+                part.CanCollide = true
+            end
+        end
+        NoclipParts = {}
+    end)
+    pcall(function() if type(removeAllWaypointHoverWindows) == "function" then removeAllWaypointHoverWindows() end end)
+    pcall(function() activeWaypointHoverDragState = nil end)
+    pcall(function() if tabComplete then tabComplete:Disconnect(); tabComplete = nil end end)
+    pcall(function() if mfly1 then mfly1:Disconnect(); mfly1 = nil end end)
+    pcall(function() if mfly2 then mfly2:Disconnect(); mfly2 = nil end end)
+
+    local disconnected = {}
+    local function disconnectOnce(connection)
+        if not connection or disconnected[connection] then return end
+        disconnected[connection] = true
+        disconnectIYConnectionSafe(connection)
+    end
+    for _, connection in ipairs(state.connections or {}) do
+        disconnectOnce(connection)
+    end
+    state.connections = {}
+
+    -- HumanModCons is a local table, so clean it directly rather than relying only on environment lookups.
+    pcall(function()
+        if type(HumanModCons) == "table" then
+            for _, connectionOrGroup in pairs(HumanModCons) do
+                if type(connectionOrGroup) == "table" then
+                    for _, nestedConnection in pairs(connectionOrGroup) do disconnectOnce(nestedConnection) end
+                else
+                    disconnectOnce(connectionOrGroup)
+                end
+            end
+            HumanModCons = {}
+        end
+    end)
+
+    -- These handles are created by persistent command modes and aren't all attached to the GUI.
+    local connectionNames = {
+        "ActivateHighlight", "ClickSelect", "CameraChanged", "CamMoved", "pinNotification",
+        "lastTextBoxCon", "RolewatchConnection", "flyKeyDown", "flyKeyUp", "CFloop",
+        "swimbeat", "espLoopFunc", "lcLoopFunc", "teamChange", "addedFunc", "CHMSremoved",
+        "invisflingStepped", "antifling", "tpwalking", "xrayLoop", "stareLoop", "headSit",
+        "bangLoop", "carpetLoop", "floatingFunc", "floatDied", "beganListener", "endListener",
+        "gravReset", "deleteGuiInput", "IYMouseConnection", "cancelAutoClick", "cancelAutoKeyPress",
+        "networkPaused", "partEspTrigger", "viewDied", "viewChanged", "antiAfkCon", "orbit1",
+        "orbit2", "orbit3", "invisFix", "invisDied", "infJump", "flyjump", "tpwalk",
+        "grabtoolsFunc", "nbUpdateFunc", "staffwatchjoin", "antivoidloop", "alignmentKeys",
+        "listentoChar", "PromptButtonHoldBegan", "walltpTouch", "freezingua", "autoRejoinConnection",
+        "flingDied", "bangDied", "carpetDied", "spinhats", "charPartTrigger",
+    }
+    local environments = {IY_RELOAD_INSTANCE_STATE.scriptEnv, IY_RELOAD_INSTANCE_STATE.sharedEnv, _G}
+    local clearedNames = {}
+    for _, environment in ipairs(environments) do
+        if type(environment) == "table" and not clearedNames[environment] then
+            clearedNames[environment] = true
+            for _, name in ipairs(connectionNames) do
+                local connection = rawget(environment, name)
+                if connection then
+                    disconnectOnce(connection)
+                    pcall(function() rawset(environment, name, nil) end)
+                end
+            end
+            local modConnections = rawget(environment, "HumanModCons")
+            if type(modConnections) == "table" then
+                for _, connectionOrGroup in pairs(modConnections) do
+                    if type(connectionOrGroup) == "table" then
+                        for _, nestedConnection in pairs(connectionOrGroup) do disconnectOnce(nestedConnection) end
+                    else
+                        disconnectOnce(connectionOrGroup)
+                    end
+                end
+                pcall(function() rawset(environment, "HumanModCons", nil) end)
+            end
+        end
+    end
+
+    -- Destroy temporary objects created by script commands to prevent inert duplicates after reload.
+    for _, ownedInstance in ipairs(state.ownedInstances or {}) do
+        pcall(function() if ownedInstance and ownedInstance.Parent then ownedInstance:Destroy() end end)
+    end
+    state.ownedInstances = {}
+    pcall(function() if selectionBox and selectionBox.Parent then selectionBox:Destroy() end end)
+    pcall(function() if selected and selected.Parent then selected:Destroy() end end)
+
+    -- Destroy only this script's UI; in fallback mode remove its ScaledHolder and QuickCapture only.
+    pcall(function()
+        if state.gui and state.gui.Parent then
+            state.gui:Destroy()
+        elseif state.scaledHolder and state.scaledHolder.Parent then
+            state.scaledHolder:Destroy()
+        end
+    end)
+    pcall(function() if state.scaledHolder and state.scaledHolder.Parent then state.scaledHolder:Destroy() end end)
+    pcall(function() if state.quickCapture and state.quickCapture.Parent then state.quickCapture:Destroy() end end)
+
+    pcall(function()
+        if IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_ACTIVE_STATE == state then
+            IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_ACTIVE_STATE = nil
+        end
+        IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_LOADED = nil
+    end)
+    pcall(function() IY_RELOAD_INSTANCE_STATE.scriptEnv.IY_LOADED = nil end)
+    pcall(function() rawset(_G, "IY_LOADED", nil) end)
+    state.cleaned = true
+    state.cleaning = false
+    return true
+end
+
+IY_RELOAD_INSTANCE_STATE.SaveSettings = function()
+    local saveOk, saveError = pcall(function() updatesaves() end)
+    if not saveOk then return false, saveError end
+    task.wait()
+    local saveDeadline = tick() + 8
+    while cooldown and tick() < saveDeadline do task.wait(0.1) end
+    if cooldown then return false, "settings save did not finish before timeout" end
+    return true
+end
+IY_RELOAD_INSTANCE_STATE.Cleanup = cleanupIYReloadInstance
+IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_ACTIVE_STATE = IY_RELOAD_INSTANCE_STATE
+
+addcmd("reload", {}, function(args, speaker)
+    if IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_RELOAD_BUSY then
+        notify("Reload", "A reload is already in progress.", 4)
+        return
+    end
+    IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_RELOAD_BUSY = true
+
+    task.spawn(function()
+        local function finishReloadLock()
+            pcall(function() IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_RELOAD_BUSY = nil end)
+        end
+        local function failReload(message)
+            finishReloadLock()
+            sendIYReloadNotice("Reload failed", message, 8)
+        end
+
+        if type(game.HttpGet) ~= "function" then
+            failReload("This environment does not support game:HttpGet.")
+            return
+        end
+        local requestOk, remoteSource = pcall(function()
+            return game:HttpGet(IY_RELOAD_INSTANCE_STATE.sourceUrl)
+        end)
+        if not requestOk then
+            failReload("Could not contact GitHub: " .. tostring(remoteSource))
+            return
+        end
+        if type(remoteSource) ~= "string" or #remoteSource < 100000 then
+            failReload("GitHub returned an empty or incomplete script.")
+            return
+        end
+        if not remoteSource:find("IY_CRUZAN_RELOAD_V1", 1, true)
+            or not remoteSource:find("function addcmd", 1, true)
+            or not remoteSource:find("currentVersion", 1, true)
+            or not remoteSource:find(IY_RELOAD_INSTANCE_STATE.sourceUrl, 1, true) then
+            failReload("The GitHub file does not contain the expected Cruzan reload-enabled build. Upload this version to GitHub first.")
+            return
+        end
+        if type(loadstring) ~= "function" then
+            failReload("This executor does not provide loadstring, so the downloaded script cannot be validated.")
+            return
+        end
+        local compileOk, newChunk, compileError = pcall(function()
+            local chunk, err = loadstring(remoteSource)
+            return chunk, err
+        end)
+        if not compileOk then
+            failReload("Could not validate the downloaded code: " .. tostring(newChunk))
+            return
+        end
+        if type(newChunk) ~= "function" then
+            failReload("The downloaded script has a syntax/compile error: " .. tostring(compileError))
+            return
+        end
+
+        local remoteVersion = remoteSource:match('currentVersion%s*=%s*"([^"]+)"')
+            or remoteSource:match("currentVersion%s*=%s*'([^']+)'") or "unknown"
+
+        -- Persist the current user's settings before disconnecting the running instance.
+        pcall(function() updatesaves() end)
+        task.wait()
+        local saveDeadline = tick() + 8
+        while cooldown and tick() < saveDeadline do task.wait(0.1) end
+        if cooldown then
+            failReload("Settings are still being saved. The current script was left running; try again shortly.")
+            return
+        end
+
+        sendIYReloadNotice("Reload", "Validated Cruzan v" .. remoteVersion .. ". Restarting script...", 3)
+        local previousState = IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_ACTIVE_STATE or IY_RELOAD_INSTANCE_STATE
+        local cleanupOk, cleanupError = pcall(function()
+            if previousState and type(previousState.Cleanup) == "function" then
+                previousState.Cleanup()
+            else
+                cleanupIYReloadInstance()
+            end
+        end)
+        -- Cleanup is best-effort; the new source has already been fetched and compiled.
+        local cleanupWarning = not cleanupOk and (" Cleanup warning: " .. tostring(cleanupError)) or ""
+        pcall(function() IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_LOADED = nil end)
+        pcall(function() IY_RELOAD_INSTANCE_STATE.scriptEnv.IY_LOADED = nil end)
+        pcall(function() rawset(_G, "IY_LOADED", nil) end)
+
+        local runOk, runError = pcall(newChunk)
+        local newState = IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_ACTIVE_STATE
+        local started = runOk
+            and type(newState) == "table"
+            and newState ~= previousState
+            and newState.ready == true
+            and IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_LOADED
+
+        if not started then
+            if type(newState) == "table" and newState ~= previousState then
+                if type(newState.Cleanup) == "function" then
+                    pcall(newState.Cleanup)
+                else
+                    pcall(function() if newState.gui and newState.gui.Parent then newState.gui:Destroy() end end)
+                    pcall(function() if newState.scaledHolder and newState.scaledHolder.Parent then newState.scaledHolder:Destroy() end end)
+                end
+            end
+            pcall(function() IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_LOADED = nil end)
+            pcall(function() IY_RELOAD_INSTANCE_STATE.scriptEnv.IY_LOADED = nil end)
+            pcall(function() rawset(_G, "IY_LOADED", nil) end)
+            finishReloadLock()
+            local detail = tostring(runError or "Initialization did not complete successfully.")
+            sendIYReloadNotice("Reload failed", "The new script did not start successfully: " .. detail .. ". The old instance was cleaned up; automatic rollback is unavailable." .. cleanupWarning, 10)
+            return
+        end
+
+        finishReloadLock()
+        sendIYReloadNotice("Reload complete", "Successfully started Cruzan v" .. remoteVersion .. "." .. cleanupWarning, 5)
+    end)
+end)
+end
 if IsOnMobile then
 	local QuickCapture = Instance.new("TextButton")
 	local UICorner = Instance.new("UICorner")
+	IY_RELOAD_INSTANCE_STATE.quickCapture = QuickCapture
 	QuickCapture.Name = randomString()
 	QuickCapture.Parent = PARENT
 	QuickCapture.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
@@ -14869,7 +15234,8 @@ end
 pcall(function() Scale.Scale = math.max(Holder.AbsoluteSize.X / 1920, guiScale) end)
 Scale.Parent = ScaledHolder
 ScaledHolder.Size = UDim2.fromScale(1 / Scale.Scale, 1 / Scale.Scale)
-Scale:GetPropertyChangedSignal("Scale"):Connect(function()
+IY_RELOAD_INSTANCE_STATE.TrackConnection(Scale:GetPropertyChangedSignal("Scale"):Connect(function()
+	if not ScaledHolder or not ScaledHolder.Parent then return end
 	ScaledHolder.Size = UDim2.fromScale(1 / Scale.Scale, 1 / Scale.Scale)
 	for _, v in ScaledHolder:GetDescendants() do
 		if v:IsA("GuiObject") and v.Visible then
@@ -14877,7 +15243,7 @@ Scale:GetPropertyChangedSignal("Scale"):Connect(function()
 			v.Visible = true
 		end
 	end
-end)
+end))
 
 updateColors(currentShade1,shade1)
 updateColors(currentShade2,shade2)
@@ -14926,29 +15292,29 @@ function hookCharEvents(plr, instant)
 		if not humanoid or not humanoid:IsA("Humanoid") then return end
 
 		local oldHealth = humanoid.Health
-		humanoid.HealthChanged:Connect(function(health)
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(humanoid.HealthChanged:Connect(function(health)
 			local change = math.abs(oldHealth - health)
 			if oldHealth > health then
 				eventEditor.FireEvent("OnDamage", plr.Name, tonumber(health))
 			end
 			oldHealth = health
-		end)
+		end))
 
-		humanoid.Died:Connect(function()
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(humanoid.Died:Connect(function()
 			eventEditor.FireEvent("OnDied", plr.Name)
 
 			local killedBy = humanoid:FindFirstChild("creator")
 			if killedBy and killedBy:IsA("ObjectValue") and killedBy.Value and killedBy.Value.Parent then
 				eventEditor.FireEvent("OnKilled", plr.Name, killedBy.Name)
 			end
-		end)
+		end))
 	end)
 end
 
-Players.PlayerAdded:Connect(function(plr)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.PlayerAdded:Connect(function(plr)
 	eventEditor.FireEvent("OnJoin",plr.Name)
-	if isLegacyChat then plr.Chatted:Connect(function(msg) eventEditor.FireEvent("OnChatted",tostring(plr),msg) end) end
-	plr.CharacterAdded:Connect(function() eventEditor.FireEvent("OnSpawn",tostring(plr)) hookCharEvents(plr) end)
+	if isLegacyChat then IY_RELOAD_INSTANCE_STATE.TrackConnection(plr.Chatted:Connect(function(msg) eventEditor.FireEvent("OnChatted",tostring(plr),msg) end)) end
+	IY_RELOAD_INSTANCE_STATE.TrackConnection(plr.CharacterAdded:Connect(function() eventEditor.FireEvent("OnSpawn",tostring(plr)) hookCharEvents(plr) end))
 	JoinLog(plr)
 	if isLegacyChat then ChatLog(plr) end
 	if ESPenabled then
@@ -14959,10 +15325,10 @@ Players.PlayerAdded:Connect(function(plr)
 		repeat wait(1) until plr.Character and getRoot(plr.Character)
 		CHMS(plr)
 	end
-end)
+end))
 
 if not isLegacyChat then
-	TextChatService.MessageReceived:Connect(function(textChatMessage)
+	IY_RELOAD_INSTANCE_STATE.TrackConnection(TextChatService.MessageReceived:Connect(function(textChatMessage)
 		if textChatMessage.TextSource and textChatMessage.Status ~= Enum.TextChatMessageStatus.InvalidTextChannelPermissions then
 			local player = Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
 			if not player then return end
@@ -14979,12 +15345,12 @@ if not isLegacyChat then
 			eventEditor.FireEvent("OnChatted", player.Name, message)
 			sendChatWebhook(player, message)
 		end
-	end)
+	end))
 end
 
 for _, plr in pairs(Players:GetPlayers()) do
 	pcall(function()
-		plr.CharacterAdded:Connect(function() eventEditor.FireEvent("OnSpawn", tostring(plr)) hookCharEvents(plr) end)
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(plr.CharacterAdded:Connect(function() eventEditor.FireEvent("OnSpawn", tostring(plr)) hookCharEvents(plr) end))
 		hookCharEvents(plr)
 	end)
 end
@@ -15019,25 +15385,25 @@ if aliases and #aliases > 0 then
 	refreshaliases()
 end
 
-IYMouse.Move:Connect(checkTT)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(IYMouse.Move:Connect(checkTT))
 
 -- Touchscreens may not emit another mouse-move event after the finger lifts.
 -- Hide the tooltip on touch release so command descriptions do not remain stuck.
-UserInputService.InputEnded:Connect(function(input)
+IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch then
 		Tooltip.Visible = false
 	end
-end)
+end))
 
-CaptureService.CaptureBegan:Connect(function()
+IY_RELOAD_INSTANCE_STATE.TrackConnection(CaptureService.CaptureBegan:Connect(function()
 	PARENT.Enabled = false
-end)
+end))
 
-CaptureService.CaptureEnded:Connect(function()
+IY_RELOAD_INSTANCE_STATE.TrackConnection(CaptureService.CaptureEnded:Connect(function()
 	task.delay(0.1, function()
-		PARENT.Enabled = true
+		if PARENT and PARENT.Parent then PARENT.Enabled = true end
 	end)
-end)
+end))
 
 task.spawn(function()
 	local success, latestVersionInfo = pcall(function() 
@@ -15148,3 +15514,5 @@ task.spawn(function()
     IntroBackground:Destroy()
     minimizeHolder()
 end)
+
+IY_RELOAD_INSTANCE_STATE.ready = true
