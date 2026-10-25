@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.2.9"
+currentVersion = "1.3.0"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -2015,7 +2015,7 @@ WaypointHoverFrame.BorderColor3 = Color3.fromRGB(78, 78, 79)
 WaypointHoverFrame.ClipsDescendants = true
 WaypointHoverFrame.AnchorPoint = Vector2.new(0, 0)
 WaypointHoverFrame.Position = UDim2.new(1, -82, 0, 45)
-WaypointHoverFrame.Size = UDim2.new(0, 70, 0, 38)
+WaypointHoverFrame.Size = UDim2.new(0, 66, 0, 38)
 WaypointHoverFrame.Visible = false
 WaypointHoverFrame.ZIndex = 80
 table.insert(shade1, WaypointHoverFrame)
@@ -7379,7 +7379,9 @@ end)
 -- Independent Waypoint Hover windows with unrestricted movement and saved positions.
 local waypointHoverWindows = {}
 local waypointHoverWindowCounter = 0
-local waypointHoverWindowSize = Vector2.new(70, 38)
+local waypointHoverWindowZIndex = 80
+local activeWaypointHoverDragState = nil
+local waypointHoverWindowSize = Vector2.new(66, 38)
 local waypointHoverWindowGap = 8
 
 local function normalizeWaypointHoverKey(name)
@@ -7442,6 +7444,7 @@ end
 
 local function disconnectWaypointHoverState(state)
 	if not state then return end
+	if activeWaypointHoverDragState == state then activeWaypointHoverDragState = nil end
 	state.inputToken = (state.inputToken or 0) + 1
 	state.dragCandidate = nil
 	state.dragInput = nil
@@ -7455,6 +7458,16 @@ local function disconnectWaypointHoverState(state)
 		pcall(function() connection:Disconnect() end)
 	end
 	state.connections = {}
+end
+
+local function bringWaypointHoverToFront(state)
+	if not state or not state.frame or not state.frame.Parent then return end
+	waypointHoverWindowZIndex = math.max(waypointHoverWindowZIndex + 10, (state.frame.ZIndex or 80) + 10)
+	local baseZIndex = waypointHoverWindowZIndex
+	state.frame.ZIndex = baseZIndex
+	if state.header then state.header.ZIndex = baseZIndex + 1 end
+	if state.gotoButton then state.gotoButton.ZIndex = baseZIndex + 1 end
+	if state.closeButton then state.closeButton.ZIndex = baseZIndex + 3 end
 end
 
 local function removeWaypointHoverWindow(state, savePosition)
@@ -7534,7 +7547,7 @@ local function createWaypointHoverWindow(name, key)
 	frame.AnchorPoint = Vector2.new(0, 0)
 	frame.Size = UDim2.new(0, waypointHoverWindowSize.X, 0, waypointHoverWindowSize.Y)
 	frame.Visible = false
-	frame.ZIndex = 80
+	frame.ZIndex = waypointHoverWindowZIndex
 	gotoButton.Position = UDim2.new(0, 0, 0, 0)
 	gotoButton.Size = UDim2.new(1, 0, 1, 0)
 	gotoButton.Text = name
@@ -7542,7 +7555,7 @@ local function createWaypointHoverWindow(name, key)
 	gotoButton.TextSize = 16
 	gotoButton.TextScaled = true
 	gotoButton.AutoButtonColor = false
-	gotoButton.ZIndex = 81
+	gotoButton.ZIndex = frame.ZIndex + 1
 	gotoButton.TextXAlignment = Enum.TextXAlignment.Center
 	gotoButton.TextYAlignment = Enum.TextYAlignment.Center
 	closeButton.Parent = frame
@@ -7551,7 +7564,7 @@ local function createWaypointHoverWindow(name, key)
 	closeButton.AutoButtonColor = false
 	closeButton.Position = UDim2.new(1, -17, 0, 0)
 	closeButton.Size = UDim2.new(0, 17, 0, 17)
-	closeButton.ZIndex = 84
+	closeButton.ZIndex = frame.ZIndex + 3
 	closeButton.TextSize = 14
 	frame.Parent = PARENT
 	frame.BorderColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
@@ -7602,6 +7615,7 @@ local function createWaypointHoverWindow(name, key)
 		state.dragMoved = false
 		state.dragInput = nil
 		state.holdToDragArmed = false
+		if activeWaypointHoverDragState == state then activeWaypointHoverDragState = nil end
 		if wasDragging then
 			state.suppressGotoUntil = tick() + 0.5
 			persistWaypointHoverPosition(state, true)
@@ -7615,6 +7629,12 @@ local function createWaypointHoverWindow(name, key)
 	state.connections[#state.connections + 1] = gotoButton.InputBegan:Connect(function(input)
 		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
 		if state.dragCandidate then return end
+		if activeWaypointHoverDragState and activeWaypointHoverDragState ~= state then
+			if activeWaypointHoverDragState.dragCandidate then return end
+			activeWaypointHoverDragState = nil
+		end
+		activeWaypointHoverDragState = state
+		bringWaypointHoverToFront(state)
 		state.inputToken += 1
 		local token = state.inputToken
 		state.dragCandidate = input
@@ -7647,6 +7667,7 @@ local function createWaypointHoverWindow(name, key)
 
 	state.connections[#state.connections + 1] = closeButton.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			bringWaypointHoverToFront(state)
 			frame.Active = true
 		end
 	end)
@@ -7677,6 +7698,7 @@ local function showWaypointHover(name)
 	end
 	state.frame.Position = UDim2.new(0, x, 0, y)
 	waypointHoverWindows[key] = state
+	bringWaypointHoverToFront(state)
 	state.frame.Visible = true
 	local wasSaved = type(savedPosition) == "table" and savedPosition.x == x and savedPosition.y == y
 	if not wasSaved then
@@ -7685,30 +7707,52 @@ local function showWaypointHover(name)
 	end
 end
 
+local function removeWaypointHoverForName(name)
+	local key = normalizeWaypointHoverKey(name)
+	if key == "" then return end
+	local state = waypointHoverWindows[key]
+	if state then removeWaypointHoverWindow(state, false) end
+	waypointHoverPositions[key] = nil
+end
+
+local function removeAllWaypointHoverWindows()
+	local openStates = {}
+	for _, state in pairs(waypointHoverWindows) do
+		openStates[#openStates + 1] = state
+	end
+	for _, state in ipairs(openStates) do
+		removeWaypointHoverWindow(state, false)
+	end
+	for key in pairs(waypointHoverPositions) do
+		waypointHoverPositions[key] = nil
+	end
+end
+
 -- Dragging follows the actual mouse/touch movement. A normal short tap still
 -- performs Goto; a dragged gesture suppresses Goto so the window moves safely.
 UserInputService.InputChanged:Connect(function(input)
-	for _, state in pairs(waypointHoverWindows) do
-		local candidate = state.dragCandidate
-		if candidate and state.frame and state.frame.Parent and input == state.dragInput then
-			local isTouchMove = candidate.UserInputType == Enum.UserInputType.Touch and input.UserInputType == Enum.UserInputType.Touch
-			local isMouseMove = candidate.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement
-			if isTouchMove or isMouseMove then
-				local delta = input.Position - state.dragStart
-				local movementThreshold = state.holdToDragArmed and 2 or 6
-				if not state.dragging and delta.Magnitude >= movementThreshold then
-					-- A short press needs a clear move; after a long press, a small
-					-- finger movement starts dragging the window instead of invoking Goto.
-					state.dragging = true
-					state.dragMoved = true
-					state.suppressGotoUntil = tick() + 1
-				end
-				if state.dragging then
-					local startPosition = state.startPosition
-					local x, y = normalizeWaypointHoverPosition(startPosition.X.Offset + delta.X, startPosition.Y.Offset + delta.Y)
-					state.frame.Position = UDim2.new(0, x, 0, y)
-				end
-			end
+	-- Only the window that originally received the press may drag. This prevents
+	-- a fast touch crossing other open Waypoints from moving those windows too.
+	local state = activeWaypointHoverDragState
+	if not state then return end
+	local candidate = state.dragCandidate
+	if not candidate or not state.frame or not state.frame.Parent or input ~= state.dragInput then return end
+	local isTouchMove = candidate.UserInputType == Enum.UserInputType.Touch and input.UserInputType == Enum.UserInputType.Touch
+	local isMouseMove = candidate.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement
+	if isTouchMove or isMouseMove then
+		local delta = input.Position - state.dragStart
+		local movementThreshold = state.holdToDragArmed and 2 or 6
+		if not state.dragging and delta.Magnitude >= movementThreshold then
+			-- A short press needs a clear move; after a long press, a small
+			-- finger movement starts dragging the window instead of invoking Goto.
+			state.dragging = true
+			state.dragMoved = true
+			state.suppressGotoUntil = tick() + 1
+		end
+		if state.dragging then
+			local startPosition = state.startPosition
+			local x, y = normalizeWaypointHoverPosition(startPosition.X.Offset + delta.X, startPosition.Y.Offset + delta.Y)
+			state.frame.Position = UDim2.new(0, x, 0, y)
 		end
 	end
 end)
@@ -7741,7 +7785,7 @@ function refreshwaypoints()
 			Holder_4.CanvasSize = UDim2.new(0,0,0, Position + 30)
 			local waypointName = tostring(WayPoints[i].NAME)
 			newpoint.Text.Delete.MouseButton1Click:Connect(function()
-				execCmd('dpos '..WayPoints[i].NAME)
+				execCmd('dpos '..waypointName)
 			end)
 			newpoint.Text.TP.MouseButton1Click:Connect(function()
 				execCmd("loadpos "..WayPoints[i].NAME)
@@ -7770,7 +7814,7 @@ function refreshwaypoints()
 			Holder_4.CanvasSize = UDim2.new(0,0,0, Position + 30)
 			local waypointName = tostring(pWayPoints[i].NAME)
 			newpoint.Text.Delete.MouseButton1Click:Connect(function()
-				execCmd('dpos '..pWayPoints[i].NAME)
+				execCmd('dpos '..waypointName)
 			end)
 			newpoint.Text.TP.MouseButton1Click:Connect(function()
 				execCmd("loadpos "..pWayPoints[i].NAME)
@@ -9387,6 +9431,7 @@ end)
 addcmd('deletewaypoint',{'dwp','dpos','deleteposition','deletepos'},function(args, speaker)
 	for i,v in pairs(WayPoints) do
 		if v.NAME:lower() == tostring(getstring(1, args)):lower() then
+			removeWaypointHoverForName(v.NAME)
 			notify('Modified Waypoints',"Deleted waypoint: " .. v.NAME)
 			table.remove(WayPoints, i)
 		end
@@ -9402,6 +9447,7 @@ addcmd('deletewaypoint',{'dwp','dpos','deleteposition','deletepos'},function(arg
 	end
 	for i,v in pairs(pWayPoints) do
 		if v.NAME:lower() == tostring(getstring(1, args)):lower() then
+			removeWaypointHoverForName(v.NAME)
 			notify('Modified Waypoints',"Deleted waypoint: " .. v.NAME)
 			table.remove(pWayPoints, i)
 		end
@@ -9411,6 +9457,7 @@ addcmd('deletewaypoint',{'dwp','dpos','deleteposition','deletepos'},function(arg
 end)
 
 addcmd('clearwaypoints',{'cwp','clearpositions','cpos','clearpos'},function(args, speaker)
+	removeAllWaypointHoverWindows()
 	WayPoints = {}
 	pWayPoints = {}
 	refreshwaypoints()
@@ -9422,6 +9469,7 @@ end)
 addcmd('cleargamewaypoints',{'cgamewp'},function(args, speaker)
 	for i,v in pairs(WayPoints) do
 		if v.GAME == PlaceId then
+			removeWaypointHoverForName(v.NAME)
 			table.remove(WayPoints, i)
 		end
 	end
@@ -9434,6 +9482,7 @@ addcmd('cleargamewaypoints',{'cgamewp'},function(args, speaker)
 	end
 	for i,v in pairs(pWayPoints) do
 		if v.GAME == PlaceId then
+			removeWaypointHoverForName(v.NAME)
 			table.remove(pWayPoints, i)
 		end
 	end
