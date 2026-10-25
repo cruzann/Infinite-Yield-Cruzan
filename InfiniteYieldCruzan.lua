@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.3.2"
+currentVersion = "1.3.3"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -14955,19 +14955,6 @@ end)
 
 -- IY_CRUZAN_RELOAD_V1
 do
-local function sendIYReloadNotice(title, message, duration)
-    local sent = pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = tostring(title or "Infinite Yield Reload"),
-            Text = tostring(message or ""),
-            Duration = duration or 6,
-        })
-    end)
-    if not sent then
-        pcall(function() warn(tostring(title or "Infinite Yield Reload") .. ": " .. tostring(message or "")) end)
-    end
-end
-
 local function disconnectIYConnectionSafe(connection)
     if connection then pcall(function() connection:Disconnect() end) end
 end
@@ -15117,14 +15104,12 @@ IY_RELOAD_INSTANCE_STATE.sharedEnv.IY_CRUZAN_ACTIVE_STATE = IY_RELOAD_INSTANCE_S
 addcmd("reload", {}, function(args, speaker)
     local shared = IY_RELOAD_INSTANCE_STATE.sharedEnv
     if shared.IY_CRUZAN_RELOAD_BUSY then
-        notify("Reload", "A reload is already in progress.", 4)
         return
     end
     shared.IY_CRUZAN_RELOAD_BUSY = true
 
     task.spawn(function()
         local previousState = shared.IY_CRUZAN_ACTIVE_STATE or IY_RELOAD_INSTANCE_STATE
-        local oldGuiEnabled, oldScaledVisible
         local stagingEnv
 
         local function finishReloadLock()
@@ -15132,27 +15117,20 @@ addcmd("reload", {}, function(args, speaker)
         end
 
         local function sendFailure(message, fullDetail)
-            if fullDetail then
-                pcall(function() warn("Infinite Yield Cruzan reload failed: " .. tostring(fullDetail)) end)
-            end
-            local short = tostring(message or "Unknown reload error"):gsub("[\r\n].*", "")
-            if #short > 135 then short = short:sub(1, 132) .. "..." end
+            -- Keep diagnostics in the executor console without showing reload pop-ups.
+            local detail = fullDetail or message or "Unknown reload error"
+            pcall(function() warn("Infinite Yield Cruzan reload failed: " .. tostring(detail)) end)
             finishReloadLock()
-            sendIYReloadNotice("Reload failed", short, 8)
         end
 
         local function restorePreviousInstance()
+            -- The old UI stays visible while the candidate starts, so only restore
+            -- ownership/loading flags if candidate initialization fails.
             pcall(function()
                 shared.IY_CRUZAN_ACTIVE_STATE = previousState
                 shared.IY_LOADED = true
                 rawset(_G, "IY_LOADED", true)
             end)
-            if oldGuiEnabled ~= nil then
-                pcall(function() if previousState.gui and previousState.gui.Parent then previousState.gui.Enabled = oldGuiEnabled end end)
-            end
-            if oldScaledVisible ~= nil then
-                pcall(function() if previousState.scaledHolder and previousState.scaledHolder.Parent then previousState.scaledHolder.Visible = oldScaledVisible end end)
-            end
         end
 
         local function disconnectSafe(connection)
@@ -15209,7 +15187,6 @@ addcmd("reload", {}, function(args, speaker)
             state.cleaned = true
         end
 
-        sendIYReloadNotice("Reload", "Fetching the latest Cruzan version from GitHub...", 3)
         if type(game.HttpGet) ~= "function" then
             sendFailure("This executor does not support game:HttpGet. The current script was kept running.")
             return
@@ -15256,9 +15233,6 @@ addcmd("reload", {}, function(args, speaker)
             sendFailure("The downloaded script has a syntax/compile error. The current script was kept running.", compileError)
             return
         end
-        local remoteVersion = remoteSource:match('currentVersion%s*=%s*"([^"]+)"')
-            or remoteSource:match("currentVersion%s*=%s*'([^']+)'") or "unknown"
-
         -- Make a private global environment for the new instance. This avoids sharing
         -- stale globals with the running instance and allows a failed startup to be
         -- discarded without destroying the old UI or command connections.
@@ -15277,28 +15251,45 @@ addcmd("reload", {}, function(args, speaker)
             return
         end
 
-        -- Persist settings before starting the candidate, but never clean the old UI yet.
-        local settingsOk, settingsError = pcall(function() updatesaves() end)
-        if not settingsOk then
-            sendFailure("Could not save the current settings; the current script was kept running.", settingsError)
-            return
-        end
-        task.wait()
-        local saveDeadline = tick() + 8
-        while cooldown and tick() < saveDeadline do task.wait(0.1) end
-        if cooldown then
-            sendFailure("Settings are still being saved. The current script was kept running; try again shortly.")
-            return
-        end
-
-        -- Hide the old UI during staging; restore it if the new script fails.
+        -- Save the latest settings snapshot immediately instead of waiting for the
+        -- normal save cooldown (which can add several seconds to a reload).
+        -- Keep the current UI visible until the new script reports that it is ready.
         pcall(function()
-            if previousState.gui and previousState.gui.Parent then
-                oldGuiEnabled = previousState.gui.Enabled
-                previousState.gui.Enabled = false
-            elseif previousState.scaledHolder and previousState.scaledHolder.Parent then
-                oldScaledVisible = previousState.scaledHolder.Visible
-                previousState.scaledHolder.Visible = false
+            if nosaves == false and writefileExploit() then
+                local currentSettings = {
+                    autoHideDelay = autoHideDelay;
+                    StayOpen = StayOpen;
+                    guiScale = guiScale;
+                    keepIY = KeepInfYield;
+                    espTransparency = espTransparency;
+                    logsEnabled = logsEnabled;
+                    jLogsEnabled = jLogsEnabled;
+                    logsWebhook = logsWebhook;
+                    aliases = aliases;
+                    binds = binds or {};
+                    WayPoints = AllWaypoints;
+                    PluginsTable = PluginsTable;
+                    waypointHoverPositions = waypointHoverPositions;
+                    favoriteCommands = favoriteCommands or {};
+                    currentShade1 = {currentShade1.R,currentShade1.G,currentShade1.B};
+                    currentShade2 = {currentShade2.R,currentShade2.G,currentShade2.B};
+                    currentShade3 = {currentShade3.R,currentShade3.G,currentShade3.B};
+                    currentText1 = {currentText1.R,currentText1.G,currentText1.B};
+                    currentText2 = {currentText2.R,currentText2.G,currentText2.B};
+                    currentScroll = {currentScroll.R,currentScroll.G,currentScroll.B};
+                    eventBinds = eventEditor.SaveData()
+                }
+                local encodedSettings = HttpService:JSONEncode(currentSettings)
+                local writeCallOk, writeResult = pcall(function()
+                    return writefile("IY_FE.iy", encodedSettings, true)
+                end)
+                if not writeCallOk or writeResult == false then
+                    pcall(function() warn("Infinite Yield Cruzan: immediate settings save failed during reload.") end)
+                end
+                pcall(function() writeFavoriteBackup() end)
+                -- Queue the same latest snapshot behind any pending writer, without
+                -- waiting for its cooldown; this prevents an older pending save winning.
+                pcall(function() updatesaves() end)
             end
         end)
 
@@ -15326,7 +15317,6 @@ addcmd("reload", {}, function(args, speaker)
                 error("The previous instance has no cleanup handler.")
             end
         end)
-        local cleanupWarning = not cleanupOk and (" Old-instance cleanup warning: " .. tostring(cleanupError)) or ""
 
         -- Old cleanup clears these shared flags; restore the values for the new instance.
         shared.IY_CRUZAN_ACTIVE_STATE = newState
@@ -15334,7 +15324,6 @@ addcmd("reload", {}, function(args, speaker)
         pcall(function() rawset(_G, "IY_LOADED", true) end)
         pcall(function() rawset(stagingEnv, "IY_LOADED", true) end)
         finishReloadLock()
-        sendIYReloadNotice("Reload complete", "Started Cruzan v" .. remoteVersion .. " from GitHub." .. cleanupWarning, 5)
     end)
 end)
 end
