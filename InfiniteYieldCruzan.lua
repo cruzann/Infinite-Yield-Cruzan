@@ -153,7 +153,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.2.5"
+currentVersion = "1.2.6"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -1304,7 +1304,7 @@ WaypointHoverRowButton.BorderSizePixel = 0
 WaypointHoverRowButton.Position = UDim2.new(0, 110, 0, 0)
 WaypointHoverRowButton.Size = UDim2.new(0, 40, 0, 20)
 WaypointHoverRowButton.Font = Enum.Font.SourceSans
-WaypointHoverRowButton.TextSize = 12
+WaypointHoverRowButton.TextSize = 14
 WaypointHoverRowButton.Text = "Hover"
 WaypointHoverRowButton.TextColor3 = Color3.new(0, 0, 0)
 WaypointHoverRowButton.ZIndex = 10
@@ -1997,8 +1997,8 @@ WaypointHoverFrame.BorderSizePixel = 1
 WaypointHoverFrame.BorderColor3 = Color3.fromRGB(78, 78, 79)
 WaypointHoverFrame.ClipsDescendants = true
 WaypointHoverFrame.AnchorPoint = Vector2.new(0, 0)
-WaypointHoverFrame.Position = UDim2.new(1, -108, 0, 45)
-WaypointHoverFrame.Size = UDim2.new(0, 96, 0, 44)
+WaypointHoverFrame.Position = UDim2.new(1, -94, 0, 45)
+WaypointHoverFrame.Size = UDim2.new(0, 82, 0, 38)
 WaypointHoverFrame.Visible = false
 WaypointHoverFrame.ZIndex = 80
 table.insert(shade1, WaypointHoverFrame)
@@ -2007,47 +2007,40 @@ local waypointHoverFrameCorner = Instance.new("UICorner")
 waypointHoverFrameCorner.CornerRadius = UDim.new(0, 6)
 waypointHoverFrameCorner.Parent = WaypointHoverFrame
 
+-- The old title strip is hidden; the Waypoint button now fills the entire window.
 WaypointHoverHeader.Name = "Header"
 WaypointHoverHeader.Parent = WaypointHoverFrame
-WaypointHoverHeader.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+WaypointHoverHeader.BackgroundTransparency = 1
 WaypointHoverHeader.BorderSizePixel = 0
 WaypointHoverHeader.Position = UDim2.new(0, 0, 0, 0)
-WaypointHoverHeader.Size = UDim2.new(1, 0, 0, 15)
-WaypointHoverHeader.Font = Enum.Font.SourceSans
-WaypointHoverHeader.TextSize = 12
-WaypointHoverHeader.Text = "Waypoint"
-WaypointHoverHeader.TextColor3 = Color3.new(1, 1, 1)
-WaypointHoverHeader.TextXAlignment = Enum.TextXAlignment.Left
+WaypointHoverHeader.Size = UDim2.new(0, 0, 0, 0)
+WaypointHoverHeader.Visible = false
+WaypointHoverHeader.Text = ""
 WaypointHoverHeader.ZIndex = 81
-table.insert(shade2, WaypointHoverHeader)
-table.insert(text1, WaypointHoverHeader)
-local waypointHoverHeaderCorner = Instance.new("UICorner")
-waypointHoverHeaderCorner.CornerRadius = UDim.new(0, 5)
-waypointHoverHeaderCorner.Parent = WaypointHoverHeader
 
 WaypointHoverClose.Name = "Close"
-WaypointHoverClose.Parent = WaypointHoverHeader
+WaypointHoverClose.Parent = WaypointHoverFrame
 WaypointHoverClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverClose.BorderSizePixel = 0
-WaypointHoverClose.Position = UDim2.new(1, -16, 0, 1)
-WaypointHoverClose.Size = UDim2.new(0, 15, 0, 13)
+WaypointHoverClose.Position = UDim2.new(1, -17, 0, 2)
+WaypointHoverClose.Size = UDim2.new(0, 14, 0, 14)
 WaypointHoverClose.Font = Enum.Font.SourceSansBold
 WaypointHoverClose.TextSize = 10
 WaypointHoverClose.Text = "X"
 WaypointHoverClose.TextColor3 = Color3.new(1, 1, 1)
-WaypointHoverClose.ZIndex = 82
+WaypointHoverClose.ZIndex = 84
 table.insert(shade2, WaypointHoverClose)
 table.insert(text1, WaypointHoverClose)
 local waypointHoverCloseCorner = Instance.new("UICorner")
-waypointHoverCloseCorner.CornerRadius = UDim.new(0, 3)
+waypointHoverCloseCorner.CornerRadius = UDim.new(0, 4)
 waypointHoverCloseCorner.Parent = WaypointHoverClose
 
 WaypointHoverButton.Name = "GotoWaypoint"
 WaypointHoverButton.Parent = WaypointHoverFrame
 WaypointHoverButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverButton.BorderSizePixel = 0
-WaypointHoverButton.Position = UDim2.new(0, 2, 0, 18)
-WaypointHoverButton.Size = UDim2.new(1, -4, 0, 23)
+WaypointHoverButton.Position = UDim2.new(0, 0, 0, 0)
+WaypointHoverButton.Size = UDim2.new(1, 0, 1, 0)
 WaypointHoverButton.Font = Enum.Font.SourceSans
 WaypointHoverButton.TextSize = 12
 WaypointHoverButton.Text = "Waypoint"
@@ -2058,12 +2051,16 @@ WaypointHoverButton.ZIndex = 81
 table.insert(shade2, WaypointHoverButton)
 table.insert(text1, WaypointHoverButton)
 local waypointHoverButtonCorner = Instance.new("UICorner")
-waypointHoverButtonCorner.CornerRadius = UDim.new(0, 4)
+waypointHoverButtonCorner.CornerRadius = UDim.new(0, 5)
 waypointHoverButtonCorner.Parent = WaypointHoverButton
 local waypointHoverTextConstraint = Instance.new("UITextSizeConstraint")
 waypointHoverTextConstraint.MinTextSize = 8
-waypointHoverTextConstraint.MaxTextSize = 12
+waypointHoverTextConstraint.MaxTextSize = 11
 waypointHoverTextConstraint.Parent = WaypointHoverButton
+local waypointHoverButtonPadding = Instance.new("UIPadding")
+waypointHoverButtonPadding.PaddingLeft = UDim.new(0, 3)
+waypointHoverButtonPadding.PaddingRight = UDim.new(0, 12)
+waypointHoverButtonPadding.Parent = WaypointHoverButton
 
 ToPartFrame.Name = randomString()
 ToPartFrame.Parent = ScaledHolder
@@ -7332,7 +7329,7 @@ end)
 -- Independent Waypoint Hover windows with unrestricted movement and saved positions.
 local waypointHoverWindows = {}
 local waypointHoverWindowCounter = 0
-local waypointHoverWindowSize = Vector2.new(96, 44)
+local waypointHoverWindowSize = Vector2.new(82, 38)
 local waypointHoverWindowGap = 8
 
 local function normalizeWaypointHoverKey(name)
@@ -7395,6 +7392,11 @@ end
 
 local function disconnectWaypointHoverState(state)
 	if not state then return end
+	state.inputToken = (state.inputToken or 0) + 1
+	state.dragCandidate = nil
+	state.dragInput = nil
+	state.holdToDragArmed = false
+	state.dragging = false
 	if state.endConnection then
 		pcall(function() state.endConnection:Disconnect() end)
 		state.endConnection = nil
@@ -7410,10 +7412,8 @@ local function removeWaypointHoverWindow(state, savePosition)
 	if savePosition then persistWaypointHoverPosition(state, true) end
 	disconnectWaypointHoverState(state)
 	removeWaypointHoverStyleEntry(shade1, state.frame)
-	removeWaypointHoverStyleEntry(shade2, state.header)
 	removeWaypointHoverStyleEntry(shade2, state.closeButton)
 	removeWaypointHoverStyleEntry(shade2, state.gotoButton)
-	removeWaypointHoverStyleEntry(text1, state.header)
 	removeWaypointHoverStyleEntry(text1, state.closeButton)
 	removeWaypointHoverStyleEntry(text1, state.gotoButton)
 	removeWaypointHoverStyleEntry(waypointHoverFrames, state.frame)
@@ -7458,10 +7458,8 @@ end
 
 local function registerWaypointHoverStyle(state)
 	table.insert(shade1, state.frame)
-	table.insert(shade2, state.header)
 	table.insert(shade2, state.closeButton)
 	table.insert(shade2, state.gotoButton)
-	table.insert(text1, state.header)
 	table.insert(text1, state.closeButton)
 	table.insert(text1, state.gotoButton)
 end
@@ -7469,11 +7467,15 @@ end
 local function createWaypointHoverWindow(name, key)
 	local frame = WaypointHoverFrame:Clone()
 	local header = frame:FindFirstChild("Header")
-	local closeButton = header and header:FindFirstChild("Close")
+	local closeButton = frame:FindFirstChild("Close")
 	local gotoButton = frame:FindFirstChild("GotoWaypoint")
-	if not header or not closeButton or not gotoButton then
+	if not closeButton or not gotoButton then
 		frame:Destroy()
 		return nil
+	end
+	if header then
+		header.Visible = false
+		header.Text = ""
 	end
 
 	waypointHoverWindowCounter += 1
@@ -7483,8 +7485,14 @@ local function createWaypointHoverWindow(name, key)
 	frame.Size = UDim2.new(0, waypointHoverWindowSize.X, 0, waypointHoverWindowSize.Y)
 	frame.Visible = false
 	frame.ZIndex = 80
-	header.Text = "Waypoint"
+	gotoButton.Position = UDim2.new(0, 0, 0, 0)
+	gotoButton.Size = UDim2.new(1, 0, 1, 0)
 	gotoButton.Text = name
+	gotoButton.ZIndex = 81
+	closeButton.Parent = frame
+	closeButton.Position = UDim2.new(1, -17, 0, 2)
+	closeButton.Size = UDim2.new(0, 14, 0, 14)
+	closeButton.ZIndex = 84
 	frame.Parent = PARENT
 	frame.BorderColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
 	table.insert(waypointHoverFrames, frame)
@@ -7498,9 +7506,15 @@ local function createWaypointHoverWindow(name, key)
 		waypointName = name,
 		connections = {},
 		dragging = false,
+		dragCandidate = nil,
 		dragInput = nil,
+		holdToDragArmed = false,
 		dragStart = nil,
 		startPosition = nil,
+		pressStartedAt = nil,
+		inputToken = 0,
+		dragMoved = false,
+		suppressGotoUntil = 0,
 		endConnection = nil,
 	}
 	registerWaypointHoverStyle(state)
@@ -7509,31 +7523,71 @@ local function createWaypointHoverWindow(name, key)
 		removeWaypointHoverWindow(state, true)
 	end)
 	state.connections[#state.connections + 1] = gotoButton.MouseButton1Click:Connect(function()
+		-- A long press or drag is a move gesture, never a Goto click.
+		if tick() < (state.suppressGotoUntil or 0) then return end
 		if state.waypointName ~= "" and waypointHoverWindows[key] == state then
 			-- Keep the existing Goto command and bind it to this window's Waypoint.
 			execCmd("loadpos " .. state.waypointName)
 		end
 	end)
-	state.connections[#state.connections + 1] = header.InputBegan:Connect(function(input)
+
+	local function finishWaypointHoverPress(input)
+		if state.dragCandidate ~= input then return end
+		local wasDragging = state.dragging
+		state.dragging = false
+		state.dragCandidate = nil
+		state.dragStart = nil
+		state.startPosition = nil
+		state.pressStartedAt = nil
+		state.dragMoved = false
+		state.dragInput = nil
+		state.holdToDragArmed = false
+		if wasDragging then
+			state.suppressGotoUntil = tick() + 0.5
+			persistWaypointHoverPosition(state, true)
+		end
+		if state.endConnection then
+			pcall(function() state.endConnection:Disconnect() end)
+			state.endConnection = nil
+		end
+	end
+
+	state.connections[#state.connections + 1] = gotoButton.InputBegan:Connect(function(input)
 		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
-		state.dragging = true
+		if state.dragCandidate then return end
+		state.inputToken += 1
+		local token = state.inputToken
+		state.dragCandidate = input
+		state.dragInput = nil
+		state.dragging = false
+		state.dragMoved = false
 		state.dragStart = input.Position
 		state.startPosition = frame.Position
+		state.pressStartedAt = tick()
 		if state.endConnection then pcall(function() state.endConnection:Disconnect() end) end
 		state.endConnection = input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
-				state.dragging = false
-				if state.endConnection then
-					pcall(function() state.endConnection:Disconnect() end)
-					state.endConnection = nil
-				end
-				persistWaypointHoverPosition(state, true)
+				finishWaypointHoverPress(input)
+			end
+		end)
+		-- A deliberate hold arms window dragging; movement (or a long hold followed
+		-- by movement) is never interpreted as a Goto action.
+		task.delay(0.18, function()
+			if state.inputToken == token and state.dragCandidate == input and frame.Parent then
+				state.holdToDragArmed = true
 			end
 		end)
 	end)
-	state.connections[#state.connections + 1] = header.InputChanged:Connect(function(input)
+
+	state.connections[#state.connections + 1] = gotoButton.InputChanged:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			state.dragInput = input
+		end
+	end)
+
+	state.connections[#state.connections + 1] = closeButton.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			frame.Active = true
 		end
 	end)
 	return state
@@ -7568,14 +7622,30 @@ local function showWaypointHover(name)
 	end
 end
 
--- Dragging is intentionally unconstrained; window positions are saved exactly as placed.
+-- Dragging follows the actual mouse/touch movement. A normal short tap still
+-- performs Goto; a dragged gesture suppresses Goto so the window moves safely.
 UserInputService.InputChanged:Connect(function(input)
 	for _, state in pairs(waypointHoverWindows) do
-		if state.dragging and input == state.dragInput and state.frame and state.frame.Parent then
-			local delta = input.Position - state.dragStart
-			local startPosition = state.startPosition
-			local x, y = normalizeWaypointHoverPosition(startPosition.X.Offset + delta.X, startPosition.Y.Offset + delta.Y)
-			state.frame.Position = UDim2.new(0, x, 0, y)
+		local candidate = state.dragCandidate
+		if candidate and state.frame and state.frame.Parent and input == state.dragInput then
+			local isTouchMove = candidate.UserInputType == Enum.UserInputType.Touch and input.UserInputType == Enum.UserInputType.Touch
+			local isMouseMove = candidate.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement
+			if isTouchMove or isMouseMove then
+				local delta = input.Position - state.dragStart
+				local movementThreshold = state.holdToDragArmed and 2 or 6
+				if not state.dragging and delta.Magnitude >= movementThreshold then
+					-- A short press needs a clear move; after a long press, a small
+					-- finger movement starts dragging the window instead of invoking Goto.
+					state.dragging = true
+					state.dragMoved = true
+					state.suppressGotoUntil = tick() + 1
+				end
+				if state.dragging then
+					local startPosition = state.startPosition
+					local x, y = normalizeWaypointHoverPosition(startPosition.X.Offset + delta.X, startPosition.Y.Offset + delta.Y)
+					state.frame.Position = UDim2.new(0, x, 0, y)
+				end
+			end
 		end
 	end
 end)
