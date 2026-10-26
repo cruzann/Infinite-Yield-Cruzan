@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.3.9"
+currentVersion = "1.3.10"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -254,6 +254,8 @@ AddWaypointButton = Instance.new("TextButton")
 WaypointHoverFrame = Instance.new("Frame")
 WaypointHoverHeader = Instance.new("TextButton")
 WaypointHoverClose = Instance.new("TextButton")
+WaypointHoverBackTPLabel = Instance.new("TextLabel")
+WaypointHoverBackTPToggle = Instance.new("TextButton")
 WaypointHoverButton = Instance.new("TextButton")
 WaypointAddDialog = Instance.new("Frame")
 WaypointAddDialogTitle = Instance.new("TextLabel")
@@ -2049,17 +2051,14 @@ WaypointHoverFrame.BorderSizePixel = 1
 WaypointHoverFrame.BorderColor3 = Color3.fromRGB(78, 78, 79)
 WaypointHoverFrame.ClipsDescendants = true
 WaypointHoverFrame.AnchorPoint = Vector2.new(0, 0)
-WaypointHoverFrame.Position = UDim2.new(1, -82, 0, 45)
-WaypointHoverFrame.Size = UDim2.new(0, 66, 0, 38)
+WaypointHoverFrame.Position = UDim2.new(1, -106, 0, 45)
+WaypointHoverFrame.Size = UDim2.new(0, 90, 0, 46)
 WaypointHoverFrame.Visible = false
 WaypointHoverFrame.ZIndex = 80
 table.insert(shade1, WaypointHoverFrame)
 table.insert(waypointHoverFrames, WaypointHoverFrame)
-local waypointHoverFrameCorner = Instance.new("UICorner")
-waypointHoverFrameCorner.CornerRadius = UDim.new(0, 6)
-waypointHoverFrameCorner.Parent = WaypointHoverFrame
-
--- The old title strip is hidden; the Waypoint button now fills the entire window.
+-- The Waypoint hover controls use square corners. The top row contains the
+-- BackTP preference and Close button; the Goto surface remains directly below.
 WaypointHoverHeader.Name = "Header"
 WaypointHoverHeader.Parent = WaypointHoverFrame
 WaypointHoverHeader.BackgroundTransparency = 1
@@ -2070,14 +2069,44 @@ WaypointHoverHeader.Visible = false
 WaypointHoverHeader.Text = ""
 WaypointHoverHeader.ZIndex = 81
 
+WaypointHoverBackTPLabel.Name = "BackTPLabel"
+WaypointHoverBackTPLabel.Parent = WaypointHoverFrame
+WaypointHoverBackTPLabel.BackgroundTransparency = 1
+WaypointHoverBackTPLabel.BorderSizePixel = 0
+WaypointHoverBackTPLabel.Position = UDim2.new(0, 3, 0, 0)
+WaypointHoverBackTPLabel.Size = UDim2.new(0, 38, 0, 20)
+WaypointHoverBackTPLabel.Font = Enum.Font.SourceSans
+WaypointHoverBackTPLabel.TextSize = 12
+WaypointHoverBackTPLabel.Text = "BackTP"
+WaypointHoverBackTPLabel.TextColor3 = Color3.new(1, 1, 1)
+WaypointHoverBackTPLabel.TextXAlignment = Enum.TextXAlignment.Left
+WaypointHoverBackTPLabel.TextYAlignment = Enum.TextYAlignment.Center
+WaypointHoverBackTPLabel.ZIndex = 84
+
+WaypointHoverBackTPToggle = Button:Clone()
+WaypointHoverBackTPToggle.Name = "BackTPToggle"
+WaypointHoverBackTPToggle.Parent = WaypointHoverFrame
+WaypointHoverBackTPToggle.Position = UDim2.new(0, 42, 0, 0)
+WaypointHoverBackTPToggle.Size = UDim2.new(0, 20, 0, 20)
+WaypointHoverBackTPToggle.ZIndex = 84
+WaypointHoverBackTPToggle.BorderSizePixel = 0
+WaypointHoverBackTPToggle.AutoButtonColor = false
+local waypointHoverBackTPCheck = WaypointHoverBackTPToggle:FindFirstChild("On")
+if waypointHoverBackTPCheck then
+    waypointHoverBackTPCheck.Name = "Checkmark"
+    waypointHoverBackTPCheck.ZIndex = 85
+    waypointHoverBackTPCheck.TextSize = 13
+    waypointHoverBackTPCheck.TextColor3 = Color3.new(1, 1, 1)
+end
+
 WaypointHoverClose.Name = "Close"
 WaypointHoverClose.Parent = WaypointHoverFrame
 WaypointHoverClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverClose.BackgroundTransparency = 1
 WaypointHoverClose.BorderSizePixel = 0
 WaypointHoverClose.AutoButtonColor = false
-WaypointHoverClose.Position = UDim2.new(1, -17, 0, 0)
-WaypointHoverClose.Size = UDim2.new(0, 17, 0, 17)
+WaypointHoverClose.Position = UDim2.new(1, -17, 0, 1)
+WaypointHoverClose.Size = UDim2.new(0, 17, 0, 18)
 WaypointHoverClose.Font = Enum.Font.SourceSansBold
 WaypointHoverClose.TextSize = 14
 WaypointHoverClose.Text = "X"
@@ -2085,17 +2114,14 @@ WaypointHoverClose.TextColor3 = Color3.new(1, 1, 1)
 WaypointHoverClose.ZIndex = 84
 table.insert(shade2, WaypointHoverClose)
 table.insert(text1, WaypointHoverClose)
-local waypointHoverCloseCorner = Instance.new("UICorner")
-waypointHoverCloseCorner.CornerRadius = UDim.new(0, 6)
-waypointHoverCloseCorner.Parent = WaypointHoverClose
 
 WaypointHoverButton.Name = "GotoWaypoint"
 WaypointHoverButton.Parent = WaypointHoverFrame
 WaypointHoverButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverButton.BorderSizePixel = 0
 WaypointHoverButton.AutoButtonColor = false
-WaypointHoverButton.Position = UDim2.new(0, 0, 0, 0)
-WaypointHoverButton.Size = UDim2.new(1, 0, 1, 0)
+WaypointHoverButton.Position = UDim2.new(0, 0, 0, 20)
+WaypointHoverButton.Size = UDim2.new(1, 0, 1, -20)
 WaypointHoverButton.Font = Enum.Font.SourceSansBold
 WaypointHoverButton.TextSize = 16
 WaypointHoverButton.Text = "Waypoint"
@@ -2107,9 +2133,6 @@ WaypointHoverButton.TextWrapped = true
 WaypointHoverButton.ZIndex = 81
 table.insert(shade2, WaypointHoverButton)
 table.insert(text1, WaypointHoverButton)
-local waypointHoverButtonCorner = Instance.new("UICorner")
-waypointHoverButtonCorner.CornerRadius = UDim.new(0, 5)
-waypointHoverButtonCorner.Parent = WaypointHoverButton
 local waypointHoverTextConstraint = Instance.new("UITextSizeConstraint")
 waypointHoverTextConstraint.MinTextSize = 9
 waypointHoverTextConstraint.MaxTextSize = 18
@@ -3451,10 +3474,12 @@ defaultGuiScale = IsOnMobile and 0.9 or 1
 local autoHideDelay = 1.5
 local prefix = ';' -- Fixed internal shortcut; commands entered in Command Bar need no prefix.
 local waypointHoverPositions = {}
+local waypointBackTPEnabled = true
 favoriteCommands = {}
 defaultsettings = {
 	autoHideDelay = 1.5;
 	StayOpen = false;
+	waypointBackTPEnabled = true;
 	guiScale = defaultGuiScale;
 	espTransparency = 0.3;
 	keepIY = true;
@@ -3481,6 +3506,7 @@ useFactorySettings = function()
 	autoHideDelay = 1.5
 	prefix = ';'
 	StayOpen = false
+	waypointBackTPEnabled = true
 	guiScale = defaultGuiScale
 	KeepInfYield = true
 	espTransparency = 0.3
@@ -3637,6 +3663,7 @@ function saves()
 						autoHideDelay = 1.5
 					end
 					if vtype(json.StayOpen, "boolean") then StayOpen = json.StayOpen else StayOpen = false end
+					if vtype(json.waypointBackTPEnabled, "boolean") then waypointBackTPEnabled = json.waypointBackTPEnabled else waypointBackTPEnabled = true end
 					if vtype(json.guiScale, "number") then guiScale = json.guiScale else guiScale = defaultGuiScale end
 					if vtype(json.keepIY, "boolean") then KeepInfYield = json.keepIY else KeepInfYield = true end
 					if vtype(json.espTransparency, "number") then espTransparency = json.espTransparency else espTransparency = 0.3 end
@@ -3725,6 +3752,7 @@ function updatesaves()
 		local update = {
 			autoHideDelay = autoHideDelay;
 			StayOpen = StayOpen;
+			waypointBackTPEnabled = waypointBackTPEnabled;
 			guiScale = guiScale;
 			keepIY = KeepInfYield;
 			espTransparency = espTransparency;
@@ -7501,7 +7529,7 @@ local waypointHoverWindows = {}
 local waypointHoverWindowCounter = 0
 local waypointHoverWindowZIndex = 80
 local activeWaypointHoverDragState = nil
-local waypointHoverWindowSize = Vector2.new(66, 38)
+local waypointHoverWindowSize = Vector2.new(90, 46)
 local waypointHoverWindowGap = 8
 
 local function normalizeWaypointHoverKey(name)
@@ -7509,14 +7537,17 @@ local function normalizeWaypointHoverKey(name)
 	return string.lower(normalized)
 end
 
--- Waypoint gestures: tap = Goto, a stationary long press = Return, movement = Drag.
+-- Waypoint gestures: tap = Goto, a quick second tap = Return, movement = Drag.
 -- Keep the Return logic grouped in one namespaced table.
 IY_CRUZAN_WAYPOINT_RETURN = {
-    HOLD_SECONDS = 0.6,
+    DOUBLE_TAP_SECONDS = 0.4,
     DRAG_TOUCH_THRESHOLD = 8,
     DRAG_MOUSE_THRESHOLD = 5,
     state = nil,
     generation = 0,
+    pendingGotoGeneration = nil,
+    pendingReturnGeneration = nil,
+    lastToggleAt = nil,
     humanoidConnection = nil,
 }
 
@@ -7565,7 +7596,7 @@ function IY_CRUZAN_WAYPOINT_RETURN.getValidState()
 end
 
 function IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
-	local returnReady = IY_CRUZAN_WAYPOINT_RETURN.getValidState() ~= nil
+	local returnReady = waypointBackTPEnabled == true and IY_CRUZAN_WAYPOINT_RETURN.getValidState() ~= nil
 	for _, windowState in pairs(waypointHoverWindows) do
 		local frame = windowState.frame
 		if frame and frame.Parent then
@@ -7578,10 +7609,17 @@ end
 function IY_CRUZAN_WAYPOINT_RETURN.clear()
 	IY_CRUZAN_WAYPOINT_RETURN.state = nil
 	IY_CRUZAN_WAYPOINT_RETURN.generation += 1
+	IY_CRUZAN_WAYPOINT_RETURN.pendingGotoGeneration = nil
+	IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration = nil
+	for _, windowState in pairs(waypointHoverWindows) do
+		windowState.lastTapAt = nil
+		windowState.lastTapGeneration = nil
+	end
 	IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
 end
 
 function IY_CRUZAN_WAYPOINT_RETURN.performReturn()
+	if waypointBackTPEnabled ~= true then return false end
 	local saved = IY_CRUZAN_WAYPOINT_RETURN.getValidState()
 	if not saved then
 		IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
@@ -7605,8 +7643,8 @@ function IY_CRUZAN_WAYPOINT_RETURN.performReturn()
 end
 
 function IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
-	if not state or not state.waypointName or state.waypointName == "" then return end
-	if waypointHoverWindows[state.key] ~= state then return end
+	if not state or not state.waypointName or state.waypointName == "" then return nil end
+	if waypointHoverWindows[state.key] ~= state then return nil end
 	local player = Players.LocalPlayer
 	local character = player and player.Character
 	local root = nil
@@ -7614,18 +7652,37 @@ function IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local destination = IY_CRUZAN_WAYPOINT_RETURN.getDestinationCFrame(state.waypointName)
 	local originCFrame = root and root.Parent and root.CFrame or nil
-	local shouldCaptureReturn = originCFrame ~= nil and destination ~= nil
+	local shouldCaptureReturn = waypointBackTPEnabled == true and originCFrame ~= nil and destination ~= nil
 		and humanoid ~= nil and humanoid.Health > 0
 		and (originCFrame.Position - destination.Position).Magnitude > 1
 	local generation = nil
 	if shouldCaptureReturn then
 		IY_CRUZAN_WAYPOINT_RETURN.generation += 1
 		generation = IY_CRUZAN_WAYPOINT_RETURN.generation
+		IY_CRUZAN_WAYPOINT_RETURN.pendingGotoGeneration = generation
+		IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration = nil
 	end
 	local commandOk = pcall(execCmd, "loadpos " .. state.waypointName)
-	if not commandOk or not shouldCaptureReturn then return end
+	if not commandOk then
+		if IY_CRUZAN_WAYPOINT_RETURN.pendingGotoGeneration == generation then
+			IY_CRUZAN_WAYPOINT_RETURN.pendingGotoGeneration = nil
+		end
+		if IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration == generation then
+			IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration = nil
+		end
+		return nil
+	end
+	if not shouldCaptureReturn then return generation end
 	task.delay(0.1, function()
-		if generation ~= IY_CRUZAN_WAYPOINT_RETURN.generation then return end
+		if generation ~= IY_CRUZAN_WAYPOINT_RETURN.generation then
+			if IY_CRUZAN_WAYPOINT_RETURN.pendingGotoGeneration == generation then
+				IY_CRUZAN_WAYPOINT_RETURN.pendingGotoGeneration = nil
+			end
+			if IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration == generation then
+				IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration = nil
+			end
+			return
+		end
 		local currentCharacter = player and player.Character
 		local currentRoot = nil
 		pcall(function() if currentCharacter then currentRoot = getRoot(currentCharacter) end end)
@@ -7637,7 +7694,10 @@ function IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
 			local ok, distance = pcall(function() return (currentRoot.Position - destination.Position).Magnitude end)
 			reached = ok and distance <= 3
 		end
-		if reached and generation == IY_CRUZAN_WAYPOINT_RETURN.generation then
+		if IY_CRUZAN_WAYPOINT_RETURN.pendingGotoGeneration == generation then
+			IY_CRUZAN_WAYPOINT_RETURN.pendingGotoGeneration = nil
+		end
+		if reached and generation == IY_CRUZAN_WAYPOINT_RETURN.generation and waypointBackTPEnabled == true then
 			IY_CRUZAN_WAYPOINT_RETURN.state = {
 				cframe = originCFrame,
 				character = character,
@@ -7646,8 +7706,21 @@ function IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
 				jobId = game.JobId,
 			}
 			IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
+			if IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration == generation then
+				IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration = nil
+				IY_CRUZAN_WAYPOINT_RETURN.performReturn()
+			end
+		else
+			if IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration == generation then
+				IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration = nil
+			end
+			if state.lastTapGeneration == generation then
+				state.lastTapAt = nil
+				state.lastTapGeneration = nil
+			end
 		end
 	end)
+	return generation
 end
 
 function IY_CRUZAN_WAYPOINT_RETURN.bindHumanoid(character)
@@ -7788,6 +7861,12 @@ local function bringWaypointHoverToFront(state)
 	state.frame.ZIndex = baseZIndex
 	if state.header then state.header.ZIndex = baseZIndex + 1 end
 	if state.gotoButton then state.gotoButton.ZIndex = baseZIndex + 1 end
+	if state.backTPLabel then state.backTPLabel.ZIndex = baseZIndex + 3 end
+	if state.backTPToggle then
+		state.backTPToggle.ZIndex = baseZIndex + 3
+		local checkmark = state.backTPToggle:FindFirstChild("Checkmark")
+		if checkmark then checkmark.ZIndex = baseZIndex + 4 end
+	end
 	if state.closeButton then state.closeButton.ZIndex = baseZIndex + 3 end
 end
 
@@ -7797,8 +7876,11 @@ local function removeWaypointHoverWindow(state, savePosition)
 	disconnectWaypointHoverState(state)
 	removeWaypointHoverStyleEntry(shade1, state.frame)
 	removeWaypointHoverStyleEntry(shade2, state.closeButton)
+	removeWaypointHoverStyleEntry(shade2, state.backTPToggle)
 	removeWaypointHoverStyleEntry(shade2, state.gotoButton)
+	removeWaypointHoverStyleEntry(shade3, state.backTPToggle)
 	removeWaypointHoverStyleEntry(text1, state.closeButton)
+	removeWaypointHoverStyleEntry(text1, state.backTPLabel)
 	removeWaypointHoverStyleEntry(text1, state.gotoButton)
 	removeWaypointHoverStyleEntry(waypointHoverFrames, state.frame)
 	if waypointHoverWindows[state.key] == state then waypointHoverWindows[state.key] = nil end
@@ -7843,8 +7925,11 @@ end
 local function registerWaypointHoverStyle(state)
 	table.insert(shade1, state.frame)
 	table.insert(shade2, state.closeButton)
+	table.insert(shade2, state.backTPToggle)
 	table.insert(shade2, state.gotoButton)
+	table.insert(shade3, state.backTPToggle)
 	table.insert(text1, state.closeButton)
+	table.insert(text1, state.backTPLabel)
 	table.insert(text1, state.gotoButton)
 end
 
@@ -7852,8 +7937,10 @@ local function createWaypointHoverWindow(name, key)
 	local frame = WaypointHoverFrame:Clone()
 	local header = frame:FindFirstChild("Header")
 	local closeButton = frame:FindFirstChild("Close")
+	local backTPLabel = frame:FindFirstChild("BackTPLabel")
+	local backTPToggle = frame:FindFirstChild("BackTPToggle")
 	local gotoButton = frame:FindFirstChild("GotoWaypoint")
-	if not closeButton or not gotoButton then
+	if not closeButton or not backTPLabel or not backTPToggle or not gotoButton then
 		frame:Destroy()
 		return nil
 	end
@@ -7870,8 +7957,8 @@ local function createWaypointHoverWindow(name, key)
 	frame.Visible = false
 	frame.ZIndex = waypointHoverWindowZIndex
 	frame:SetAttribute("WaypointReturnReady", false)
-	gotoButton.Position = UDim2.new(0, 0, 0, 0)
-	gotoButton.Size = UDim2.new(1, 0, 1, 0)
+	gotoButton.Position = UDim2.new(0, 0, 0, 20)
+	gotoButton.Size = UDim2.new(1, 0, 1, -20)
 	gotoButton.Text = name
 	gotoButton.Font = Enum.Font.SourceSansBold
 	gotoButton.TextSize = 16
@@ -7884,10 +7971,22 @@ local function createWaypointHoverWindow(name, key)
 	closeButton.BackgroundTransparency = 1
 	closeButton.BorderSizePixel = 0
 	closeButton.AutoButtonColor = false
-	closeButton.Position = UDim2.new(1, -17, 0, 0)
-	closeButton.Size = UDim2.new(0, 17, 0, 17)
+	closeButton.Position = UDim2.new(1, -17, 0, 1)
+	closeButton.Size = UDim2.new(0, 17, 0, 18)
 	closeButton.ZIndex = frame.ZIndex + 3
 	closeButton.TextSize = 14
+	backTPLabel.Position = UDim2.new(0, 3, 0, 0)
+	backTPLabel.Size = UDim2.new(0, 38, 0, 20)
+	backTPLabel.TextColor3 = currentText1
+	backTPLabel.ZIndex = frame.ZIndex + 3
+	backTPToggle.Position = UDim2.new(0, 42, 0, 0)
+	backTPToggle.Size = UDim2.new(0, 20, 0, 20)
+	backTPToggle.BackgroundColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
+	backTPToggle.ZIndex = frame.ZIndex + 3
+	local backTPCheck = backTPToggle:FindFirstChild("Checkmark")
+	if backTPCheck then
+		backTPCheck.ZIndex = frame.ZIndex + 4
+	end
 	frame.Parent = PARENT
 	frame.BorderColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
 	table.insert(waypointHoverFrames, frame)
@@ -7897,6 +7996,8 @@ local function createWaypointHoverWindow(name, key)
 		frame = frame,
 		header = header,
 		closeButton = closeButton,
+		backTPLabel = backTPLabel,
+		backTPToggle = backTPToggle,
 		gotoButton = gotoButton,
 		waypointName = name,
 		connections = {},
@@ -7905,25 +8006,49 @@ local function createWaypointHoverWindow(name, key)
 		dragInput = nil,
 		dragStart = nil,
 		startPosition = nil,
-		pressStartedAt = nil,
 		inputToken = 0,
 		dragMoved = false,
 		endConnection = nil,
+		lastTapAt = nil,
+		lastTapGeneration = nil,
 	}
 	registerWaypointHoverStyle(state)
 
 	state.connections[#state.connections + 1] = closeButton.MouseButton1Click:Connect(function()
 		removeWaypointHoverWindow(state, true)
 	end)
+	local function updateBackTPToggleVisual(targetState)
+		local toggle = targetState and targetState.backTPToggle
+		local checkmark = toggle and toggle:FindFirstChild("Checkmark")
+		if not checkmark then return end
+		local enabled = waypointBackTPEnabled == true
+		checkmark.BackgroundTransparency = enabled and 0 or 1
+		checkmark.Text = enabled and "✓" or ""
+		checkmark.TextColor3 = Color3.new(1, 1, 1)
+		checkmark.Font = Enum.Font.SourceSansBold
+		checkmark.TextSize = 13
+	end
+	updateBackTPToggleVisual(state)
+	state.connections[#state.connections + 1] = backTPToggle.MouseButton1Click:Connect(function()
+		local now = os.clock()
+		if IY_CRUZAN_WAYPOINT_RETURN.lastToggleAt and now - IY_CRUZAN_WAYPOINT_RETURN.lastToggleAt < 0.15 then return end
+		IY_CRUZAN_WAYPOINT_RETURN.lastToggleAt = now
+		waypointBackTPEnabled = not waypointBackTPEnabled
+		if not waypointBackTPEnabled then IY_CRUZAN_WAYPOINT_RETURN.clear() end
+		for _, openState in pairs(waypointHoverWindows) do
+			openState.lastTapAt = nil
+			openState.lastTapGeneration = nil
+			updateBackTPToggleVisual(openState)
+		end
+		if type(updatesaves) == "function" then updatesaves() end
+	end)
 	local function finishWaypointHoverPress(input)
 		if state.dragCandidate ~= input then return end
 		local wasDragging = state.dragging
-		local pressDuration = state.pressStartedAt and (tick() - state.pressStartedAt) or 0
 		state.dragging = false
 		state.dragCandidate = nil
 		state.dragStart = nil
 		state.startPosition = nil
-		state.pressStartedAt = nil
 		state.dragMoved = false
 		state.dragInput = nil
 		if activeWaypointHoverDragState == state then activeWaypointHoverDragState = nil end
@@ -7932,12 +8057,31 @@ local function createWaypointHoverWindow(name, key)
 			state.endConnection = nil
 		end
 		if wasDragging then
+			state.lastTapAt = nil
+			state.lastTapGeneration = nil
 			persistWaypointHoverPosition(state, true)
-		elseif pressDuration >= IY_CRUZAN_WAYPOINT_RETURN.HOLD_SECONDS then
-			-- A stationary long press requests Return; it never falls through to Goto.
-			IY_CRUZAN_WAYPOINT_RETURN.performReturn()
+		elseif waypointBackTPEnabled == true then
+			local now = os.clock()
+			local isDoubleTap = state.lastTapAt ~= nil
+				and now - state.lastTapAt <= IY_CRUZAN_WAYPOINT_RETURN.DOUBLE_TAP_SECONDS
+			if isDoubleTap then
+				local previousGeneration = state.lastTapGeneration
+				state.lastTapAt = nil
+				state.lastTapGeneration = nil
+				-- If the first Goto has not finished its validation yet, queue the return
+				-- behind that validation instead of returning to an older saved position.
+				if previousGeneration ~= nil and IY_CRUZAN_WAYPOINT_RETURN.pendingGotoGeneration == previousGeneration then
+					IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration = previousGeneration
+				else
+					IY_CRUZAN_WAYPOINT_RETURN.performReturn()
+				end
+			else
+				state.lastTapAt = now
+				state.lastTapGeneration = IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
+			end
 		else
-			-- A short tap keeps the existing Goto behavior.
+			state.lastTapAt = nil
+			state.lastTapGeneration = nil
 			IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
 		end
 	end
@@ -7958,7 +8102,6 @@ local function createWaypointHoverWindow(name, key)
 		state.dragMoved = false
 		state.dragStart = input.Position
 		state.startPosition = frame.Position
-		state.pressStartedAt = tick()
 		if state.endConnection then pcall(function() state.endConnection:Disconnect() end) end
 		state.endConnection = input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
@@ -8037,8 +8180,8 @@ local function removeAllWaypointHoverWindows()
 	end
 end
 
--- Dragging follows the actual mouse/touch movement. A normal short tap still
--- performs Goto; a dragged gesture suppresses Goto so the window moves safely.
+-- Dragging follows the actual mouse/touch movement. A single tap performs Goto;
+-- a quick second tap on the same Waypoint requests Return, while dragging only moves it.
 IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputChanged:Connect(function(input)
 	-- Only the window that originally received the press may drag. This prevents
 	-- a fast touch crossing other open Waypoints from moving those windows too.
@@ -15505,6 +15648,7 @@ addcmd("reload", {}, function(args, speaker)
                 local currentSettings = {
                     autoHideDelay = autoHideDelay;
                     StayOpen = StayOpen;
+                    waypointBackTPEnabled = waypointBackTPEnabled;
                     guiScale = guiScale;
                     keepIY = KeepInfYield;
                     espTransparency = espTransparency;
