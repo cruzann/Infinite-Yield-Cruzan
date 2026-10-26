@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.4.1"
+currentVersion = "1.4.2"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -1271,8 +1271,8 @@ WaypointBackTPLabel.Name = "BackTPLabel"
 WaypointBackTPLabel.Parent = PositionsFrame
 WaypointBackTPLabel.BackgroundTransparency = 1
 WaypointBackTPLabel.BorderSizePixel = 0
-WaypointBackTPLabel.Position = UDim2.new(0, 98, 0, 175)
-WaypointBackTPLabel.Size = UDim2.new(0, 51, 0, 20)
+WaypointBackTPLabel.Position = UDim2.new(0, 122, 0, 175)
+WaypointBackTPLabel.Size = UDim2.new(0, 50, 0, 20)
 WaypointBackTPLabel.Font = Enum.Font.SourceSans
 WaypointBackTPLabel.TextSize = 14
 WaypointBackTPLabel.Text = "BackTP"
@@ -1288,7 +1288,7 @@ WaypointBackTPToggle.Parent = PositionsFrame
 WaypointBackTPToggle.BackgroundColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
 WaypointBackTPToggle.BorderSizePixel = 0
 WaypointBackTPToggle.AutoButtonColor = false
-WaypointBackTPToggle.Position = UDim2.new(0, 151, 0, 175)
+WaypointBackTPToggle.Position = UDim2.new(0, 174, 0, 175)
 WaypointBackTPToggle.Size = UDim2.new(0, 20, 0, 20)
 WaypointBackTPToggle.ZIndex = 12
 local waypointBackTPCheckmark = WaypointBackTPToggle:FindFirstChild("On")
@@ -7540,7 +7540,7 @@ local function normalizeWaypointHoverKey(name)
 	return string.lower(normalized)
 end
 
--- Waypoint gestures: tap = Goto, a quick second tap = Return, movement = Drag.
+-- Waypoint gestures: with BackTP enabled, a single tap defers Goto until the double-tap window expires; a quick second tap performs Return only. Movement = Drag.
 -- Keep the Return logic grouped in one namespaced table.
 IY_CRUZAN_WAYPOINT_RETURN = {
     DOUBLE_TAP_SECONDS = 0.4,
@@ -8010,6 +8010,7 @@ local function createWaypointHoverWindow(name, key)
 		endConnection = nil,
 		lastTapAt = nil,
 		lastTapGeneration = nil,
+		tapToken = 0,
 	}
 	registerWaypointHoverStyle(state)
 
@@ -8031,27 +8032,47 @@ local function createWaypointHoverWindow(name, key)
 			state.endConnection = nil
 		end
 		if wasDragging then
+			state.tapToken = (state.tapToken or 0) + 1
 			state.lastTapAt = nil
 			state.lastTapGeneration = nil
 			persistWaypointHoverPosition(state, true)
 		elseif waypointBackTPEnabled == true then
 			local now = os.clock()
-			local isDoubleTap = state.lastTapAt ~= nil
-				and now - state.lastTapAt <= IY_CRUZAN_WAYPOINT_RETURN.DOUBLE_TAP_SECONDS
-			if isDoubleTap then
-				local previousGeneration = state.lastTapGeneration
+			local doubleTapWindow = IY_CRUZAN_WAYPOINT_RETURN.DOUBLE_TAP_SECONDS
+			local previousTapAt = state.lastTapAt
+			local isDoubleTap = previousTapAt ~= nil and now - previousTapAt <= doubleTapWindow
+			if previousTapAt ~= nil and not isDoubleTap then
+				-- The previous tap is outside the double-tap window. If its delayed
+				-- callback has not run yet, commit that single-tap Goto before queuing this tap.
+				state.tapToken = (state.tapToken or 0) + 1
 				state.lastTapAt = nil
 				state.lastTapGeneration = nil
-				-- If the first Goto has not finished its validation yet, queue the return
-				-- behind that validation instead of returning to an older saved position.
-				if previousGeneration ~= nil and IY_CRUZAN_WAYPOINT_RETURN.pendingGotoGeneration == previousGeneration then
-					IY_CRUZAN_WAYPOINT_RETURN.pendingReturnGeneration = previousGeneration
-				else
-					IY_CRUZAN_WAYPOINT_RETURN.performReturn()
-				end
+				IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
+			end
+			if isDoubleTap then
+				-- Cancel the deferred Goto from the first tap. A double tap must only
+				-- return to the previous origin, never visit the selected Waypoint first.
+				state.tapToken = (state.tapToken or 0) + 1
+				state.lastTapAt = nil
+				state.lastTapGeneration = nil
+				IY_CRUZAN_WAYPOINT_RETURN.performReturn()
 			else
+				-- Wait out the double-tap window before performing a single-click Goto.
+				-- If a second tap arrives, it invalidates this token and performs Return only.
 				state.lastTapAt = now
-				state.lastTapGeneration = IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
+				state.lastTapGeneration = nil
+				state.tapToken = (state.tapToken or 0) + 1
+				local scheduledTapToken = state.tapToken
+				task.delay(IY_CRUZAN_WAYPOINT_RETURN.DOUBLE_TAP_SECONDS, function()
+					if waypointHoverWindows[state.key] ~= state then return end
+					if not state.frame or not state.frame.Parent then return end
+					if state.tapToken ~= scheduledTapToken or state.lastTapAt == nil then return end
+					state.lastTapAt = nil
+					state.lastTapGeneration = nil
+					if waypointBackTPEnabled == true then
+						IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
+					end
+				end)
 			end
 		else
 			state.lastTapAt = nil
@@ -8154,8 +8175,8 @@ local function removeAllWaypointHoverWindows()
 	end
 end
 
--- Dragging follows the actual mouse/touch movement. A single tap performs Goto;
--- a quick second tap on the same Waypoint requests Return, while dragging only moves it.
+-- Dragging follows the actual mouse/touch movement. With BackTP enabled, a single tap
+-- performs Goto after the double-tap interval; a quick second tap requests Return only.
 IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputChanged:Connect(function(input)
 	-- Only the window that originally received the press may drag. This prevents
 	-- a fast touch crossing other open Waypoints from moving those windows too.
@@ -8173,6 +8194,10 @@ IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputChanged:Connect(f
 			-- Movement always wins over the press duration: moving the window never triggers Goto or Return.
 			state.dragging = true
 			state.dragMoved = true
+			-- A drag cancels any single-tap Goto that is still waiting for the double-tap window.
+			state.tapToken = (state.tapToken or 0) + 1
+			state.lastTapAt = nil
+			state.lastTapGeneration = nil
 		end
 		if state.dragging then
 			local startPosition = state.startPosition
