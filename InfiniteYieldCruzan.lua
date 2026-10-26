@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.3.7"
+currentVersion = "1.3.9"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -7510,14 +7510,17 @@ local function normalizeWaypointHoverKey(name)
 end
 
 -- Waypoint gestures: tap = Goto, a stationary long press = Return, movement = Drag.
-local WAYPOINT_HOLD_TO_RETURN_SECONDS = 0.6
-local WAYPOINT_DRAG_TOUCH_THRESHOLD = 8
-local WAYPOINT_DRAG_MOUSE_THRESHOLD = 5
-local waypointReturnState = nil
-local waypointReturnGeneration = 0
-local waypointReturnHumanoidConnection = nil
+-- Keep the Return logic grouped in one namespaced table.
+IY_CRUZAN_WAYPOINT_RETURN = {
+    HOLD_SECONDS = 0.6,
+    DRAG_TOUCH_THRESHOLD = 8,
+    DRAG_MOUSE_THRESHOLD = 5,
+    state = nil,
+    generation = 0,
+    humanoidConnection = nil,
+}
 
-local function getWaypointDestinationCFrame(name)
+function IY_CRUZAN_WAYPOINT_RETURN.getDestinationCFrame(name)
 	local key = normalizeWaypointHoverKey(name)
 	if key == "" then return nil end
 	local destination = nil
@@ -7537,8 +7540,8 @@ local function getWaypointDestinationCFrame(name)
 	return destination
 end
 
-local function getValidWaypointReturnState()
-	local saved = waypointReturnState
+function IY_CRUZAN_WAYPOINT_RETURN.getValidState()
+	local saved = IY_CRUZAN_WAYPOINT_RETURN.state
 	if not saved then return nil end
 	local player = Players.LocalPlayer
 	local character = player and player.Character
@@ -7552,17 +7555,17 @@ local function getValidWaypointReturnState()
 		and humanoid ~= nil and humanoid.Health > 0
 		and game.PlaceId == saved.placeId and game.JobId == saved.jobId
 	if not valid then
-		if waypointReturnState == saved then
-			waypointReturnState = nil
-			waypointReturnGeneration += 1
+		if IY_CRUZAN_WAYPOINT_RETURN.state == saved then
+			IY_CRUZAN_WAYPOINT_RETURN.state = nil
+			IY_CRUZAN_WAYPOINT_RETURN.generation += 1
 		end
 		return nil
 	end
 	return saved
 end
 
-local function refreshWaypointReturnIndicators()
-	local returnReady = getValidWaypointReturnState() ~= nil
+function IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
+	local returnReady = IY_CRUZAN_WAYPOINT_RETURN.getValidState() ~= nil
 	for _, windowState in pairs(waypointHoverWindows) do
 		local frame = windowState.frame
 		if frame and frame.Parent then
@@ -7572,16 +7575,16 @@ local function refreshWaypointReturnIndicators()
 	end
 end
 
-local function clearWaypointReturnState()
-	waypointReturnState = nil
-	waypointReturnGeneration += 1
-	refreshWaypointReturnIndicators()
+function IY_CRUZAN_WAYPOINT_RETURN.clear()
+	IY_CRUZAN_WAYPOINT_RETURN.state = nil
+	IY_CRUZAN_WAYPOINT_RETURN.generation += 1
+	IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
 end
 
-local function performWaypointReturn()
-	local saved = getValidWaypointReturnState()
+function IY_CRUZAN_WAYPOINT_RETURN.performReturn()
+	local saved = IY_CRUZAN_WAYPOINT_RETURN.getValidState()
 	if not saved then
-		refreshWaypointReturnIndicators()
+		IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
 		return false
 	end
 	local setOk = pcall(function()
@@ -7591,17 +7594,17 @@ local function performWaypointReturn()
 		return (saved.root.Position - saved.cframe.Position).Magnitude
 	end)
 	if setOk and verifyOk and distance <= 3 then
-		if waypointReturnState == saved then
-			waypointReturnState = nil
-			waypointReturnGeneration += 1
+		if IY_CRUZAN_WAYPOINT_RETURN.state == saved then
+			IY_CRUZAN_WAYPOINT_RETURN.state = nil
+			IY_CRUZAN_WAYPOINT_RETURN.generation += 1
 		end
-		refreshWaypointReturnIndicators()
+		IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
 		return true
 	end
 	return false
 end
 
-local function executeWaypointHoverGoto(state)
+function IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
 	if not state or not state.waypointName or state.waypointName == "" then return end
 	if waypointHoverWindows[state.key] ~= state then return end
 	local player = Players.LocalPlayer
@@ -7609,20 +7612,20 @@ local function executeWaypointHoverGoto(state)
 	local root = nil
 	pcall(function() if character then root = getRoot(character) end end)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local destination = getWaypointDestinationCFrame(state.waypointName)
+	local destination = IY_CRUZAN_WAYPOINT_RETURN.getDestinationCFrame(state.waypointName)
 	local originCFrame = root and root.Parent and root.CFrame or nil
 	local shouldCaptureReturn = originCFrame ~= nil and destination ~= nil
 		and humanoid ~= nil and humanoid.Health > 0
 		and (originCFrame.Position - destination.Position).Magnitude > 1
 	local generation = nil
 	if shouldCaptureReturn then
-		waypointReturnGeneration += 1
-		generation = waypointReturnGeneration
+		IY_CRUZAN_WAYPOINT_RETURN.generation += 1
+		generation = IY_CRUZAN_WAYPOINT_RETURN.generation
 	end
 	local commandOk = pcall(execCmd, "loadpos " .. state.waypointName)
 	if not commandOk or not shouldCaptureReturn then return end
 	task.delay(0.1, function()
-		if generation ~= waypointReturnGeneration then return end
+		if generation ~= IY_CRUZAN_WAYPOINT_RETURN.generation then return end
 		local currentCharacter = player and player.Character
 		local currentRoot = nil
 		pcall(function() if currentCharacter then currentRoot = getRoot(currentCharacter) end end)
@@ -7634,49 +7637,79 @@ local function executeWaypointHoverGoto(state)
 			local ok, distance = pcall(function() return (currentRoot.Position - destination.Position).Magnitude end)
 			reached = ok and distance <= 3
 		end
-		if reached and generation == waypointReturnGeneration then
-			waypointReturnState = {
+		if reached and generation == IY_CRUZAN_WAYPOINT_RETURN.generation then
+			IY_CRUZAN_WAYPOINT_RETURN.state = {
 				cframe = originCFrame,
 				character = character,
 				root = root,
 				placeId = game.PlaceId,
 				jobId = game.JobId,
 			}
-			refreshWaypointReturnIndicators()
+			IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
 		end
 	end)
 end
 
-local function bindWaypointReturnHumanoid(character)
-	if waypointReturnHumanoidConnection then
-		pcall(function() waypointReturnHumanoidConnection:Disconnect() end)
-		waypointReturnHumanoidConnection = nil
+function IY_CRUZAN_WAYPOINT_RETURN.bindHumanoid(character)
+	if IY_CRUZAN_WAYPOINT_RETURN.humanoidConnection then
+		pcall(function() IY_CRUZAN_WAYPOINT_RETURN.humanoidConnection:Disconnect() end)
+		IY_CRUZAN_WAYPOINT_RETURN.humanoidConnection = nil
 	end
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
-		waypointReturnHumanoidConnection = humanoid.Died:Connect(clearWaypointReturnState)
-		IY_RELOAD_INSTANCE_STATE.TrackConnection(waypointReturnHumanoidConnection)
+		IY_CRUZAN_WAYPOINT_RETURN.humanoidConnection = humanoid.Died:Connect(IY_CRUZAN_WAYPOINT_RETURN.clear)
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(IY_CRUZAN_WAYPOINT_RETURN.humanoidConnection)
 	end
 end
 
-IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.LocalPlayer.CharacterRemoving:Connect(function()
-	clearWaypointReturnState()
-	if waypointReturnHumanoidConnection then
-		pcall(function() waypointReturnHumanoidConnection:Disconnect() end)
-		waypointReturnHumanoidConnection = nil
+-- Register optional character/teleport events defensively. A missing event or unavailable
+-- connection helper must not abort the entire script during startup.
+pcall(function()
+	local player = Players and Players.LocalPlayer
+	if not player then return end
+
+	local function safeTrack(signal, callback)
+		local connectOk, connection = pcall(function()
+			if not signal then return nil end
+			return signal:Connect(callback)
+		end)
+		if connectOk and connection then
+			pcall(function()
+				if IY_RELOAD_INSTANCE_STATE and type(IY_RELOAD_INSTANCE_STATE.TrackConnection) == "function" then
+					IY_RELOAD_INSTANCE_STATE.TrackConnection(connection)
+				end
+			end)
+		end
 	end
-end))
-IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.LocalPlayer.CharacterAdded:Connect(function(character)
-	clearWaypointReturnState()
-	task.spawn(function()
-		local humanoid = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 10)
-		if Players.LocalPlayer.Character == character and humanoid then bindWaypointReturnHumanoid(character) end
+
+	safeTrack(player.CharacterRemoving, function()
+		pcall(IY_CRUZAN_WAYPOINT_RETURN.clear)
+		if IY_CRUZAN_WAYPOINT_RETURN.humanoidConnection then
+			pcall(function() IY_CRUZAN_WAYPOINT_RETURN.humanoidConnection:Disconnect() end)
+			IY_CRUZAN_WAYPOINT_RETURN.humanoidConnection = nil
+		end
 	end)
-end))
-IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.LocalPlayer.OnTeleport:Connect(function()
-	clearWaypointReturnState()
-end))
-if Players.LocalPlayer.Character then bindWaypointReturnHumanoid(Players.LocalPlayer.Character) end
+
+	safeTrack(player.CharacterAdded, function(character)
+		pcall(IY_CRUZAN_WAYPOINT_RETURN.clear)
+		pcall(function()
+			task.spawn(function()
+				local humanoid = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 10)
+				if Players.LocalPlayer == player and player.Character == character and humanoid then
+					IY_CRUZAN_WAYPOINT_RETURN.bindHumanoid(character)
+				end
+			end)
+		end)
+	end)
+
+	safeTrack(player.OnTeleport, function()
+		pcall(IY_CRUZAN_WAYPOINT_RETURN.clear)
+	end)
+
+	if player.Character then
+		pcall(IY_CRUZAN_WAYPOINT_RETURN.bindHumanoid, player.Character)
+	end
+end)
 
 local function getWaypointHoverBounds(frame)
 	local camera = workspace.CurrentCamera
@@ -7900,12 +7933,12 @@ local function createWaypointHoverWindow(name, key)
 		end
 		if wasDragging then
 			persistWaypointHoverPosition(state, true)
-		elseif pressDuration >= WAYPOINT_HOLD_TO_RETURN_SECONDS then
+		elseif pressDuration >= IY_CRUZAN_WAYPOINT_RETURN.HOLD_SECONDS then
 			-- A stationary long press requests Return; it never falls through to Goto.
-			performWaypointReturn()
+			IY_CRUZAN_WAYPOINT_RETURN.performReturn()
 		else
 			-- A short tap keeps the existing Goto behavior.
-			executeWaypointHoverGoto(state)
+			IY_CRUZAN_WAYPOINT_RETURN.executeGoto(state)
 		end
 	end
 
@@ -7980,7 +8013,7 @@ local function showWaypointHover(name)
 		waypointHoverPositions[key] = {x = x, y = y}
 		if type(updatesaves) == "function" then updatesaves() end
 	end
-	refreshWaypointReturnIndicators()
+	IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
 end
 
 local function removeWaypointHoverForName(name)
@@ -8018,7 +8051,7 @@ IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputChanged:Connect(f
 	if isTouchMove or isMouseMove then
 		local delta = Vector2.new(input.Position.X - state.dragStart.X, input.Position.Y - state.dragStart.Y)
 		local movementThreshold = candidate.UserInputType == Enum.UserInputType.Touch
-			and WAYPOINT_DRAG_TOUCH_THRESHOLD or WAYPOINT_DRAG_MOUSE_THRESHOLD
+			and IY_CRUZAN_WAYPOINT_RETURN.DRAG_TOUCH_THRESHOLD or IY_CRUZAN_WAYPOINT_RETURN.DRAG_MOUSE_THRESHOLD
 		if not state.dragging and delta.Magnitude >= movementThreshold then
 			-- Movement always wins over the press duration: moving the window never triggers Goto or Return.
 			state.dragging = true
