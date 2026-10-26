@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.3.6"
+currentVersion = "1.3.7"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -4139,7 +4139,10 @@ function updateColors(color,ctype)
 			v.BackgroundColor3 = color
 		end
 		for _, waypointFrame in ipairs(waypointHoverFrames) do
-			if waypointFrame and waypointFrame.Parent then waypointFrame.BorderColor3 = color end
+			if waypointFrame and waypointFrame.Parent then
+				local returnReady = waypointFrame:GetAttribute("WaypointReturnReady") == true
+				waypointFrame.BorderColor3 = returnReady and currentText1 or color
+			end
 		end
 		currentShade3 = color
 	elseif ctype == text1 then
@@ -7506,6 +7509,175 @@ local function normalizeWaypointHoverKey(name)
 	return string.lower(normalized)
 end
 
+-- Waypoint gestures: tap = Goto, a stationary long press = Return, movement = Drag.
+local WAYPOINT_HOLD_TO_RETURN_SECONDS = 0.6
+local WAYPOINT_DRAG_TOUCH_THRESHOLD = 8
+local WAYPOINT_DRAG_MOUSE_THRESHOLD = 5
+local waypointReturnState = nil
+local waypointReturnGeneration = 0
+local waypointReturnHumanoidConnection = nil
+
+local function getWaypointDestinationCFrame(name)
+	local key = normalizeWaypointHoverKey(name)
+	if key == "" then return nil end
+	local destination = nil
+	for _, waypoint in ipairs(WayPoints or {}) do
+		if normalizeWaypointHoverKey(waypoint.NAME) == key and type(waypoint.COORD) == "table" then
+			local x, y, z = tonumber(waypoint.COORD[1]), tonumber(waypoint.COORD[2]), tonumber(waypoint.COORD[3])
+			if x and y and z then destination = CFrame.new(x, y, z) end
+		end
+	end
+	for _, waypoint in ipairs(pWayPoints or {}) do
+		if normalizeWaypointHoverKey(waypoint.NAME) == key and type(waypoint.COORD) == "table" then
+			local part = waypoint.COORD[1]
+			local ok, partPosition = pcall(function() return part.Position end)
+			if ok and partPosition then destination = CFrame.new(partPosition) end
+		end
+	end
+	return destination
+end
+
+local function getValidWaypointReturnState()
+	local saved = waypointReturnState
+	if not saved then return nil end
+	local player = Players.LocalPlayer
+	local character = player and player.Character
+	local root = nil
+	local rootOk = pcall(function()
+		if character then root = getRoot(character) end
+	end)
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local valid = rootOk and character == saved.character and root == saved.root
+		and root ~= nil and root.Parent ~= nil
+		and humanoid ~= nil and humanoid.Health > 0
+		and game.PlaceId == saved.placeId and game.JobId == saved.jobId
+	if not valid then
+		if waypointReturnState == saved then
+			waypointReturnState = nil
+			waypointReturnGeneration += 1
+		end
+		return nil
+	end
+	return saved
+end
+
+local function refreshWaypointReturnIndicators()
+	local returnReady = getValidWaypointReturnState() ~= nil
+	for _, windowState in pairs(waypointHoverWindows) do
+		local frame = windowState.frame
+		if frame and frame.Parent then
+			frame:SetAttribute("WaypointReturnReady", returnReady)
+			frame.BorderColor3 = returnReady and currentText1 or currentShade3
+		end
+	end
+end
+
+local function clearWaypointReturnState()
+	waypointReturnState = nil
+	waypointReturnGeneration += 1
+	refreshWaypointReturnIndicators()
+end
+
+local function performWaypointReturn()
+	local saved = getValidWaypointReturnState()
+	if not saved then
+		refreshWaypointReturnIndicators()
+		return false
+	end
+	local setOk = pcall(function()
+		saved.root.CFrame = saved.cframe
+	end)
+	local verifyOk, distance = pcall(function()
+		return (saved.root.Position - saved.cframe.Position).Magnitude
+	end)
+	if setOk and verifyOk and distance <= 3 then
+		if waypointReturnState == saved then
+			waypointReturnState = nil
+			waypointReturnGeneration += 1
+		end
+		refreshWaypointReturnIndicators()
+		return true
+	end
+	return false
+end
+
+local function executeWaypointHoverGoto(state)
+	if not state or not state.waypointName or state.waypointName == "" then return end
+	if waypointHoverWindows[state.key] ~= state then return end
+	local player = Players.LocalPlayer
+	local character = player and player.Character
+	local root = nil
+	pcall(function() if character then root = getRoot(character) end end)
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local destination = getWaypointDestinationCFrame(state.waypointName)
+	local originCFrame = root and root.Parent and root.CFrame or nil
+	local shouldCaptureReturn = originCFrame ~= nil and destination ~= nil
+		and humanoid ~= nil and humanoid.Health > 0
+		and (originCFrame.Position - destination.Position).Magnitude > 1
+	local generation = nil
+	if shouldCaptureReturn then
+		waypointReturnGeneration += 1
+		generation = waypointReturnGeneration
+	end
+	local commandOk = pcall(execCmd, "loadpos " .. state.waypointName)
+	if not commandOk or not shouldCaptureReturn then return end
+	task.delay(0.1, function()
+		if generation ~= waypointReturnGeneration then return end
+		local currentCharacter = player and player.Character
+		local currentRoot = nil
+		pcall(function() if currentCharacter then currentRoot = getRoot(currentCharacter) end end)
+		local currentHumanoid = currentCharacter and currentCharacter:FindFirstChildOfClass("Humanoid")
+		local reached = false
+		if currentCharacter == character and currentRoot == root and currentRoot and currentRoot.Parent
+			and currentHumanoid and currentHumanoid.Health > 0
+			and game.PlaceId == PlaceId and game.JobId == JobId then
+			local ok, distance = pcall(function() return (currentRoot.Position - destination.Position).Magnitude end)
+			reached = ok and distance <= 3
+		end
+		if reached and generation == waypointReturnGeneration then
+			waypointReturnState = {
+				cframe = originCFrame,
+				character = character,
+				root = root,
+				placeId = game.PlaceId,
+				jobId = game.JobId,
+			}
+			refreshWaypointReturnIndicators()
+		end
+	end)
+end
+
+local function bindWaypointReturnHumanoid(character)
+	if waypointReturnHumanoidConnection then
+		pcall(function() waypointReturnHumanoidConnection:Disconnect() end)
+		waypointReturnHumanoidConnection = nil
+	end
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		waypointReturnHumanoidConnection = humanoid.Died:Connect(clearWaypointReturnState)
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(waypointReturnHumanoidConnection)
+	end
+end
+
+IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.LocalPlayer.CharacterRemoving:Connect(function()
+	clearWaypointReturnState()
+	if waypointReturnHumanoidConnection then
+		pcall(function() waypointReturnHumanoidConnection:Disconnect() end)
+		waypointReturnHumanoidConnection = nil
+	end
+end))
+IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.LocalPlayer.CharacterAdded:Connect(function(character)
+	clearWaypointReturnState()
+	task.spawn(function()
+		local humanoid = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 10)
+		if Players.LocalPlayer.Character == character and humanoid then bindWaypointReturnHumanoid(character) end
+	end)
+end))
+IY_RELOAD_INSTANCE_STATE.TrackConnection(Players.LocalPlayer.OnTeleport:Connect(function()
+	clearWaypointReturnState()
+end))
+if Players.LocalPlayer.Character then bindWaypointReturnHumanoid(Players.LocalPlayer.Character) end
+
 local function getWaypointHoverBounds(frame)
 	local camera = workspace.CurrentCamera
 	local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
@@ -7565,7 +7737,6 @@ local function disconnectWaypointHoverState(state)
 	state.inputToken = (state.inputToken or 0) + 1
 	state.dragCandidate = nil
 	state.dragInput = nil
-	state.holdToDragArmed = false
 	state.dragging = false
 	if state.endConnection then
 		pcall(function() state.endConnection:Disconnect() end)
@@ -7665,6 +7836,7 @@ local function createWaypointHoverWindow(name, key)
 	frame.Size = UDim2.new(0, waypointHoverWindowSize.X, 0, waypointHoverWindowSize.Y)
 	frame.Visible = false
 	frame.ZIndex = waypointHoverWindowZIndex
+	frame:SetAttribute("WaypointReturnReady", false)
 	gotoButton.Position = UDim2.new(0, 0, 0, 0)
 	gotoButton.Size = UDim2.new(1, 0, 1, 0)
 	gotoButton.Text = name
@@ -7698,13 +7870,11 @@ local function createWaypointHoverWindow(name, key)
 		dragging = false,
 		dragCandidate = nil,
 		dragInput = nil,
-		holdToDragArmed = false,
 		dragStart = nil,
 		startPosition = nil,
 		pressStartedAt = nil,
 		inputToken = 0,
 		dragMoved = false,
-		suppressGotoUntil = 0,
 		endConnection = nil,
 	}
 	registerWaypointHoverStyle(state)
@@ -7712,18 +7882,10 @@ local function createWaypointHoverWindow(name, key)
 	state.connections[#state.connections + 1] = closeButton.MouseButton1Click:Connect(function()
 		removeWaypointHoverWindow(state, true)
 	end)
-	state.connections[#state.connections + 1] = gotoButton.MouseButton1Click:Connect(function()
-		-- A long press or drag is a move gesture, never a Goto click.
-		if tick() < (state.suppressGotoUntil or 0) then return end
-		if state.waypointName ~= "" and waypointHoverWindows[key] == state then
-			-- Keep the existing Goto command and bind it to this window's Waypoint.
-			execCmd("loadpos " .. state.waypointName)
-		end
-	end)
-
 	local function finishWaypointHoverPress(input)
 		if state.dragCandidate ~= input then return end
 		local wasDragging = state.dragging
+		local pressDuration = state.pressStartedAt and (tick() - state.pressStartedAt) or 0
 		state.dragging = false
 		state.dragCandidate = nil
 		state.dragStart = nil
@@ -7731,15 +7893,19 @@ local function createWaypointHoverWindow(name, key)
 		state.pressStartedAt = nil
 		state.dragMoved = false
 		state.dragInput = nil
-		state.holdToDragArmed = false
 		if activeWaypointHoverDragState == state then activeWaypointHoverDragState = nil end
-		if wasDragging then
-			state.suppressGotoUntil = tick() + 0.5
-			persistWaypointHoverPosition(state, true)
-		end
 		if state.endConnection then
 			pcall(function() state.endConnection:Disconnect() end)
 			state.endConnection = nil
+		end
+		if wasDragging then
+			persistWaypointHoverPosition(state, true)
+		elseif pressDuration >= WAYPOINT_HOLD_TO_RETURN_SECONDS then
+			-- A stationary long press requests Return; it never falls through to Goto.
+			performWaypointReturn()
+		else
+			-- A short tap keeps the existing Goto behavior.
+			executeWaypointHoverGoto(state)
 		end
 	end
 
@@ -7753,7 +7919,6 @@ local function createWaypointHoverWindow(name, key)
 		activeWaypointHoverDragState = state
 		bringWaypointHoverToFront(state)
 		state.inputToken += 1
-		local token = state.inputToken
 		state.dragCandidate = input
 		state.dragInput = nil
 		state.dragging = false
@@ -7765,13 +7930,6 @@ local function createWaypointHoverWindow(name, key)
 		state.endConnection = input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
 				finishWaypointHoverPress(input)
-			end
-		end)
-		-- A deliberate hold arms window dragging; movement (or a long hold followed
-		-- by movement) is never interpreted as a Goto action.
-		task.delay(0.18, function()
-			if state.inputToken == token and state.dragCandidate == input and frame.Parent then
-				state.holdToDragArmed = true
 			end
 		end)
 	end)
@@ -7822,6 +7980,7 @@ local function showWaypointHover(name)
 		waypointHoverPositions[key] = {x = x, y = y}
 		if type(updatesaves) == "function" then updatesaves() end
 	end
+	refreshWaypointReturnIndicators()
 end
 
 local function removeWaypointHoverForName(name)
@@ -7857,14 +8016,13 @@ IY_RELOAD_INSTANCE_STATE.TrackConnection(UserInputService.InputChanged:Connect(f
 	local isTouchMove = candidate.UserInputType == Enum.UserInputType.Touch and input.UserInputType == Enum.UserInputType.Touch
 	local isMouseMove = candidate.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseMovement
 	if isTouchMove or isMouseMove then
-		local delta = input.Position - state.dragStart
-		local movementThreshold = state.holdToDragArmed and 2 or 6
+		local delta = Vector2.new(input.Position.X - state.dragStart.X, input.Position.Y - state.dragStart.Y)
+		local movementThreshold = candidate.UserInputType == Enum.UserInputType.Touch
+			and WAYPOINT_DRAG_TOUCH_THRESHOLD or WAYPOINT_DRAG_MOUSE_THRESHOLD
 		if not state.dragging and delta.Magnitude >= movementThreshold then
-			-- A short press needs a clear move; after a long press, a small
-			-- finger movement starts dragging the window instead of invoking Goto.
+			-- Movement always wins over the press duration: moving the window never triggers Goto or Return.
 			state.dragging = true
 			state.dragMoved = true
-			state.suppressGotoUntil = tick() + 1
 		end
 		if state.dragging then
 			local startPosition = state.startPosition
