@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.3.10"
+currentVersion = "1.4.1"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -254,8 +254,8 @@ AddWaypointButton = Instance.new("TextButton")
 WaypointHoverFrame = Instance.new("Frame")
 WaypointHoverHeader = Instance.new("TextButton")
 WaypointHoverClose = Instance.new("TextButton")
-WaypointHoverBackTPLabel = Instance.new("TextLabel")
-WaypointHoverBackTPToggle = Instance.new("TextButton")
+WaypointBackTPLabel = Instance.new("TextLabel")
+WaypointBackTPToggle = nil
 WaypointHoverButton = Instance.new("TextButton")
 WaypointAddDialog = Instance.new("Frame")
 WaypointAddDialogTitle = Instance.new("TextLabel")
@@ -1266,6 +1266,40 @@ AddWaypointButton.ZIndex = 12
 table.insert(shade2,AddWaypointButton)
 table.insert(text1,AddWaypointButton)
 
+-- Shared BackTP option in Edit/Goto Waypoints, placed immediately left of Close.
+WaypointBackTPLabel.Name = "BackTPLabel"
+WaypointBackTPLabel.Parent = PositionsFrame
+WaypointBackTPLabel.BackgroundTransparency = 1
+WaypointBackTPLabel.BorderSizePixel = 0
+WaypointBackTPLabel.Position = UDim2.new(0, 98, 0, 175)
+WaypointBackTPLabel.Size = UDim2.new(0, 51, 0, 20)
+WaypointBackTPLabel.Font = Enum.Font.SourceSans
+WaypointBackTPLabel.TextSize = 14
+WaypointBackTPLabel.Text = "BackTP"
+WaypointBackTPLabel.TextColor3 = Color3.new(1, 1, 1)
+WaypointBackTPLabel.TextXAlignment = Enum.TextXAlignment.Left
+WaypointBackTPLabel.TextYAlignment = Enum.TextYAlignment.Center
+WaypointBackTPLabel.ZIndex = 12
+table.insert(text1, WaypointBackTPLabel)
+
+WaypointBackTPToggle = Button:Clone()
+WaypointBackTPToggle.Name = "BackTPToggle"
+WaypointBackTPToggle.Parent = PositionsFrame
+WaypointBackTPToggle.BackgroundColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
+WaypointBackTPToggle.BorderSizePixel = 0
+WaypointBackTPToggle.AutoButtonColor = false
+WaypointBackTPToggle.Position = UDim2.new(0, 151, 0, 175)
+WaypointBackTPToggle.Size = UDim2.new(0, 20, 0, 20)
+WaypointBackTPToggle.ZIndex = 12
+local waypointBackTPCheckmark = WaypointBackTPToggle:FindFirstChild("On")
+if waypointBackTPCheckmark then
+    waypointBackTPCheckmark.Name = "Checkmark"
+    waypointBackTPCheckmark.ZIndex = 13
+    waypointBackTPCheckmark.TextSize = 13
+    waypointBackTPCheckmark.TextColor3 = Color3.new(1, 1, 1)
+end
+table.insert(shade3, WaypointBackTPToggle)
+
 Holder_4.Name = "Holder"
 Holder_4.Parent = PositionsFrame
 Holder_4.BackgroundTransparency = 1
@@ -2051,14 +2085,14 @@ WaypointHoverFrame.BorderSizePixel = 1
 WaypointHoverFrame.BorderColor3 = Color3.fromRGB(78, 78, 79)
 WaypointHoverFrame.ClipsDescendants = true
 WaypointHoverFrame.AnchorPoint = Vector2.new(0, 0)
-WaypointHoverFrame.Position = UDim2.new(1, -106, 0, 45)
-WaypointHoverFrame.Size = UDim2.new(0, 90, 0, 46)
+WaypointHoverFrame.Position = UDim2.new(1, -82, 0, 45)
+WaypointHoverFrame.Size = UDim2.new(0, 66, 0, 38)
 WaypointHoverFrame.Visible = false
 WaypointHoverFrame.ZIndex = 80
 table.insert(shade1, WaypointHoverFrame)
 table.insert(waypointHoverFrames, WaypointHoverFrame)
--- The Waypoint hover controls use square corners. The top row contains the
--- BackTP preference and Close button; the Goto surface remains directly below.
+-- The floating Waypoint window keeps the original compact layout with sharp corners.
+-- BackTP is controlled centrally in the Edit/Goto Waypoints panel, not per window.
 WaypointHoverHeader.Name = "Header"
 WaypointHoverHeader.Parent = WaypointHoverFrame
 WaypointHoverHeader.BackgroundTransparency = 1
@@ -2069,44 +2103,14 @@ WaypointHoverHeader.Visible = false
 WaypointHoverHeader.Text = ""
 WaypointHoverHeader.ZIndex = 81
 
-WaypointHoverBackTPLabel.Name = "BackTPLabel"
-WaypointHoverBackTPLabel.Parent = WaypointHoverFrame
-WaypointHoverBackTPLabel.BackgroundTransparency = 1
-WaypointHoverBackTPLabel.BorderSizePixel = 0
-WaypointHoverBackTPLabel.Position = UDim2.new(0, 3, 0, 0)
-WaypointHoverBackTPLabel.Size = UDim2.new(0, 38, 0, 20)
-WaypointHoverBackTPLabel.Font = Enum.Font.SourceSans
-WaypointHoverBackTPLabel.TextSize = 12
-WaypointHoverBackTPLabel.Text = "BackTP"
-WaypointHoverBackTPLabel.TextColor3 = Color3.new(1, 1, 1)
-WaypointHoverBackTPLabel.TextXAlignment = Enum.TextXAlignment.Left
-WaypointHoverBackTPLabel.TextYAlignment = Enum.TextYAlignment.Center
-WaypointHoverBackTPLabel.ZIndex = 84
-
-WaypointHoverBackTPToggle = Button:Clone()
-WaypointHoverBackTPToggle.Name = "BackTPToggle"
-WaypointHoverBackTPToggle.Parent = WaypointHoverFrame
-WaypointHoverBackTPToggle.Position = UDim2.new(0, 42, 0, 0)
-WaypointHoverBackTPToggle.Size = UDim2.new(0, 20, 0, 20)
-WaypointHoverBackTPToggle.ZIndex = 84
-WaypointHoverBackTPToggle.BorderSizePixel = 0
-WaypointHoverBackTPToggle.AutoButtonColor = false
-local waypointHoverBackTPCheck = WaypointHoverBackTPToggle:FindFirstChild("On")
-if waypointHoverBackTPCheck then
-    waypointHoverBackTPCheck.Name = "Checkmark"
-    waypointHoverBackTPCheck.ZIndex = 85
-    waypointHoverBackTPCheck.TextSize = 13
-    waypointHoverBackTPCheck.TextColor3 = Color3.new(1, 1, 1)
-end
-
 WaypointHoverClose.Name = "Close"
 WaypointHoverClose.Parent = WaypointHoverFrame
 WaypointHoverClose.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverClose.BackgroundTransparency = 1
 WaypointHoverClose.BorderSizePixel = 0
 WaypointHoverClose.AutoButtonColor = false
-WaypointHoverClose.Position = UDim2.new(1, -17, 0, 1)
-WaypointHoverClose.Size = UDim2.new(0, 17, 0, 18)
+WaypointHoverClose.Position = UDim2.new(1, -17, 0, 0)
+WaypointHoverClose.Size = UDim2.new(0, 17, 0, 17)
 WaypointHoverClose.Font = Enum.Font.SourceSansBold
 WaypointHoverClose.TextSize = 14
 WaypointHoverClose.Text = "X"
@@ -2120,8 +2124,8 @@ WaypointHoverButton.Parent = WaypointHoverFrame
 WaypointHoverButton.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
 WaypointHoverButton.BorderSizePixel = 0
 WaypointHoverButton.AutoButtonColor = false
-WaypointHoverButton.Position = UDim2.new(0, 0, 0, 20)
-WaypointHoverButton.Size = UDim2.new(1, 0, 1, -20)
+WaypointHoverButton.Position = UDim2.new(0, 0, 0, 0)
+WaypointHoverButton.Size = UDim2.new(1, 0, 1, 0)
 WaypointHoverButton.Font = Enum.Font.SourceSansBold
 WaypointHoverButton.TextSize = 16
 WaypointHoverButton.Text = "Waypoint"
@@ -4168,8 +4172,7 @@ function updateColors(color,ctype)
 		end
 		for _, waypointFrame in ipairs(waypointHoverFrames) do
 			if waypointFrame and waypointFrame.Parent then
-				local returnReady = waypointFrame:GetAttribute("WaypointReturnReady") == true
-				waypointFrame.BorderColor3 = returnReady and currentText1 or color
+				waypointFrame.BorderColor3 = color
 			end
 		end
 		currentShade3 = color
@@ -7529,7 +7532,7 @@ local waypointHoverWindows = {}
 local waypointHoverWindowCounter = 0
 local waypointHoverWindowZIndex = 80
 local activeWaypointHoverDragState = nil
-local waypointHoverWindowSize = Vector2.new(90, 46)
+local waypointHoverWindowSize = Vector2.new(66, 38)
 local waypointHoverWindowGap = 8
 
 local function normalizeWaypointHoverKey(name)
@@ -7596,12 +7599,11 @@ function IY_CRUZAN_WAYPOINT_RETURN.getValidState()
 end
 
 function IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
-	local returnReady = waypointBackTPEnabled == true and IY_CRUZAN_WAYPOINT_RETURN.getValidState() ~= nil
+	-- Return availability is no longer indicated by changing Waypoint window borders.
 	for _, windowState in pairs(waypointHoverWindows) do
 		local frame = windowState.frame
 		if frame and frame.Parent then
-			frame:SetAttribute("WaypointReturnReady", returnReady)
-			frame.BorderColor3 = returnReady and currentText1 or currentShade3
+			frame.BorderColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
 		end
 	end
 end
@@ -7617,6 +7619,32 @@ function IY_CRUZAN_WAYPOINT_RETURN.clear()
 	end
 	IY_CRUZAN_WAYPOINT_RETURN.refreshIndicators()
 end
+
+local function updateWaypointBackTPToggleVisual()
+	local checkmark = WaypointBackTPToggle and WaypointBackTPToggle:FindFirstChild("Checkmark")
+	if not checkmark then return end
+	local enabled = waypointBackTPEnabled == true
+	checkmark.BackgroundTransparency = enabled and 0 or 1
+	checkmark.Text = enabled and "✓" or ""
+	checkmark.TextColor3 = Color3.new(1, 1, 1)
+	checkmark.Font = Enum.Font.SourceSansBold
+	checkmark.TextSize = 13
+end
+
+updateWaypointBackTPToggleVisual()
+WaypointBackTPToggle.MouseButton1Click:Connect(function()
+	local now = os.clock()
+	if IY_CRUZAN_WAYPOINT_RETURN.lastToggleAt and now - IY_CRUZAN_WAYPOINT_RETURN.lastToggleAt < 0.15 then return end
+	IY_CRUZAN_WAYPOINT_RETURN.lastToggleAt = now
+	waypointBackTPEnabled = not waypointBackTPEnabled
+	if not waypointBackTPEnabled then IY_CRUZAN_WAYPOINT_RETURN.clear() end
+	for _, openState in pairs(waypointHoverWindows) do
+		openState.lastTapAt = nil
+		openState.lastTapGeneration = nil
+	end
+	updateWaypointBackTPToggleVisual()
+	if type(updatesaves) == "function" then updatesaves() end
+end)
 
 function IY_CRUZAN_WAYPOINT_RETURN.performReturn()
 	if waypointBackTPEnabled ~= true then return false end
@@ -7861,12 +7889,6 @@ local function bringWaypointHoverToFront(state)
 	state.frame.ZIndex = baseZIndex
 	if state.header then state.header.ZIndex = baseZIndex + 1 end
 	if state.gotoButton then state.gotoButton.ZIndex = baseZIndex + 1 end
-	if state.backTPLabel then state.backTPLabel.ZIndex = baseZIndex + 3 end
-	if state.backTPToggle then
-		state.backTPToggle.ZIndex = baseZIndex + 3
-		local checkmark = state.backTPToggle:FindFirstChild("Checkmark")
-		if checkmark then checkmark.ZIndex = baseZIndex + 4 end
-	end
 	if state.closeButton then state.closeButton.ZIndex = baseZIndex + 3 end
 end
 
@@ -7876,11 +7898,8 @@ local function removeWaypointHoverWindow(state, savePosition)
 	disconnectWaypointHoverState(state)
 	removeWaypointHoverStyleEntry(shade1, state.frame)
 	removeWaypointHoverStyleEntry(shade2, state.closeButton)
-	removeWaypointHoverStyleEntry(shade2, state.backTPToggle)
 	removeWaypointHoverStyleEntry(shade2, state.gotoButton)
-	removeWaypointHoverStyleEntry(shade3, state.backTPToggle)
 	removeWaypointHoverStyleEntry(text1, state.closeButton)
-	removeWaypointHoverStyleEntry(text1, state.backTPLabel)
 	removeWaypointHoverStyleEntry(text1, state.gotoButton)
 	removeWaypointHoverStyleEntry(waypointHoverFrames, state.frame)
 	if waypointHoverWindows[state.key] == state then waypointHoverWindows[state.key] = nil end
@@ -7925,11 +7944,8 @@ end
 local function registerWaypointHoverStyle(state)
 	table.insert(shade1, state.frame)
 	table.insert(shade2, state.closeButton)
-	table.insert(shade2, state.backTPToggle)
 	table.insert(shade2, state.gotoButton)
-	table.insert(shade3, state.backTPToggle)
 	table.insert(text1, state.closeButton)
-	table.insert(text1, state.backTPLabel)
 	table.insert(text1, state.gotoButton)
 end
 
@@ -7937,10 +7953,8 @@ local function createWaypointHoverWindow(name, key)
 	local frame = WaypointHoverFrame:Clone()
 	local header = frame:FindFirstChild("Header")
 	local closeButton = frame:FindFirstChild("Close")
-	local backTPLabel = frame:FindFirstChild("BackTPLabel")
-	local backTPToggle = frame:FindFirstChild("BackTPToggle")
 	local gotoButton = frame:FindFirstChild("GotoWaypoint")
-	if not closeButton or not backTPLabel or not backTPToggle or not gotoButton then
+	if not closeButton or not gotoButton then
 		frame:Destroy()
 		return nil
 	end
@@ -7956,9 +7970,8 @@ local function createWaypointHoverWindow(name, key)
 	frame.Size = UDim2.new(0, waypointHoverWindowSize.X, 0, waypointHoverWindowSize.Y)
 	frame.Visible = false
 	frame.ZIndex = waypointHoverWindowZIndex
-	frame:SetAttribute("WaypointReturnReady", false)
-	gotoButton.Position = UDim2.new(0, 0, 0, 20)
-	gotoButton.Size = UDim2.new(1, 0, 1, -20)
+	gotoButton.Position = UDim2.new(0, 0, 0, 0)
+	gotoButton.Size = UDim2.new(1, 0, 1, 0)
 	gotoButton.Text = name
 	gotoButton.Font = Enum.Font.SourceSansBold
 	gotoButton.TextSize = 16
@@ -7971,22 +7984,10 @@ local function createWaypointHoverWindow(name, key)
 	closeButton.BackgroundTransparency = 1
 	closeButton.BorderSizePixel = 0
 	closeButton.AutoButtonColor = false
-	closeButton.Position = UDim2.new(1, -17, 0, 1)
-	closeButton.Size = UDim2.new(0, 17, 0, 18)
+	closeButton.Position = UDim2.new(1, -17, 0, 0)
+	closeButton.Size = UDim2.new(0, 17, 0, 17)
 	closeButton.ZIndex = frame.ZIndex + 3
 	closeButton.TextSize = 14
-	backTPLabel.Position = UDim2.new(0, 3, 0, 0)
-	backTPLabel.Size = UDim2.new(0, 38, 0, 20)
-	backTPLabel.TextColor3 = currentText1
-	backTPLabel.ZIndex = frame.ZIndex + 3
-	backTPToggle.Position = UDim2.new(0, 42, 0, 0)
-	backTPToggle.Size = UDim2.new(0, 20, 0, 20)
-	backTPToggle.BackgroundColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
-	backTPToggle.ZIndex = frame.ZIndex + 3
-	local backTPCheck = backTPToggle:FindFirstChild("Checkmark")
-	if backTPCheck then
-		backTPCheck.ZIndex = frame.ZIndex + 4
-	end
 	frame.Parent = PARENT
 	frame.BorderColor3 = currentShade3 or Color3.fromRGB(78, 78, 79)
 	table.insert(waypointHoverFrames, frame)
@@ -7996,8 +7997,6 @@ local function createWaypointHoverWindow(name, key)
 		frame = frame,
 		header = header,
 		closeButton = closeButton,
-		backTPLabel = backTPLabel,
-		backTPToggle = backTPToggle,
 		gotoButton = gotoButton,
 		waypointName = name,
 		connections = {},
@@ -8016,31 +8015,6 @@ local function createWaypointHoverWindow(name, key)
 
 	state.connections[#state.connections + 1] = closeButton.MouseButton1Click:Connect(function()
 		removeWaypointHoverWindow(state, true)
-	end)
-	local function updateBackTPToggleVisual(targetState)
-		local toggle = targetState and targetState.backTPToggle
-		local checkmark = toggle and toggle:FindFirstChild("Checkmark")
-		if not checkmark then return end
-		local enabled = waypointBackTPEnabled == true
-		checkmark.BackgroundTransparency = enabled and 0 or 1
-		checkmark.Text = enabled and "✓" or ""
-		checkmark.TextColor3 = Color3.new(1, 1, 1)
-		checkmark.Font = Enum.Font.SourceSansBold
-		checkmark.TextSize = 13
-	end
-	updateBackTPToggleVisual(state)
-	state.connections[#state.connections + 1] = backTPToggle.MouseButton1Click:Connect(function()
-		local now = os.clock()
-		if IY_CRUZAN_WAYPOINT_RETURN.lastToggleAt and now - IY_CRUZAN_WAYPOINT_RETURN.lastToggleAt < 0.15 then return end
-		IY_CRUZAN_WAYPOINT_RETURN.lastToggleAt = now
-		waypointBackTPEnabled = not waypointBackTPEnabled
-		if not waypointBackTPEnabled then IY_CRUZAN_WAYPOINT_RETURN.clear() end
-		for _, openState in pairs(waypointHoverWindows) do
-			openState.lastTapAt = nil
-			openState.lastTapGeneration = nil
-			updateBackTPToggleVisual(openState)
-		end
-		if type(updatesaves) == "function" then updatesaves() end
 	end)
 	local function finishWaypointHoverPress(input)
 		if state.dragCandidate ~= input then return end
