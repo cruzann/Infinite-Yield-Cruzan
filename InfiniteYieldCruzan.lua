@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.4.5"
+currentVersion = "1.4.6"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -4927,15 +4927,20 @@ function dragMain(dragpoint,gui)
 			local absX = math.abs(delta.X)
 			local absY = math.abs(delta.Y)
 
+			-- Prioritize a clear downward swipe even if small early horizontal jitter
+			-- already classified the gesture as horizontal. This makes hide-on-swipe
+			-- reliable when the command list is open and the finger path is imperfect.
+			if delta.Y > 0 and delta.Y >= SWIPE_DOWN_HIDE_THRESHOLD and delta.Y >= absX * 1.25 then
+				gestureMode = "swipeDown"
+				hideFromSwipeDown()
+				resetGesture()
+				return
+			end
+
 			if gestureMode == nil then
 				-- Ignore taps and small jitter. Lock to an axis before moving the panel.
 				if absX < 10 and absY < 10 then return end
-				if delta.Y > 0 and delta.Y >= SWIPE_DOWN_HIDE_THRESHOLD and delta.Y >= absX * 1.25 then
-					gestureMode = "swipeDown"
-					hideFromSwipeDown()
-					resetGesture()
-					return
-				elseif absX >= 10 and absX >= absY * 1.2 then
+				if absX >= 10 and absX >= absY * 1.2 then
 					gestureMode = "horizontal"
 				elseif absY >= 10 and absY > absX * 1.2 then
 					gestureMode = "vertical"
@@ -4943,11 +4948,6 @@ function dragMain(dragpoint,gui)
 					return
 				end
 			elseif gestureMode == "vertical" then
-				if delta.Y > 0 and delta.Y >= SWIPE_DOWN_HIDE_THRESHOLD and delta.Y >= absX * 1.25 then
-					gestureMode = "swipeDown"
-					hideFromSwipeDown()
-					resetGesture()
-				end
 				return
 			end
 
