@@ -1,10 +1,3 @@
--- InfiniteYieldCruzan QA Runner
--- Executes the exact embedded source using the current Roblox Executor runtime.
--- It records synchronous compile/runtime failures and Roblox LogService errors for 180 seconds.
--- This does not emulate Roblox; run it in a clean Roblox client + compatible executor.
-
-local EXPECTED_VERSION = "1.4.2"
-local SOURCE = [==[
 if IY_LOADED and not _G.IY_DEBUG then
 	-- error("Infinite Yield is already running!", 0)
 	return
@@ -191,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.4.2"
+currentVersion = "1.4.3"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -1278,7 +1271,7 @@ WaypointBackTPLabel.Name = "BackTPLabel"
 WaypointBackTPLabel.Parent = PositionsFrame
 WaypointBackTPLabel.BackgroundTransparency = 1
 WaypointBackTPLabel.BorderSizePixel = 0
-WaypointBackTPLabel.Position = UDim2.new(0, 122, 0, 175)
+WaypointBackTPLabel.Position = UDim2.new(0, 130, 0, 175)
 WaypointBackTPLabel.Size = UDim2.new(0, 50, 0, 20)
 WaypointBackTPLabel.Font = Enum.Font.SourceSans
 WaypointBackTPLabel.TextSize = 14
@@ -16041,113 +16034,3 @@ task.spawn(function()
 end)
 
 IY_RELOAD_INSTANCE_STATE.ready = true
-
-]==]
-
-local function qaPrint(message)
-    print("[IY-QA] " .. tostring(message))
-end
-
-local shared = _G
-pcall(function()
-    if type(getgenv) == "function" then shared = getgenv() end
-end)
-
-local actualVersion = SOURCE:match('currentVersion%s*=%s*"([^"]+)"') or "unknown"
-qaPrint("Runner started. Embedded source version: " .. actualVersion)
-qaPrint("Source bytes: " .. tostring(#SOURCE))
-
-if actualVersion ~= EXPECTED_VERSION then
-    qaPrint("WARNING: expected " .. EXPECTED_VERSION .. ", embedded source reports " .. actualVersion)
-end
-
-if shared.IY_LOADED and not _G.IY_DEBUG then
-    qaPrint("STOPPED: IY_LOADED is already true. Restart the Roblox client/executor first to avoid testing an old instance or returning early.")
-    return
-end
-
--- Capture Roblox engine errors while the user tests the UI and commands.
-local capturedErrors = {}
-local logConnection = nil
-pcall(function()
-    local logService = game:GetService("LogService")
-    logConnection = logService.MessageOut:Connect(function(message, messageType)
-        local isError = false
-        pcall(function()
-            isError = messageType == Enum.MessageType.MessageError
-        end)
-        if not isError and string.find(string.lower(tostring(messageType)), "error", 1, true) then
-            isError = true
-        end
-        if isError and not string.find(tostring(message), "[IY-QA]", 1, true) then
-            capturedErrors[#capturedErrors + 1] = tostring(message)
-            qaPrint("ENGINE ERROR: " .. tostring(message))
-        end
-    end)
-end)
-
--- Expose the listener in the executor environment so the test can be stopped manually.
-shared.IY_QA_CAPTURED_ERRORS = capturedErrors
-shared.IY_QA_LOG_CONNECTION = logConnection
-
-if type(loadstring) ~= "function" then
-    qaPrint("COMPILE FAILED: loadstring is unavailable in this executor.")
-    if logConnection then pcall(function() logConnection:Disconnect() end) end
-    return
-end
-
-local chunk, compileError = loadstring(SOURCE, "@InfiniteYieldCruzan.lua")
-if not chunk then
-    qaPrint("COMPILE FAILED: " .. tostring(compileError))
-    if logConnection then pcall(function() logConnection:Disconnect() end) end
-    return
-end
-qaPrint("Compile stage passed. Executing the embedded script now.")
-
-local function traceError(err)
-    local msg = tostring(err)
-    local ok, trace = pcall(function()
-        if debug and type(debug.traceback) == "function" then
-            return debug.traceback(msg, 2)
-        end
-        return msg
-    end)
-    return ok and trace or msg
-end
-
-local runOk, runResult = xpcall(chunk, traceError)
-if runOk then
-    qaPrint("Top-level execution returned without a synchronous error.")
-else
-    qaPrint("RUNTIME FAILED: " .. tostring(runResult))
-end
-
-qaPrint("Manual test window open for 180 seconds. Perform the tests listed below while the runner captures engine errors:")
-qaPrint("1) Open Edit/Goto Waypoints and check BackTP toggle placement/state.")
-qaPrint("2) With BackTP enabled, single-tap a waypoint: wait >0.4s and verify Goto.")
-qaPrint("3) With BackTP enabled, double-tap the same waypoint within 0.4s: verify Return without an intermediate Goto.")
-qaPrint("4) Drag a waypoint window: verify no teleport occurs.")
-qaPrint("5) Disable BackTP and double-tap: verify no Return; single tap should Goto immediately.")
-qaPrint("6) Test clearwaypoints/cleargamewaypoints only if you are comfortable deleting saved waypoint data.")
-
-local function finishReport()
-    qaPrint("TEST WINDOW CLOSED. Captured engine errors: " .. tostring(#capturedErrors))
-    if #capturedErrors == 0 then
-        qaPrint("No LogService MessageError events were captured during this window. This does not prove every feature passed; confirm each manual behavior above.")
-    else
-        for i, message in ipairs(capturedErrors) do
-            qaPrint("ERROR " .. tostring(i) .. ": " .. message)
-        end
-    end
-    if logConnection then pcall(function() logConnection:Disconnect() end) end
-    if shared.IY_QA_LOG_CONNECTION == logConnection then shared.IY_QA_LOG_CONNECTION = nil end
-end
-
-local scheduled = false
-pcall(function()
-    task.delay(180, finishReport)
-    scheduled = true
-end)
-if not scheduled then
-    qaPrint("task.delay is unavailable; LogService capture remains connected. Disconnect manually with: getgenv().IY_QA_LOG_CONNECTION:Disconnect()")
-end
