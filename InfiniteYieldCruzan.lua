@@ -1272,12 +1272,12 @@ WaypointBackTPLabel.Parent = PositionsFrame
 WaypointBackTPLabel.BackgroundTransparency = 1
 WaypointBackTPLabel.BorderSizePixel = 0
 WaypointBackTPLabel.Position = UDim2.new(0, 130, 0, 175)
-WaypointBackTPLabel.Size = UDim2.new(0, 50, 0, 20)
+WaypointBackTPLabel.Size = UDim2.new(0, 44, 0, 20)
 WaypointBackTPLabel.Font = Enum.Font.SourceSans
 WaypointBackTPLabel.TextSize = 14
 WaypointBackTPLabel.Text = "BackTP"
 WaypointBackTPLabel.TextColor3 = Color3.new(1, 1, 1)
-WaypointBackTPLabel.TextXAlignment = Enum.TextXAlignment.Left
+WaypointBackTPLabel.TextXAlignment = Enum.TextXAlignment.Right
 WaypointBackTPLabel.TextYAlignment = Enum.TextYAlignment.Center
 WaypointBackTPLabel.ZIndex = 12
 table.insert(text1, WaypointBackTPLabel)
