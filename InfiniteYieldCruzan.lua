@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.4.3"
+currentVersion = "1.4.5"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -482,7 +482,8 @@ Cmdbar.PlaceholderText = "Command Bar"
 
 CMDsF.Name = "CMDs"
 CMDsF.Parent = Holder
-CMDsF.BackgroundTransparency = 1
+CMDsF.BackgroundColor3 = Title.BackgroundColor3
+CMDsF.BackgroundTransparency = 0
 CMDsF.BorderSizePixel = 0
 CMDsF.Position = UDim2.new(0, 5, 0, 45)
 CMDsF.Size = UDim2.new(0, 245, 0, 175)
@@ -494,6 +495,7 @@ CMDsF.ScrollBarThickness = 8
 CMDsF.TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 CMDsF.VerticalScrollBarInset = 'Always'
 CMDsF.ZIndex = 10
+table.insert(shade1,CMDsF)
 table.insert(scroll,CMDsF)
 
 cmdListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1271,7 +1273,7 @@ WaypointBackTPLabel.Name = "BackTPLabel"
 WaypointBackTPLabel.Parent = PositionsFrame
 WaypointBackTPLabel.BackgroundTransparency = 1
 WaypointBackTPLabel.BorderSizePixel = 0
-WaypointBackTPLabel.Position = UDim2.new(0, 130, 0, 175)
+WaypointBackTPLabel.Position = UDim2.new(0, 126, 0, 175)
 WaypointBackTPLabel.Size = UDim2.new(0, 44, 0, 20)
 WaypointBackTPLabel.Font = Enum.Font.SourceSans
 WaypointBackTPLabel.TextSize = 14
@@ -4141,16 +4143,20 @@ Holder.MouseLeave:Connect(function()
 end)
 
 local function applyCommandPaletteColors()
-	local base = currentShade2 or Color3.fromRGB(46, 46, 47)
-	local grayAccent = Color3.fromRGB(112, 112, 116)
+	local commandBarColor = currentShade2 or Color3.fromRGB(46, 46, 47)
+	local commandListColor = currentShade1 or (Title and Title.BackgroundColor3) or Color3.fromRGB(36, 36, 37)
+	local headerColor = commandBarColor:Lerp(Color3.fromRGB(112, 112, 116), 0.16)
 	if CmdbarView and CmdbarView.Parent then
-		CmdbarView.BackgroundColor3 = base
+		CmdbarView.BackgroundColor3 = commandBarColor
+	end
+	if CMDsF and CMDsF.Parent then
+		CMDsF.BackgroundColor3 = commandListColor
 	end
 	if FavSectionHeader and FavSectionHeader.Parent then
-		FavSectionHeader.BackgroundColor3 = base:Lerp(grayAccent, 0.16)
+		FavSectionHeader.BackgroundColor3 = headerColor
 	end
 	if AllCommandsHeader and AllCommandsHeader.Parent then
-		AllCommandsHeader.BackgroundColor3 = base:Lerp(grayAccent, 0.16)
+		AllCommandsHeader.BackgroundColor3 = headerColor
 	end
 end
 
@@ -4160,6 +4166,7 @@ function updateColors(color,ctype)
 			v.BackgroundColor3 = color
 		end
 		currentShade1 = color
+		applyCommandPaletteColors()
 	elseif ctype == shade2 then
 		for i,v in pairs(shade2) do
 			v.BackgroundColor3 = color
@@ -5581,7 +5588,7 @@ local commandOptionSeen = {}
 FavSectionHeader = Instance.new("TextLabel")
 FavSectionHeader.Name = "FavCmdsSectionHeader"
 FavSectionHeader.Parent = CMDsF
-FavSectionHeader.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+FavSectionHeader.BackgroundColor3 = currentShade1 or Color3.fromRGB(36, 36, 37)
 FavSectionHeader.BorderSizePixel = 0
 FavSectionHeader.Size = UDim2.new(1, -5, 0, 18)
 FavSectionHeader.Font = Enum.Font.SourceSansBold
@@ -5591,7 +5598,7 @@ FavSectionHeader.TextColor3 = Color3.new(1, 1, 1)
 FavSectionHeader.TextXAlignment = Enum.TextXAlignment.Left
 FavSectionHeader.ZIndex = 10
 FavSectionHeader:SetAttribute("IsCommandSectionHeader", true)
-table.insert(shade2, FavSectionHeader)
+table.insert(shade1, FavSectionHeader)
 table.insert(text1, FavSectionHeader)
 
 FavEmptyLabel = Instance.new("TextLabel")
@@ -5612,7 +5619,7 @@ table.insert(text1, FavEmptyLabel)
 AllCommandsHeader = Instance.new("TextLabel")
 AllCommandsHeader.Name = "AllCommandsSectionHeader"
 AllCommandsHeader.Parent = CMDsF
-AllCommandsHeader.BackgroundColor3 = Color3.fromRGB(46, 46, 47)
+AllCommandsHeader.BackgroundColor3 = currentShade1 or Color3.fromRGB(36, 36, 37)
 AllCommandsHeader.BorderSizePixel = 0
 AllCommandsHeader.Size = UDim2.new(1, -5, 0, 18)
 AllCommandsHeader.Font = Enum.Font.SourceSansBold
@@ -5622,7 +5629,7 @@ AllCommandsHeader.TextColor3 = Color3.new(1, 1, 1)
 AllCommandsHeader.TextXAlignment = Enum.TextXAlignment.Left
 AllCommandsHeader.ZIndex = 10
 AllCommandsHeader:SetAttribute("IsCommandSectionHeader", true)
-table.insert(shade2, AllCommandsHeader)
+table.insert(shade1, AllCommandsHeader)
 table.insert(text1, AllCommandsHeader)
 applyCommandPaletteColors()
 
