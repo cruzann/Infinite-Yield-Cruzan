@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.4.7"
+currentVersion = "1.4.8"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -5193,7 +5193,7 @@ CMDs[#CMDs + 1] = {NAME = 'cancelteleport / canceltp', DESC = 'Cancels teleports
 CMDs[#CMDs + 1] = {NAME = 'volume / vol [0-10]', DESC = 'Adjusts your game volume on a scale of 0 to 10'}
 CMDs[#CMDs + 1] = {NAME = 'antilag / boostfps / lowgraphics', DESC = 'Lowers game quality to boost FPS'}
 CMDs[#CMDs + 1] = {NAME = 'rec', DESC = 'Starts or stops the built-in Roblox recorder'}
-CMDs[#CMDs + 1] = {NAME = 'record [play/loop/stop/clear]', DESC = 'Records and replays your character movement'}
+CMDs[#CMDs + 1] = {NAME = 'record [start/play/loop/stop/clear]', DESC = 'Opens the floating movement recorder controls'}
 CMDs[#CMDs + 1] = {NAME = 'screenshot / scrnshot', DESC = 'Takes a screenshot'}
 CMDs[#CMDs + 1] = {NAME = 'togglefullscreen / togglefs', DESC = 'Toggles fullscreen'}
 CMDs[#CMDs + 1] = {NAME = 'notify [text]', DESC = 'Sends you a notification with the provided text'}
@@ -10138,8 +10138,9 @@ addcmd('rec', {}, function(args, speaker)
 	return COREGUI:ToggleRecording()
 end)
 
--- IY_CRUZAN_MOVEMENT_RECORD_V1
--- Records character-root CFrames in memory and replays the last path by timestamp.
+-- IY_CRUZAN_MOVEMENT_RECORD_V2
+-- Records movement inputs and replays them through Humanoid movement / physics controllers.
+-- Character CFrames are reference points only; playback never assigns the character root CFrame.
 do
 	local sharedEnv = IY_RELOAD_INSTANCE_STATE.sharedEnv or _G
 	local recordData = type(sharedEnv.IY_CRUZAN_MOVEMENT_RECORD_DATA) == "table" and sharedEnv.IY_CRUZAN_MOVEMENT_RECORD_DATA or {saved = nil}
@@ -10149,14 +10150,23 @@ do
 		currentSamples = nil,
 		connection = nil,
 		startedAt = nil,
+		lastSampleAt = nil,
 		recordingCharacter = nil,
 		recordingRoot = nil,
 		recordingPlaceId = nil,
 		playbackCharacter = nil,
+		playbackHumanoid = nil,
 		playbackRoot = nil,
 		playbackStartedAt = nil,
 		playbackLoop = false,
+		playbackLastElapsed = 0,
+		controls = nil,
+		flightMover = nil,
+		originalProperties = nil,
 		maxDuration = 300,
+		sampleInterval = 1 / 30,
+		maxStartDistance = 4.5,
+		ui = nil,
 	}
 
 	local function recordNotify(message, duration)
@@ -10186,6 +10196,11 @@ do
 		return character, humanoid, root
 	end
 
+	local function getHumanoidStateName(humanoid)
+		local ok, result = pcall(function() return humanoid:GetState().Name end)
+		return ok and tostring(result) or "Unknown"
+	end
+
 	local function disconnectRecordConnection()
 		local connection = MovementRecord.connection
 		MovementRecord.connection = nil
@@ -10206,25 +10221,151 @@ do
 		pcall(function() root.AssemblyAngularVelocity = Vector3.zero end)
 	end
 
+	local function clampVectorMagnitude(vector, maxMagnitude)
+		if not vector then return Vector3.zero end
+		local magnitude = vector.Magnitude
+		if magnitude > maxMagnitude and magnitude > 0 then
+			return vector.Unit * maxMagnitude
+		end
+		return vector
+	end
+
+	local function removeFlightMover()
+		local mover = MovementRecord.flightMover
+		MovementRecord.flightMover = nil
+		if mover then pcall(function() mover:Destroy() end) end
+	end
+
+	local function ensureFlightMover(root)
+		local mover = MovementRecord.flightMover
+		if mover and mover.Parent == root then return mover end
+		removeFlightMover()
+		local ok, created = pcall(function()
+			local bodyVelocity = Instance.new("BodyVelocity")
+			bodyVelocity.Name = "IY_CruzanRecordFlightVelocity"
+			bodyVelocity.MaxForce = Vector3.new(1000000, 1000000, 1000000)
+			bodyVelocity.P = 8000
+			bodyVelocity.Velocity = Vector3.zero
+			bodyVelocity.Parent = root
+			return bodyVelocity
+		end)
+		if ok then MovementRecord.flightMover = created; return created end
+		return nil
+	end
+
 	local function clearRecordingReferences()
 		MovementRecord.currentSamples = nil
 		MovementRecord.startedAt = nil
+		MovementRecord.lastSampleAt = nil
 		MovementRecord.recordingCharacter = nil
 		MovementRecord.recordingRoot = nil
 		MovementRecord.recordingPlaceId = nil
 	end
 
-	local function finishRecording(silent, reason, includeFinalSample)
+	local function updateRecordWindow()
+		local ui = MovementRecord.ui
+		if not ui or not ui.frame or not ui.frame.Parent then return end
+		local modeLabels = {idle = "Ready", recording = "Recording", playing = "Playing", looping = "Looping"}
+		local elapsedText = "00:00"
+		if MovementRecord.mode == "recording" and MovementRecord.startedAt then
+			local elapsed = math.max(0, math.min(MovementRecord.maxDuration, os.clock() - MovementRecord.startedAt))
+			elapsedText = string.format("%02d:%02d", math.floor(elapsed / 60), math.floor(elapsed % 60))
+		elseif (MovementRecord.mode == "playing" or MovementRecord.mode == "looping") and MovementRecord.playbackStartedAt then
+			local duration = MovementRecord.saved and (tonumber(MovementRecord.saved.duration) or 0) or 0
+			local elapsed = math.max(0, os.clock() - MovementRecord.playbackStartedAt)
+			if MovementRecord.playbackLoop and duration > 0 then elapsed = elapsed % duration else elapsed = math.min(elapsed, duration) end
+			elapsedText = string.format("%02d:%02d", math.floor(elapsed / 60), math.floor(elapsed % 60))
+		end
+		ui.status.Text = (modeLabels[MovementRecord.mode] or "Ready") .. "  •  " .. elapsedText
+		local savedDuration = MovementRecord.saved and tonumber(MovementRecord.saved.duration) or nil
+		ui.saved.Text = savedDuration and string.format("Last: %ds", math.floor(savedDuration + 0.5)) or "Last: None"
+		ui.record.Text = MovementRecord.mode == "recording" and "Stop + Save" or "Record"
+		ui.play.Active = MovementRecord.saved ~= nil and MovementRecord.mode ~= "recording"
+		ui.loop.Active = MovementRecord.saved ~= nil and MovementRecord.mode ~= "recording"
+		ui.play.TextTransparency = ui.play.Active and 0 or 0.45
+		ui.loop.TextTransparency = ui.loop.Active and 0 or 0.45
+	end
+
+	local function makeMovementSample(character, humanoid, root, elapsed, previousSample)
+		local stateName = getHumanoidStateName(humanoid)
+		local moveDirection = Vector3.zero
+		pcall(function() moveDirection = humanoid.MoveDirection end)
+		local jumpActive = false
+		pcall(function() jumpActive = humanoid.Jump == true end)
+		if stateName == "Jumping" then jumpActive = true end
+		local walkSpeed = 16
+		pcall(function() walkSpeed = humanoid.WalkSpeed end)
+		local jumpPower, jumpHeight, useJumpPower = 50, 7.2, true
+		pcall(function() jumpPower = humanoid.JumpPower end)
+		pcall(function() jumpHeight = humanoid.JumpHeight end)
+		pcall(function() useJumpPower = humanoid.UseJumpPower end)
+		local rootVelocity = Vector3.zero
+		pcall(function() rootVelocity = root.AssemblyLinearVelocity end)
+		if not rootVelocity or typeof(rootVelocity) ~= "Vector3" then rootVelocity = Vector3.zero end
+		local pathVelocity = rootVelocity
+		if previousSample and previousSample.cframe and elapsed > (previousSample.t or 0) then
+			local dt = elapsed - previousSample.t
+			pathVelocity = (root.Position - previousSample.cframe.Position) / dt
+		end
+		local horizontalSpeed = Vector3.new(pathVelocity.X, 0, pathVelocity.Z).Magnitude
+		local nonLocomotionState = stateName == "Physics" or stateName == "PlatformStanding" or stateName == "Flying"
+		local fastUncommandedMotion = moveDirection.Magnitude < 0.15 and not jumpActive and stateName ~= "Jumping"
+			and horizontalSpeed > math.max(25, walkSpeed * 1.55)
+		local fastMotionOverride = horizontalSpeed > math.max(30, walkSpeed * 1.8)
+			and not jumpActive and stateName ~= "Jumping" and stateName ~= "Freefall"
+		local unusualVerticalMotion = math.abs(pathVelocity.Y) > math.max(6, walkSpeed * 0.6)
+			and not jumpActive and stateName ~= "Jumping" and stateName ~= "Freefall"
+		local flightMode = nonLocomotionState or fastUncommandedMotion or fastMotionOverride or unusualVerticalMotion
+		return {
+			t = elapsed,
+			cframe = root.CFrame,
+			move = moveDirection,
+			jump = jumpActive,
+			walkSpeed = walkSpeed,
+			jumpPower = jumpPower,
+			jumpHeight = jumpHeight,
+			useJumpPower = useJumpPower,
+			state = stateName,
+			flight = flightMode,
+			pathVelocity = clampVectorMagnitude(pathVelocity, 160),
+		}
+	end
+
+	local finishRecording
+	local function captureSample(now, finalSample)
+		if MovementRecord.mode ~= "recording" then return false end
+		local character, humanoid, root = getLocalCharacterParts()
+		if character ~= MovementRecord.recordingCharacter or root ~= MovementRecord.recordingRoot or not humanoid then
+			if not finalSample and finishRecording then finishRecording(false, "characterChanged", false) end
+			return false
+		end
+		local elapsed = math.max(0, now - (MovementRecord.startedAt or now))
+		if elapsed >= MovementRecord.maxDuration and not finalSample then
+			if finishRecording then finishRecording(false, "maxDuration", true) end
+			return false
+		end
+		if not finalSample and MovementRecord.lastSampleAt and now - MovementRecord.lastSampleAt < MovementRecord.sampleInterval then
+			return true
+		end
+		elapsed = math.min(elapsed, MovementRecord.maxDuration)
+		local samples = MovementRecord.currentSamples
+		local previousSample = samples and samples[#samples]
+		if not samples then return false end
+		if finalSample and previousSample and elapsed <= (previousSample.t or 0) + 0.008 then return true end
+		local sample = makeMovementSample(character, humanoid, root, elapsed, previousSample)
+		samples[#samples + 1] = sample
+		MovementRecord.lastSampleAt = now
+		return true
+	end
+
+	finishRecording = function(silent, reason, includeFinalSample)
 		if MovementRecord.mode ~= "recording" then return false end
 		local samples = MovementRecord.currentSamples or {}
 		local startedAt = MovementRecord.startedAt or os.clock()
 		local elapsed = math.max(0, os.clock() - startedAt)
 		local character, humanoid, root = getLocalCharacterParts()
 		if includeFinalSample ~= false and character == MovementRecord.recordingCharacter and root == MovementRecord.recordingRoot and #samples > 0 then
-			local last = samples[#samples]
-			if elapsed > (last.t or 0) + 0.001 then
-				samples[#samples + 1] = {t = elapsed, cframe = root.CFrame}
-			end
+			captureSample(os.clock(), true)
 		end
 		MovementRecord.mode = "idle"
 		disconnectRecordConnection()
@@ -10235,7 +10376,8 @@ do
 				samples = samples,
 				duration = duration,
 				placeId = MovementRecord.recordingPlaceId,
-				version = 1,
+				version = 2,
+				movementMode = "humanoid-input-plus-physics-flight",
 			}
 			syncSavedRecording()
 		end
@@ -10246,11 +10388,12 @@ do
 			elseif valid then
 				recordNotify(string.format("Recording saved: %.1f seconds (%d samples).", duration, #samples), 4)
 			elseif reason == "maxDuration" then
-				recordNotify("Maximum recording duration reached, but the segment was too short to save.", 4)
+				recordNotify("Maximum duration reached, but the segment was too short to save.", 4)
 			else
 				recordNotify("Recording was too short to save. The previous recording was kept.", 4)
 			end
 		end
+		updateRecordWindow()
 		return valid
 	end
 
@@ -10259,134 +10402,258 @@ do
 		MovementRecord.mode = "idle"
 		disconnectRecordConnection()
 		clearRecordingReferences()
+		updateRecordWindow()
 		return true
+	end
+
+	local function restorePlaybackProperties()
+		local humanoid = MovementRecord.playbackHumanoid
+		local original = MovementRecord.originalProperties
+		if humanoid and original then
+			pcall(function() humanoid.WalkSpeed = original.walkSpeed end)
+			pcall(function() humanoid.JumpPower = original.jumpPower end)
+			pcall(function() humanoid.JumpHeight = original.jumpHeight end)
+			pcall(function() humanoid.UseJumpPower = original.useJumpPower end)
+			pcall(function() humanoid.Jump = false end)
+			pcall(function() humanoid:Move(Vector3.zero, false) end)
+		end
+		MovementRecord.originalProperties = nil
+		local controls = MovementRecord.controls
+		MovementRecord.controls = nil
+		if controls then pcall(function() controls:Enable() end) end
+		removeFlightMover()
 	end
 
 	local function stopPlayback(silent, zeroVelocity)
 		if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" then return false end
 		local root = MovementRecord.playbackRoot
 		MovementRecord.mode = "idle"
+		disconnectRecordConnection()
+		restorePlaybackProperties()
 		MovementRecord.playbackCharacter = nil
+		MovementRecord.playbackHumanoid = nil
 		MovementRecord.playbackRoot = nil
 		MovementRecord.playbackStartedAt = nil
 		MovementRecord.playbackLoop = false
-		disconnectRecordConnection()
+		MovementRecord.playbackLastElapsed = 0
 		if zeroVelocity then resetRootVelocity(root) end
 		if not silent then recordNotify("Playback stopped.") end
+		updateRecordWindow()
 		return true
 	end
 
-	local function captureSample(now)
-		if MovementRecord.mode ~= "recording" then return false end
-		local character, humanoid, root = getLocalCharacterParts()
-		if character ~= MovementRecord.recordingCharacter or root ~= MovementRecord.recordingRoot or not humanoid then
-			finishRecording(false, "characterChanged", false)
-			return false
+	local function disableDefaultControls()
+		local player = Players.LocalPlayer
+		local playerScripts = player and (player:FindFirstChild("PlayerScripts") or player.PlayerScripts)
+		local playerModule = playerScripts and playerScripts:FindFirstChild("PlayerModule")
+		if not playerModule then return false, "PlayerModule is not available" end
+		local loaded, module = pcall(require, playerModule)
+		if not loaded or type(module) ~= "table" or type(module.GetControls) ~= "function" then
+			return false, "Could not load PlayerModule controls"
 		end
-		local elapsed = math.max(0, now - (MovementRecord.startedAt or now))
-		if elapsed >= MovementRecord.maxDuration then
-			finishRecording(false, "maxDuration", true)
-			return false
+		local ok, controls = pcall(function() return module:GetControls() end)
+		if not ok or not controls or type(controls.Disable) ~= "function" or type(controls.Enable) ~= "function" then
+			return false, "PlayerModule controls cannot be disabled"
 		end
-		local samples = MovementRecord.currentSamples
-		samples[#samples + 1] = {t = elapsed, cframe = root.CFrame}
+		local disabled = pcall(function() controls:Disable() end)
+		if not disabled then return false, "PlayerModule controls failed to disable" end
+		MovementRecord.controls = controls
 		return true
 	end
 
-	local function startRecording()
-		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then
-			stopPlayback(true, true)
+	local function removeFlightMoverOnPlaybackStart()
+		removeFlightMover()
+	end
+
+	local function getSampleAt(saved, elapsed)
+		local samples = saved.samples
+		local low, high, found = 1, #samples, 1
+		while low <= high do
+			local mid = math.floor((low + high) / 2)
+			if (tonumber(samples[mid].t) or 0) <= elapsed then
+				found = mid
+				low = mid + 1
+			else
+				high = mid - 1
+			end
 		end
-		local character, humanoid, root = getLocalCharacterParts()
-		if not character or not humanoid or not root then
-			recordNotify("Cannot record: your character is not ready.")
-			return false
-		end
-		disconnectRecordConnection()
-		MovementRecord.mode = "recording"
-		MovementRecord.currentSamples = {{t = 0, cframe = root.CFrame}}
-		MovementRecord.startedAt = os.clock()
-		MovementRecord.recordingCharacter = character
-		MovementRecord.recordingRoot = root
-		MovementRecord.recordingPlaceId = game.PlaceId
-		local connection = RunService.Heartbeat:Connect(function()
-			if MovementRecord.mode == "recording" then captureSample(os.clock()) end
-		end)
-		MovementRecord.connection = connection
-		if IY_RELOAD_INSTANCE_STATE and type(IY_RELOAD_INSTANCE_STATE.TrackConnection) == "function" then
-			IY_RELOAD_INSTANCE_STATE.TrackConnection(connection)
-		end
-		recordNotify("Recording started. Run, walk, jump or fly; type record again to save.", 4)
-		return true
+		return samples[found], samples[math.min(found + 1, #samples)], found
+	end
+
+	local function deriveHorizontalMove(a, b)
+		if not a or not b or not a.cframe or not b.cframe then return Vector3.zero end
+		local delta = b.cframe.Position - a.cframe.Position
+		local horizontal = Vector3.new(delta.X, 0, delta.Z)
+		return horizontal.Magnitude > 0.05 and horizontal.Unit or Vector3.zero
+	end
+
+	local function getTargetPosition(saved, elapsed)
+		local a, b = getSampleAt(saved, elapsed)
+		if not a or not a.cframe then return nil end
+		if not b or not b.cframe then return a.cframe.Position end
+		local span = (tonumber(b.t) or 0) - (tonumber(a.t) or 0)
+		local alpha = span > 0 and math.clamp((elapsed - (tonumber(a.t) or 0)) / span, 0, 1) or 0
+		return a.cframe.Position:Lerp(b.cframe.Position, alpha)
 	end
 
 	local function applyPlaybackAt(elapsed)
 		local saved = MovementRecord.saved
-		if not saved or type(saved.samples) ~= "table" or #saved.samples < 2 then return false, "No usable recording. Run record first." end
+		if not saved or type(saved.samples) ~= "table" or #saved.samples < 2 then return false, "No usable recording. Run record to open the controls, then record a path." end
 		local duration = tonumber(saved.duration) or 0
 		if duration < 0.05 then return false, "The saved recording is too short." end
+		local localElapsed = elapsed
 		if MovementRecord.playbackLoop then
-			elapsed = elapsed % duration
+			localElapsed = elapsed % duration
+			if localElapsed < (MovementRecord.playbackLastElapsed or 0) then MovementRecord.lastJump = false end
 		elseif elapsed >= duration then
-			local last = saved.samples[#saved.samples]
-			local root = MovementRecord.playbackRoot
-			if root and last and last.cframe then pcall(function() root.CFrame = last.cframe end) end
 			stopPlayback(true, true)
 			recordNotify("Playback finished.")
 			return false, "finished"
 		end
-		local samples = saved.samples
-		local low, high = 1, #samples - 1
-		local leftIndex = 1
-		while low <= high do
-			local mid = math.floor((low + high) / 2)
-			if elapsed < samples[mid].t then
-				high = mid - 1
-			elseif elapsed > samples[mid + 1].t then
-				low = mid + 1
-			else
-				leftIndex = mid
-				break
+		MovementRecord.playbackLastElapsed = localElapsed
+		local a, b = getSampleAt(saved, localElapsed)
+		if not a then return false, "Invalid sample data." end
+		local humanoid = MovementRecord.playbackHumanoid
+		local root = MovementRecord.playbackRoot
+		if not humanoid or not root or not root.Parent then return false, "Character root is no longer available." end
+		local sampleMove = a.move
+		if not sampleMove or sampleMove.Magnitude < 0.08 then sampleMove = deriveHorizontalMove(a, b) end
+		local recordedJump = a.jump
+		if recordedJump == nil and a.cframe and b and b.cframe then
+			recordedJump = (b.cframe.Position.Y - a.cframe.Position.Y) > 1.25 and a.state ~= "Freefall"
+		end
+		local isFlight = a.flight == true
+		local recordedSpeed = tonumber(a.walkSpeed) or 16
+		local segmentVelocity = nil
+		if b and b.cframe and a.cframe then
+			local span = (tonumber(b.t) or 0) - (tonumber(a.t) or 0)
+			if span > 0 then segmentVelocity = (b.cframe.Position - a.cframe.Position) / span end
+		end
+		-- Older in-session recordings only have CFrames; infer clear airborne/fast segments for a best-effort migration.
+		if a.flight == nil and segmentVelocity then
+			local segmentHorizontalSpeed = Vector3.new(segmentVelocity.X, 0, segmentVelocity.Z).Magnitude
+			if segmentHorizontalSpeed > math.max(25, recordedSpeed * 1.55) or math.abs(segmentVelocity.Y) > math.max(8, recordedSpeed * 0.6) then
+				isFlight = true
 			end
 		end
-		local a = samples[leftIndex]
-		local b = samples[math.min(leftIndex + 1, #samples)]
-		if not a or not b or not a.cframe or not b.cframe then return false, "Invalid sample data." end
-		local span = (tonumber(b.t) or 0) - (tonumber(a.t) or 0)
-		local alpha = span > 0 and math.clamp((elapsed - a.t) / span, 0, 1) or 0
-		local root = MovementRecord.playbackRoot
-		if not root or not root.Parent then return false, "Character root is no longer available." end
-		local ok = pcall(function() root.CFrame = a.cframe:Lerp(b.cframe, alpha) end)
-		if ok then return true end
-		return false, "Could not apply recorded CFrame."
+		if isFlight then
+			local mover = ensureFlightMover(root)
+			if not mover then return false, "Could not create the flight physics controller." end
+			local velocity = a.pathVelocity
+			if not velocity and segmentVelocity then velocity = segmentVelocity end
+			if not velocity or typeof(velocity) ~= "Vector3" then velocity = root.AssemblyLinearVelocity or Vector3.zero end
+			if not velocity or typeof(velocity) ~= "Vector3" then velocity = Vector3.zero end
+			if velocity.Magnitude < 0.1 and segmentVelocity then velocity = segmentVelocity end
+			mover.Velocity = clampVectorMagnitude(velocity, 120)
+			pcall(function() humanoid:Move(Vector3.zero, false) end)
+			MovementRecord.lastJump = false
+		else
+			removeFlightMover()
+			local targetPosition = getTargetPosition(saved, math.min(duration, localElapsed + 0.18))
+			if targetPosition then
+				local offset = targetPosition - root.Position
+				local horizontalOffset = Vector3.new(offset.X, 0, offset.Z)
+				-- When physics or an obstacle has moved the character off-track, steer it back naturally.
+				if horizontalOffset.Magnitude > 3.25 then sampleMove = horizontalOffset.Unit end
+			end
+			local desiredWalkSpeed = tonumber(a.walkSpeed)
+			if desiredWalkSpeed and desiredWalkSpeed > 0 then pcall(function() humanoid.WalkSpeed = math.min(desiredWalkSpeed, 100) end) end
+			if a.useJumpPower ~= nil then pcall(function() humanoid.UseJumpPower = a.useJumpPower end) end
+			local desiredJumpPower = tonumber(a.jumpPower)
+			local desiredJumpHeight = tonumber(a.jumpHeight)
+			if desiredJumpPower and desiredJumpPower > 0 then pcall(function() humanoid.JumpPower = math.min(desiredJumpPower, 200) end) end
+			if desiredJumpHeight and desiredJumpHeight > 0 then pcall(function() humanoid.JumpHeight = math.min(desiredJumpHeight, 100) end) end
+			if recordedJump == true and MovementRecord.lastJump ~= true then
+				pcall(function() humanoid.Jump = true end)
+			elseif recordedJump ~= true then
+				pcall(function() humanoid.Jump = false end)
+			end
+			MovementRecord.lastJump = recordedJump == true
+			local moved = pcall(function() humanoid:Move(sampleMove or Vector3.zero, false) end)
+			if not moved then return false, "Humanoid movement input failed." end
+		end
+		return true
 	end
 
 	MovementRecord.ApplyPlaybackAt = applyPlaybackAt
 	MovementRecord.CaptureSample = captureSample
 
-	local function startPlayback(looping)
+	local function startRecording(silent)
+		if MovementRecord.mode == "recording" then
+			if not silent then recordNotify("Already recording. Use Stop to save the current route.") end
+			updateRecordWindow()
+			return false
+		end
+		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+		local character, humanoid, root = getLocalCharacterParts()
+		if not character or not humanoid or not root then
+			if not silent then recordNotify("Cannot record: your character is not ready.") end
+			return false
+		end
+		disconnectRecordConnection()
+		MovementRecord.mode = "recording"
+		MovementRecord.currentSamples = {}
+		MovementRecord.startedAt = os.clock()
+		MovementRecord.lastSampleAt = nil
+		MovementRecord.recordingCharacter = character
+		MovementRecord.recordingRoot = root
+		MovementRecord.recordingPlaceId = game.PlaceId
+		captureSample(MovementRecord.startedAt, true)
+		local connection = RunService.Heartbeat:Connect(function()
+			if MovementRecord.mode == "recording" then captureSample(os.clock(), false) end
+		end)
+		MovementRecord.connection = connection
+		if IY_RELOAD_INSTANCE_STATE and type(IY_RELOAD_INSTANCE_STATE.TrackConnection) == "function" then
+			IY_RELOAD_INSTANCE_STATE.TrackConnection(connection)
+		end
+		if not silent then recordNotify("Recording started. Use the Record window to stop and save.", 4) end
+		updateRecordWindow()
+		return true
+	end
+
+	local function startPlayback(looping, silent)
 		refreshSavedRecording()
 		local saved = MovementRecord.saved
 		if not saved or type(saved.samples) ~= "table" or #saved.samples < 2 then
-			recordNotify("No saved movement. Use record, then record again to finish.")
+			if not silent then recordNotify("No saved movement. Use record to open the window and record a path.") end
 			return false
 		end
 		if saved.placeId ~= game.PlaceId then
-			recordNotify("This recording belongs to a different place. Playback was blocked.", 4)
+			if not silent then recordNotify("This recording belongs to a different place. Playback was blocked.", 4) end
 			return false
 		end
 		local character, humanoid, root = getLocalCharacterParts()
 		if not character or not humanoid or not root then
-			recordNotify("Cannot play: your character is not ready.")
+			if not silent then recordNotify("Cannot play: your character is not ready.") end
 			return false
 		end
-		if MovementRecord.mode == "recording" then finishRecording(true, nil, true) end
+		local first = saved.samples[1]
+		if first and first.cframe and (root.Position - first.cframe.Position).Magnitude > MovementRecord.maxStartDistance then
+			if not silent then recordNotify("Move near the recording's starting point first. Playback no longer teleports you.", 5) end
+			return false
+		end
+		if MovementRecord.mode == "recording" then finishRecording(true, nil, true); saved = MovementRecord.saved end
 		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+		local controlsOk, controlsError = disableDefaultControls()
+		if not controlsOk then
+			if not silent then recordNotify("Playback blocked: " .. tostring(controlsError) .. ". Natural replay requires control of PlayerModule.", 5) end
+			return false
+		end
+		MovementRecord.originalProperties = {
+			walkSpeed = humanoid.WalkSpeed,
+			jumpPower = humanoid.JumpPower,
+			jumpHeight = humanoid.JumpHeight,
+			useJumpPower = humanoid.UseJumpPower,
+		}
 		MovementRecord.mode = looping and "looping" or "playing"
 		MovementRecord.playbackLoop = looping == true
 		MovementRecord.playbackCharacter = character
+		MovementRecord.playbackHumanoid = humanoid
 		MovementRecord.playbackRoot = root
 		MovementRecord.playbackStartedAt = os.clock()
+		MovementRecord.playbackLastElapsed = 0
+		MovementRecord.lastJump = false
+		removeFlightMoverOnPlaybackStart()
 		local connection = RunService.Heartbeat:Connect(function()
 			if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" then return end
 			local currentCharacter, currentHumanoid, currentRoot = getLocalCharacterParts()
@@ -10406,59 +10673,256 @@ do
 		if IY_RELOAD_INSTANCE_STATE and type(IY_RELOAD_INSTANCE_STATE.TrackConnection) == "function" then
 			IY_RELOAD_INSTANCE_STATE.TrackConnection(connection)
 		end
-		-- Snap to the recorded start frame so every playback begins at the same start point.
-		pcall(function() root.CFrame = saved.samples[1].cframe end)
-		recordNotify(looping and "Loop playback started. Use record stop to end it." or "Playback started.", 4)
+		if not silent then recordNotify(looping and "Loop playback started. Use Stop to end it." or "Playback started.", 4) end
+		updateRecordWindow()
+		return true
+	end
+
+	local function clearSavedRecording(silent)
+		if MovementRecord.mode == "recording" then cancelRecording() end
+		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+		MovementRecord.saved = nil
+		syncSavedRecording()
+		if not silent then recordNotify("Last recording cleared.") end
+		updateRecordWindow()
 		return true
 	end
 
 	MovementRecord.Stop = function(silent)
 		if MovementRecord.mode == "recording" then
-			return finishRecording(silent == true, "cleanup", true)
+			return finishRecording(silent == true, "stopped", true)
 		elseif MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then
 			return stopPlayback(silent == true, true)
 		end
 		return false
 	end
 
+	local function createRecordWindow()
+		local old = IY_RELOAD_INSTANCE_STATE.recordWindow
+		if old and old.Parent then pcall(function() old:Destroy() end) end
+		local frame = Instance.new("Frame")
+		frame.Name = "IY_CruzanRecordWindow"
+		frame.Size = UDim2.new(0, 250, 0, 137)
+		frame.Position = UDim2.new(0.5, -125, 0.66, -68)
+		frame.BackgroundColor3 = currentShade1 or Color3.fromRGB(36, 36, 37)
+		frame.BorderSizePixel = 0
+		frame.Visible = false
+		frame.Active = true
+		frame.ZIndex = 80
+		frame.Parent = PARENT
+		table.insert(shade1, frame)
+		IY_RELOAD_INSTANCE_STATE.recordWindow = frame
+		table.insert(IY_RELOAD_INSTANCE_STATE.ownedInstances, frame)
+
+		local titleBar = Instance.new("Frame")
+		titleBar.Name = "Header"
+		titleBar.Size = UDim2.new(1, 0, 0, 23)
+		titleBar.BackgroundColor3 = currentShade2 or Color3.fromRGB(46, 46, 47)
+		titleBar.BorderSizePixel = 0
+		titleBar.Active = true
+		titleBar.ZIndex = 81
+		titleBar.Parent = frame
+		table.insert(shade2, titleBar)
+
+		local title = Instance.new("TextLabel")
+		title.Name = "Title"
+		title.BackgroundTransparency = 1
+		title.Position = UDim2.new(0, 7, 0, 0)
+		title.Size = UDim2.new(1, -34, 1, 0)
+		title.Font = Enum.Font.SourceSansBold
+		title.Text = "Record"
+		title.TextSize = 15
+		title.TextXAlignment = Enum.TextXAlignment.Left
+		title.TextColor3 = currentText1 or Color3.new(1, 1, 1)
+		title.ZIndex = 82
+		title.Parent = titleBar
+		table.insert(text1, title)
+
+		local close = Instance.new("TextButton")
+		close.Name = "Close"
+		close.Size = UDim2.new(0, 23, 0, 21)
+		close.Position = UDim2.new(1, -24, 0, 1)
+		close.BackgroundColor3 = currentShade2 or Color3.fromRGB(46, 46, 47)
+		close.BorderSizePixel = 0
+		close.AutoButtonColor = false
+		close.Text = "×"
+		close.Font = Enum.Font.SourceSansBold
+		close.TextSize = 17
+		close.TextColor3 = currentText1 or Color3.new(1, 1, 1)
+		close.ZIndex = 83
+		close.Parent = titleBar
+		table.insert(shade2, close)
+		table.insert(text1, close)
+
+		local status = Instance.new("TextLabel")
+		status.Name = "Status"
+		status.Position = UDim2.new(0, 7, 0, 25)
+		status.Size = UDim2.new(1, -14, 0, 18)
+		status.BackgroundTransparency = 1
+		status.BorderSizePixel = 0
+		status.Font = Enum.Font.SourceSans
+		status.TextSize = 13
+		status.Text = "Ready  •  00:00"
+		status.TextXAlignment = Enum.TextXAlignment.Left
+		status.TextColor3 = currentText1 or Color3.new(1, 1, 1)
+		status.ZIndex = 82
+		status.Parent = frame
+		table.insert(text1, status)
+
+		local function makeButton(name, caption, x, y, width)
+			local button = Instance.new("TextButton")
+			button.Name = name
+			button.Position = UDim2.new(0, x, 0, y)
+			button.Size = UDim2.new(0, width, 0, 25)
+			button.BackgroundColor3 = currentShade2 or Color3.fromRGB(46, 46, 47)
+			button.BorderSizePixel = 0
+			button.AutoButtonColor = false
+			button.Font = Enum.Font.SourceSans
+			button.TextSize = 13
+			button.Text = caption
+			button.TextColor3 = currentText1 or Color3.new(1, 1, 1)
+			button.ZIndex = 82
+			button.Parent = frame
+			table.insert(shade2, button)
+			table.insert(text1, button)
+			return button
+		end
+
+		local recordButton = makeButton("RecordButton", "Record", 6, 46, 116)
+		local playButton = makeButton("PlayButton", "Play", 128, 46, 116)
+		local loopButton = makeButton("LoopButton", "Loop", 6, 75, 116)
+		local stopButton = makeButton("StopButton", "Stop", 128, 75, 116)
+		local saved = Instance.new("TextLabel")
+		saved.Name = "SavedDuration"
+		saved.Position = UDim2.new(0, 7, 0, 105)
+		saved.Size = UDim2.new(1, -72, 0, 22)
+		saved.BackgroundTransparency = 1
+		saved.BorderSizePixel = 0
+		saved.Font = Enum.Font.SourceSans
+		saved.TextSize = 12
+		saved.TextXAlignment = Enum.TextXAlignment.Left
+		saved.TextColor3 = currentText1 or Color3.new(1, 1, 1)
+		saved.Text = "Last: None"
+		saved.ZIndex = 82
+		saved.Parent = frame
+		table.insert(text1, saved)
+		local clear = makeButton("ClearButton", "Clear", 190, 105, 54)
+		clear.Size = UDim2.new(0, 54, 0, 22)
+		clear.TextSize = 12
+
+		local dragState = nil
+		local function onDragInputChanged(input)
+			if not dragState then return end
+			local isMouseMove = input.UserInputType == Enum.UserInputType.MouseMovement and dragState.inputType == Enum.UserInputType.MouseButton1
+			local isTouchMove = input == dragState.input and dragState.inputType == Enum.UserInputType.Touch
+			if not isMouseMove and not isTouchMove then return end
+			local dx = input.Position.X - dragState.start.X
+			local dy = input.Position.Y - dragState.start.Y
+			frame.Position = UDim2.new(dragState.position.X.Scale, dragState.position.X.Offset + dx, dragState.position.Y.Scale, dragState.position.Y.Offset + dy)
+		end
+		local function endDrag(input)
+			if not dragState then return end
+			if input == dragState.input or input.UserInputType == Enum.UserInputType.MouseButton1 then dragState = nil end
+		end
+		titleBar.InputBegan:Connect(function(input)
+			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+			dragState = {input = input, inputType = input.UserInputType, start = input.Position, position = frame.Position}
+		end)
+		local dragChanged = UserInputService.InputChanged:Connect(onDragInputChanged)
+		local dragEnded = UserInputService.InputEnded:Connect(endDrag)
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(dragChanged)
+		IY_RELOAD_INSTANCE_STATE.TrackConnection(dragEnded)
+
+		close.MouseButton1Click:Connect(function() frame.Visible = false end)
+		recordButton.MouseButton1Click:Connect(function()
+			if MovementRecord.mode == "recording" then finishRecording(true, "stopped", true) else startRecording(true) end
+			updateRecordWindow()
+		end)
+		playButton.MouseButton1Click:Connect(function()
+			if MovementRecord.mode == "recording" then finishRecording(true, "stopped", true) end
+			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+			startPlayback(false, true)
+			updateRecordWindow()
+		end)
+		loopButton.MouseButton1Click:Connect(function()
+			if MovementRecord.mode == "recording" then finishRecording(true, "stopped", true) end
+			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+			startPlayback(true, true)
+			updateRecordWindow()
+		end)
+		stopButton.MouseButton1Click:Connect(function()
+			MovementRecord.Stop(true)
+			updateRecordWindow()
+		end)
+		clear.MouseButton1Click:Connect(function() clearSavedRecording(true) end)
+		local uiConnections = {}
+		for _, object in ipairs({titleBar, close, recordButton, playButton, loopButton, stopButton, clear}) do
+			-- Store UI click handlers are automatically destroyed with this frame; input drag connections are tracked above.
+			if object and object.Destroying then end
+		end
+		MovementRecord.ui = {frame = frame, status = status, saved = saved, record = recordButton, play = playButton, loop = loopButton, stop = stopButton, clear = clear}
+		return frame
+	end
+
+	createRecordWindow()
+	local windowRefreshAccumulator = 0
+	local windowHeartbeat = RunService.Heartbeat:Connect(function(dt)
+		if not MovementRecord.ui or not MovementRecord.ui.frame or not MovementRecord.ui.frame.Parent then return end
+		if MovementRecord.ui.frame.Visible then
+			windowRefreshAccumulator = windowRefreshAccumulator + (tonumber(dt) or 0.016)
+			if windowRefreshAccumulator >= 0.1 then
+				windowRefreshAccumulator = 0
+				updateRecordWindow()
+			end
+		end
+	end)
+	IY_RELOAD_INSTANCE_STATE.TrackConnection(windowHeartbeat)
+	updateRecordWindow()
+
+	MovementRecord.OpenWindow = function()
+		if MovementRecord.ui and MovementRecord.ui.frame and MovementRecord.ui.frame.Parent then
+			MovementRecord.ui.frame.Visible = true
+			updateRecordWindow()
+			return true
+		end
+		return false
+	end
 	IY_RELOAD_INSTANCE_STATE.movementRecorder = MovementRecord
 	syncSavedRecording()
 
 	addcmd('record', {}, function(args, speaker)
-		local action = tostring(args[1] or "toggle"):lower()
-		if action == "" then action = "toggle" end
-		if action == "toggle" then
-			if MovementRecord.mode == "recording" then
-				finishRecording(false, nil, true)
-			else
-				startRecording()
-			end
+		local action = tostring(args[1] or ""):lower()
+		if action == "" or action == "window" or action == "open" then
+			MovementRecord.OpenWindow()
+			return
+		end
+		MovementRecord.OpenWindow()
+		if action == "start" then
+			startRecording(false)
+		elseif action == "toggle" then
+			if MovementRecord.mode == "recording" then finishRecording(false, "stopped", true) else startRecording(false) end
 		elseif action == "play" then
-			if MovementRecord.mode == "recording" then finishRecording(true, nil, true) end
+			if MovementRecord.mode == "recording" then finishRecording(true, "stopped", true) end
 			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
-			startPlayback(false)
+			startPlayback(false, false)
 		elseif action == "loop" then
-			if MovementRecord.mode == "recording" then finishRecording(true, nil, true) end
+			if MovementRecord.mode == "recording" then finishRecording(true, "stopped", true) end
 			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
-			startPlayback(true)
+			startPlayback(true, false)
 		elseif action == "stop" then
 			if MovementRecord.mode == "recording" then
-				finishRecording(false, nil, true)
+				finishRecording(false, "stopped", true)
 			elseif MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then
 				stopPlayback(false, true)
 			else
 				recordNotify("Nothing is recording or playing.")
 			end
 		elseif action == "clear" then
-			refreshSavedRecording()
-			if MovementRecord.mode == "recording" then cancelRecording() end
-			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
-			MovementRecord.saved = nil
-			syncSavedRecording()
-			recordNotify("Last recording cleared.")
+			clearSavedRecording(false)
 		else
-			recordNotify("Usage: record | record play | record loop | record stop | record clear", 5)
+			recordNotify("Usage: record | record start | record play | record loop | record stop | record clear", 5)
 		end
+		updateRecordWindow()
 	end)
 end
 
