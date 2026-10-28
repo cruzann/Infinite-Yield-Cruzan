@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.5.3"
+currentVersion = "1.5.4"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -9445,6 +9445,25 @@ local unmobilefly = function(speaker)
 	end)
 end
 
+-- Recorder integration: suspend the built-in fly controller before replay so its live input
+-- does not fight the recorded velocity/orientation stream. This is assigned after both
+-- desktop and mobile cleanup functions exist; Record calls it only after full script startup.
+IY_RELOAD_INSTANCE_STATE.stopFlyForRecordPlayback = function()
+	local active = false
+	pcall(function() active = FLYING == true end)
+	if not active then return true end
+	local ok = pcall(function()
+		if IsOnMobile then
+			unmobilefly(Players.LocalPlayer)
+		else
+			NOFLY()
+		end
+	end)
+	if not ok then return false end
+	pcall(function() task.wait(0.12) end)
+	return FLYING ~= true
+end
+
 local mobilefly = function(speaker, vfly)
 	unmobilefly(speaker)
 	FLYING = true
@@ -10138,7 +10157,7 @@ addcmd('rec', {}, function(args, speaker)
 	return COREGUI:ToggleRecording()
 end)
 
--- IY_CRUZAN_MOVEMENT_RECORD_V3
+-- IY_CRUZAN_MOVEMENT_RECORD_V4
 -- Records movement inputs and jump events at a 60 Hz target; flight playback preserves recorded orientation.
 -- Flight replication remains best-effort when the source uses a third-party controller.
 -- Playback restores the recorded starting CFrame once, then replays movement via Humanoid input/physics.
@@ -10181,10 +10200,17 @@ do
 		playbackLastElapsed = 0,
 		playbackLastSampleIndex = 0,
 		playbackJumpResetPending = false,
+		playbackJumpPendingUntil = nil,
+		playbackJumpLastAttemptAt = 0,
+		playbackJumpLastAttemptElapsed = nil,
+		recordingFlightLatched = false,
+		recordingFlightLastExplicitAt = nil,
+		recordingFlightReleaseCount = 0,
+		recordingFastFlightCount = 0,
 		controls = nil,
 		flightMover = nil,
 		flightGyro = nil,
-		playbackOrientationGyro = nil,
+		trajectoryMover = nil,
 		originalProperties = nil,
 		sampleInterval = 1 / 60,
 		maxMemorySamples = 36000,
@@ -10310,6 +10336,10 @@ do
 		if not cf then return nil end
 		local move = sample.move or Vector3.zero
 		local velocity = sample.pathVelocity or Vector3.zero
+		local flightCFrame = packCFrame(sample.flightCFrame or sample.cframe) or cf
+		local flightVelocity = sample.flightVelocity or Vector3.zero
+		local flightMaxForce = sample.flightMaxForce or Vector3.new(9000000000, 9000000000, 9000000000)
+		local flightMaxTorque = sample.flightMaxTorque or Vector3.new(9000000000, 9000000000, 9000000000)
 		return {
 			math.floor((tonumber(sample.t) or 0) * 1000 + 0.5),
 			cf[1], cf[2], cf[3], cf[4], cf[5], cf[6],
@@ -10319,7 +10349,13 @@ do
 			rounded(sample.jumpHeight or 7.2, 2), sample.useJumpPower == false and 0 or 1,
 			sample.flight and 1 or 0,
 			rounded(velocity.X, 2), rounded(velocity.Y, 2), rounded(velocity.Z, 2),
-			tostring(sample.state or "Unknown")
+			tostring(sample.state or "Unknown"),
+			sample.flightControl and 1 or 0,
+			flightCFrame[1], flightCFrame[2], flightCFrame[3], flightCFrame[4], flightCFrame[5], flightCFrame[6],
+			rounded(flightVelocity.X, 2), rounded(flightVelocity.Y, 2), rounded(flightVelocity.Z, 2),
+			rounded(sample.flightVelocityP or 1250, 2), rounded(sample.flightGyroP or 1000, 2), rounded(sample.flightGyroD or 50, 2),
+			rounded(flightMaxForce.X, 2), rounded(flightMaxForce.Y, 2), rounded(flightMaxForce.Z, 2),
+			rounded(flightMaxTorque.X, 2), rounded(flightMaxTorque.Y, 2), rounded(flightMaxTorque.Z, 2)
 		}
 	end
 
@@ -10328,6 +10364,11 @@ do
 		local cf = unpackCFrame({row[2], row[3], row[4], row[5], row[6], row[7]})
 		if not cf then return nil end
 		local function n(index, fallback) return tonumber(row[index]) or fallback or 0 end
+		local hasFlightControl = n(21, 0) == 1 and #row >= 30
+		local flightCFrame = hasFlightControl and unpackCFrame({row[22], row[23], row[24], row[25], row[26], row[27]}) or nil
+		local flightVelocity = hasFlightControl and Vector3.new(n(28), n(29), n(30)) or nil
+		local flightMaxForce = hasFlightControl and #row >= 39 and Vector3.new(n(34), n(35), n(36)) or nil
+		local flightMaxTorque = hasFlightControl and #row >= 39 and Vector3.new(n(37), n(38), n(39)) or nil
 		return {
 			t = n(1, 0) / 1000,
 			cframe = cf,
@@ -10340,6 +10381,14 @@ do
 			flight = n(16) == 1,
 			pathVelocity = Vector3.new(n(17), n(18), n(19)),
 			state = tostring(row[20] or "Unknown"),
+			flightControl = hasFlightControl,
+			flightCFrame = flightCFrame,
+			flightVelocity = flightVelocity,
+			flightVelocityP = hasFlightControl and n(31, 1250) or nil,
+			flightGyroP = hasFlightControl and n(32, 1000) or nil,
+			flightGyroD = hasFlightControl and n(33, 50) or nil,
+			flightMaxForce = flightMaxForce,
+			flightMaxTorque = flightMaxTorque,
 		}
 	end
 
@@ -10386,7 +10435,7 @@ do
 			startCFrame = startCFrame,
 			gameId = CURRENT_GAME_ID,
 			placeId = CURRENT_PLACE_ID,
-			version = 3,
+			version = tonumber(manifest.version) or 3,
 			sampleRate = tonumber(manifest.sampleRate) or 60,
 			sessionId = sessionId,
 			persistentBasePath = paths.base,
@@ -10448,7 +10497,7 @@ do
 		local samples = MovementRecord.currentSamples or {}
 		local last = samples[sampleCount]
 		return {
-			version = 3,
+			version = 4,
 			gameId = MovementRecord.recordingGameId or CURRENT_GAME_ID,
 			placeId = MovementRecord.recordingPlaceId or CURRENT_PLACE_ID,
 			sessionId = MovementRecord.recordingSessionId,
@@ -10506,7 +10555,7 @@ do
 		local paths = recordPaths(saved.gameId or CURRENT_GAME_ID, saved.placeId or CURRENT_PLACE_ID)
 		local oldManifest = readManifest(paths.manifest)
 		local finalManifest = {
-			version = 3,
+			version = 4,
 			gameId = tostring(saved.gameId or CURRENT_GAME_ID),
 			placeId = tonumber(saved.placeId) or CURRENT_PLACE_ID,
 			sessionId = MovementRecord.recordingSessionId,
@@ -10577,6 +10626,32 @@ do
 		return vector
 	end
 
+	local function removeTrajectoryMover()
+		local mover = MovementRecord.trajectoryMover
+		MovementRecord.trajectoryMover = nil
+		if mover then pcall(function() mover:Destroy() end) end
+	end
+
+	local function ensureTrajectoryMover(root)
+		local mover = MovementRecord.trajectoryMover
+		if not mover or mover.Parent ~= root then
+			removeTrajectoryMover()
+			local ok, created = pcall(function()
+				local bodyVelocity = Instance.new("BodyVelocity")
+				bodyVelocity.Name = "IY_CruzanRecordTrajectoryVelocity"
+				bodyVelocity.MaxForce = Vector3.new(9000000000, 9000000000, 9000000000)
+				bodyVelocity.P = 18000
+				bodyVelocity.Velocity = Vector3.zero
+				bodyVelocity.Parent = root
+				return bodyVelocity
+			end)
+			if not ok then return nil end
+			MovementRecord.trajectoryMover = created
+			mover = created
+		end
+		return mover
+	end
+
 	local function removeFlightMover()
 		local mover = MovementRecord.flightMover
 		local gyro = MovementRecord.flightGyro
@@ -10593,8 +10668,8 @@ do
 			local ok, created = pcall(function()
 				local bodyVelocity = Instance.new("BodyVelocity")
 				bodyVelocity.Name = "IY_CruzanRecordFlightVelocity"
-				bodyVelocity.MaxForce = Vector3.new(1000000, 1000000, 1000000)
-				bodyVelocity.P = 8000
+				bodyVelocity.MaxForce = Vector3.new(9000000000, 9000000000, 9000000000)
+				bodyVelocity.P = 1250
 				bodyVelocity.Velocity = Vector3.zero
 				bodyVelocity.Parent = root
 				return bodyVelocity
@@ -10610,8 +10685,8 @@ do
 				local bodyGyro = Instance.new("BodyGyro")
 				bodyGyro.Name = "IY_CruzanRecordFlightOrientation"
 				bodyGyro.MaxTorque = Vector3.new(9000000000, 9000000000, 9000000000)
-				bodyGyro.P = 90000
-				bodyGyro.D = 1200
+				bodyGyro.P = 1000
+				bodyGyro.D = 50
 				bodyGyro.CFrame = root.CFrame
 				bodyGyro.Parent = root
 				return bodyGyro
@@ -10619,30 +10694,6 @@ do
 			if gyroOk then MovementRecord.flightGyro = createdGyro end
 		end
 		return mover
-	end
-
-	local function removePlaybackOrientationController()
-		local gyro = MovementRecord.playbackOrientationGyro
-		MovementRecord.playbackOrientationGyro = nil
-		if gyro then pcall(function() gyro:Destroy() end) end
-	end
-
-	local function ensurePlaybackOrientationController(root)
-		local gyro = MovementRecord.playbackOrientationGyro
-		if gyro and gyro.Parent == root then return gyro end
-		removePlaybackOrientationController()
-		local ok, created = pcall(function()
-			local bodyGyro = Instance.new("BodyGyro")
-			bodyGyro.Name = "IY_CruzanRecordFacingController"
-		bodyGyro.MaxTorque = Vector3.new(0, 900000, 0)
-		bodyGyro.P = 18000
-		bodyGyro.D = 900
-		bodyGyro.CFrame = root.CFrame
-		bodyGyro.Parent = root
-		return bodyGyro
-		end)
-		if ok then MovementRecord.playbackOrientationGyro = created end
-		return MovementRecord.playbackOrientationGyro
 	end
 
 	local function disconnectRecordingEventConnections()
@@ -10688,6 +10739,10 @@ do
 		MovementRecord.recordingPersistedSampleCount = 0
 		MovementRecord.recordingChunkCount = 0
 		MovementRecord.recordingChunkBytes = 0
+		MovementRecord.recordingFlightLatched = false
+		MovementRecord.recordingFlightLastExplicitAt = nil
+		MovementRecord.recordingFlightReleaseCount = 0
+		MovementRecord.recordingFastFlightCount = 0
 	end
 
 	local function updateRecordWindow()
@@ -10725,7 +10780,7 @@ do
 		for _, item in ipairs(descendants) do
 			local className = nil
 			pcall(function() className = item.ClassName end)
-			if item.Name ~= "IY_CruzanRecordFlightVelocity" and item.Name ~= "IY_CruzanRecordFlightOrientation" then
+			if item.Name ~= "IY_CruzanRecordFlightVelocity" and item.Name ~= "IY_CruzanRecordFlightOrientation" and item.Name ~= "IY_CruzanRecordTrajectoryVelocity" then
 				if className == "BodyVelocity" then
 					local maxForce = Vector3.zero
 					pcall(function() maxForce = item.MaxForce end)
@@ -10749,6 +10804,92 @@ do
 		return hasOrientationController and rootVelocity and rootVelocity.Magnitude > 20 or false
 	end
 
+	local function isBuiltInFlyActive()
+		local active = false
+		pcall(function() active = FLYING == true end)
+		if not active then pcall(function() active = sharedEnv.FLYING == true end) end
+		return active
+	end
+
+	local function captureFlightControllerSnapshot(character, root, rootVelocity, builtInFly)
+		local recordedVelocity, recordedOrientation, bestForce = nil, nil, -1
+		local velocityP, gyroP, gyroD = 1250, 1000, 50
+		local maxForceVector = Vector3.new(9000000000, 9000000000, 9000000000)
+		local maxTorqueVector = Vector3.new(9000000000, 9000000000, 9000000000)
+		local descendants = nil
+		pcall(function() descendants = root:GetChildren() end)
+		if type(descendants) ~= "table" or #descendants == 0 then
+			pcall(function() descendants = character:GetDescendants() end)
+		end
+		for _, item in ipairs(descendants or {}) do
+			local className, forceScore = nil, 0
+			pcall(function() className = item.ClassName end)
+			if item.Name ~= "IY_CruzanRecordFlightVelocity" and item.Name ~= "IY_CruzanRecordFlightOrientation" then
+				if className == "BodyVelocity" then
+					local value, maxForce = nil, Vector3.zero
+					pcall(function() value = item.Velocity end)
+					pcall(function() maxForce = item.MaxForce end)
+					if value and typeof(value) == "Vector3" then
+						forceScore = maxForce and maxForce.Magnitude or 0
+						if builtInFly then forceScore = forceScore + 10000000000 end
+						if forceScore > bestForce then
+							recordedVelocity, bestForce = value, forceScore
+							pcall(function() velocityP = tonumber(item.P) or velocityP end)
+							if maxForce and maxForce.Magnitude > 1 then maxForceVector = maxForce end
+						end
+					end
+				elseif className == "LinearVelocity" then
+					local value, enabled, maxForce = nil, true, 0
+					pcall(function() value = item.VectorVelocity end)
+					pcall(function() enabled = item.Enabled ~= false end)
+					pcall(function() maxForce = tonumber(item.MaxForce) or 0 end)
+					if value and typeof(value) == "Vector3" and enabled and (builtInFly or value.Magnitude > 0.1 or maxForce > 1) then
+						forceScore = maxForce + (builtInFly and 10000000000 or 0)
+						if forceScore > bestForce then
+							recordedVelocity, bestForce = value, forceScore
+							if maxForce > 1 then maxForceVector = Vector3.new(maxForce, maxForce, maxForce) end
+						end
+					end
+				elseif className == "BodyGyro" or className == "AlignOrientation" then
+					local value, maxTorque = nil, nil
+					pcall(function() value = item.CFrame end)
+					pcall(function() maxTorque = item.MaxTorque end)
+					local torqueMagnitude = 0
+					if typeof(maxTorque) == "Vector3" then
+						torqueMagnitude = maxTorque.Magnitude
+					elseif tonumber(maxTorque) then
+						torqueMagnitude = tonumber(maxTorque)
+					end
+					if value and typeof(value) == "CFrame" and (builtInFly or torqueMagnitude > 1) then
+						recordedOrientation = value
+						pcall(function() gyroP = tonumber(item.P) or gyroP end)
+						pcall(function() gyroD = tonumber(item.D) or gyroD end)
+						if typeof(maxTorque) == "Vector3" and maxTorque.Magnitude > 1 then
+							maxTorqueVector = maxTorque
+						elseif tonumber(maxTorque) and tonumber(maxTorque) > 1 then
+							maxTorqueVector = Vector3.new(tonumber(maxTorque), tonumber(maxTorque), tonumber(maxTorque))
+						end
+					end
+				end
+			end
+		end
+		if builtInFly then
+			pcall(function()
+				local camera = workspace.CurrentCamera
+				if camera then recordedOrientation = camera.CFrame end
+			end)
+		end
+		if not recordedVelocity then recordedVelocity = rootVelocity end
+		if not recordedOrientation then recordedOrientation = root.CFrame end
+		return recordedVelocity, recordedOrientation, {
+			velocityP = velocityP,
+			gyroP = gyroP,
+			gyroD = gyroD,
+			maxForce = maxForceVector,
+			maxTorque = maxTorqueVector,
+		}
+	end
+
 	local function makeMovementSample(character, humanoid, root, elapsed, previousSample)
 		local stateName = getHumanoidStateName(humanoid)
 		local moveDirection = Vector3.zero
@@ -10765,43 +10906,58 @@ do
 		pcall(function() jumpHeight = humanoid.JumpHeight end)
 		pcall(function() useJumpPower = humanoid.UseJumpPower end)
 		local rootVelocity = Vector3.zero
-		local angularVelocity = Vector3.zero
 		pcall(function() rootVelocity = root.AssemblyLinearVelocity end)
-		pcall(function() angularVelocity = root.AssemblyAngularVelocity end)
 		if not rootVelocity or typeof(rootVelocity) ~= "Vector3" then rootVelocity = Vector3.zero end
-		if not angularVelocity or typeof(angularVelocity) ~= "Vector3" then angularVelocity = Vector3.zero end
-		local localMove = Vector3.zero
-		pcall(function() localMove = root.CFrame:VectorToObjectSpace(moveDirection) end)
-		local cameraLook = nil
-		pcall(function()
-			local camera = workspace.CurrentCamera
-			if camera then cameraLook = camera.CFrame.LookVector end
-		end)
 		local pathVelocity = rootVelocity
 		if previousSample and previousSample.cframe and elapsed > (previousSample.t or 0) then
 			local dt = elapsed - previousSample.t
 			pathVelocity = (root.Position - previousSample.cframe.Position) / dt
 		end
 		local horizontalSpeed = Vector3.new(pathVelocity.X, 0, pathVelocity.Z).Magnitude
-		local nonLocomotionState = stateName == "Physics" or stateName == "PlatformStanding" or stateName == "Flying"
 		local jumpingState = stateName == "Jumping"
-		local fastUncommandedMotion = moveDirection.Magnitude < 0.15 and not jumpingState
-			and horizontalSpeed > math.max(25, walkSpeed * 1.55)
-		local fastMotionOverride = horizontalSpeed > math.max(30, walkSpeed * 1.8)
-			and not jumpingState and stateName ~= "Freefall"
-		local unusualVerticalMotion = math.abs(pathVelocity.Y) > math.max(6, walkSpeed * 0.6)
-			and not jumpingState and stateName ~= "Freefall"
+		local airborneState = jumpingState or stateName == "Freefall" or stateName == "FallingDown" or stateName == "Landed"
+		local platformStand = false
+		pcall(function() platformStand = humanoid.PlatformStand == true end)
+		local builtInFly = isBuiltInFlyActive()
 		local hasFlightController = hasExternalFlightController(character, root, humanoid, rootVelocity)
-		local flightMode = nonLocomotionState or hasFlightController or fastUncommandedMotion or fastMotionOverride or unusualVerticalMotion
+		-- Never classify an ordinary jump's vertical velocity as flight. Only explicit fly/controller
+		-- evidence latches flight; the speed-only fallback requires sustained high horizontal motion.
+		local explicitFlight = builtInFly or hasFlightController or stateName == "Flying"
+			or (platformStand and rootVelocity.Magnitude > 3 and stateName ~= "Jumping" and stateName ~= "Freefall")
+		local fastUncommandedMotion = not airborneState and moveDirection.Magnitude < 0.15
+			and horizontalSpeed > math.max(48, walkSpeed * 2.7)
+		if fastUncommandedMotion then
+			MovementRecord.recordingFastFlightCount = (MovementRecord.recordingFastFlightCount or 0) + 1
+		else
+			MovementRecord.recordingFastFlightCount = 0
+		end
+		if explicitFlight then
+			MovementRecord.recordingFlightLatched = true
+			MovementRecord.recordingFlightLastExplicitAt = elapsed
+			MovementRecord.recordingFlightReleaseCount = 0
+		elseif MovementRecord.recordingFlightLatched then
+			local lastExplicitAt = tonumber(MovementRecord.recordingFlightLastExplicitAt) or elapsed
+			local groundedState = stateName == "Landed" or stateName == "Running" or stateName == "RunningNoPhysics" or stateName == "GettingUp"
+			if groundedState then
+				MovementRecord.recordingFlightReleaseCount = (MovementRecord.recordingFlightReleaseCount or 0) + 1
+			else
+				MovementRecord.recordingFlightReleaseCount = 0
+			end
+			if (MovementRecord.recordingFlightReleaseCount or 0) >= 4 or elapsed - lastExplicitAt > 0.20 then
+				MovementRecord.recordingFlightLatched = false
+				MovementRecord.recordingFlightReleaseCount = 0
+			end
+		end
+		local inferredFlight = (MovementRecord.recordingFastFlightCount or 0) >= 3
+		local flightMode = explicitFlight or MovementRecord.recordingFlightLatched == true or inferredFlight
+		local flightVelocity, flightCFrame, flightControllerProperties = nil, nil, nil
+		if flightMode then
+			flightVelocity, flightCFrame, flightControllerProperties = captureFlightControllerSnapshot(character, root, rootVelocity, builtInFly)
+		end
 		return {
 			t = elapsed,
 			cframe = root.CFrame,
 			move = moveDirection,
-			localMove = localMove,
-			rootVelocity = rootVelocity,
-			angularVelocity = angularVelocity,
-			cameraLook = cameraLook,
-			facing = root.CFrame.Rotation,
 			jump = jumpTriggered,
 			walkSpeed = walkSpeed,
 			jumpPower = jumpPower,
@@ -10809,6 +10965,14 @@ do
 			useJumpPower = useJumpPower,
 			state = stateName,
 			flight = flightMode,
+			flightControl = flightMode and (builtInFly or hasFlightController) or false,
+			flightVelocity = flightVelocity,
+			flightCFrame = flightCFrame,
+			flightVelocityP = flightControllerProperties and flightControllerProperties.velocityP or nil,
+			flightGyroP = flightControllerProperties and flightControllerProperties.gyroP or nil,
+			flightGyroD = flightControllerProperties and flightControllerProperties.gyroD or nil,
+			flightMaxForce = flightControllerProperties and flightControllerProperties.maxForce or nil,
+			flightMaxTorque = flightControllerProperties and flightControllerProperties.maxTorque or nil,
 			pathVelocity = clampVectorMagnitude(pathVelocity, 160),
 		}
 	end
@@ -10891,9 +11055,9 @@ do
 				placeId = MovementRecord.recordingPlaceId or CURRENT_PLACE_ID,
 				gameId = MovementRecord.recordingGameId or CURRENT_GAME_ID,
 				startCFrame = MovementRecord.recordingStartCFrame or samples[1].cframe,
-				version = 3,
+				version = 4,
 				sampleRate = 60,
-				movementMode = "captured-input-facing-velocity-plus-physics-flight",
+				movementMode = "humanoid-input-plus-captured-flight-controller",
 			}
 			if MovementRecord.recordingPersistent then
 				local savedOk, savedError = finalizePersistentRecording(MovementRecord.saved)
@@ -10957,18 +11121,22 @@ do
 			pcall(function() humanoid.JumpPower = original.jumpPower end)
 			pcall(function() humanoid.JumpHeight = original.jumpHeight end)
 			pcall(function() humanoid.UseJumpPower = original.useJumpPower end)
-			if original.autoRotate ~= nil then pcall(function() humanoid.AutoRotate = original.autoRotate end) end
+			pcall(function() humanoid.PlatformStand = original.platformStand == true end)
+			pcall(function() humanoid.AutoRotate = original.autoRotate ~= false end)
 			pcall(function() humanoid.Jump = false end)
 			pcall(function() humanoid:Move(Vector3.zero, false) end)
 		end
 		MovementRecord.originalProperties = nil
 		MovementRecord.playbackJumpResetPending = false
+		MovementRecord.playbackJumpPendingUntil = nil
+		MovementRecord.playbackJumpLastAttemptAt = 0
+		MovementRecord.playbackJumpLastAttemptElapsed = nil
 		MovementRecord.playbackLastSampleIndex = 0
 		local controls = MovementRecord.controls
 		MovementRecord.controls = nil
 		if controls then pcall(function() controls:Enable() end) end
 		removeFlightMover()
-		removePlaybackOrientationController()
+		removeTrajectoryMover()
 	end
 
 	local function stopPlayback(silent, zeroVelocity)
@@ -11097,10 +11265,6 @@ do
 		MovementRecord.playbackLastElapsed = localElapsed
 		local sampleMove = a.move
 		if not sampleMove or sampleMove.Magnitude < 0.08 then sampleMove = deriveHorizontalMove(a, b) end
-		local recordedJump = a.jump
-		if recordedJump == nil and a.cframe and b and b.cframe then
-			recordedJump = (b.cframe.Position.Y - a.cframe.Position.Y) > 1.25 and a.state ~= "Freefall"
-		end
 		local isFlight = a.flight == true
 		local recordedSpeed = tonumber(a.walkSpeed) or 16
 		local segmentVelocity = nil
@@ -11115,45 +11279,144 @@ do
 				isFlight = true
 			end
 		end
-		-- A recorded jump should only trigger a Humanoid jump on locomotion segments;
-		-- vertical flight input is already reproduced by the recorded flight velocity.
+		-- Preserve jump events until the Humanoid accepts them. A small timing/landing difference
+		-- should not silently drop a parkour jump after recording playback starts drifting.
 		if jumpEventFound and not isFlight then
-			pcall(function() humanoid.Jump = true end)
-			pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end)
-			MovementRecord.playbackJumpResetPending = true
+			MovementRecord.playbackJumpPendingUntil = math.max(tonumber(MovementRecord.playbackJumpPendingUntil) or 0, localElapsed + 0.38)
+		end
+		local currentStateName = getHumanoidStateName(humanoid)
+		if not isFlight and MovementRecord.playbackJumpPendingUntil then
+			local rootVelocityNow = Vector3.zero
+			local floorMaterial = nil
+			pcall(function() rootVelocityNow = root.AssemblyLinearVelocity end)
+			pcall(function() floorMaterial = humanoid.FloorMaterial end)
+			local airborneNow = currentStateName == "Jumping" or (floorMaterial == Enum.Material.Air and rootVelocityNow.Y > 4)
+			if airborneNow then
+				MovementRecord.playbackJumpPendingUntil = nil
+				MovementRecord.playbackJumpResetPending = true
+			elseif localElapsed <= MovementRecord.playbackJumpPendingUntil then
+				local groundedNow = floorMaterial ~= Enum.Material.Air or currentStateName == "Running" or currentStateName == "Landed" or currentStateName == "RunningNoPhysics"
+				local lastJumpAttemptElapsed = tonumber(MovementRecord.playbackJumpLastAttemptElapsed)
+				if groundedNow and (lastJumpAttemptElapsed == nil or localElapsed - lastJumpAttemptElapsed >= 0.045) then
+					pcall(function() humanoid.Jump = true end)
+					pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end)
+					MovementRecord.playbackJumpLastAttemptAt = os.clock()
+					MovementRecord.playbackJumpLastAttemptElapsed = localElapsed
+					MovementRecord.playbackJumpResetPending = true
+				end
+			else
+				MovementRecord.playbackJumpPendingUntil = nil
+			end
 		end
 		if isFlight then
+			removeTrajectoryMover()
 			local mover = ensureFlightMover(root)
 			if not mover then return false, "Could not create the flight physics controller." end
-			-- Prefer the instantaneous physics velocity captured from the root; pathVelocity is a fallback for older samples.
-			local velocity = a.rootVelocity or a.pathVelocity
-			if not velocity and segmentVelocity then velocity = segmentVelocity end
+			local velocity = a.flightControl and a.flightVelocity or a.pathVelocity
+			if velocity == nil and segmentVelocity then velocity = segmentVelocity end
 			if not velocity or typeof(velocity) ~= "Vector3" then velocity = root.AssemblyLinearVelocity or Vector3.zero end
 			if not velocity or typeof(velocity) ~= "Vector3" then velocity = Vector3.zero end
-			if velocity.Magnitude < 0.1 and segmentVelocity then velocity = segmentVelocity end
-			mover.Velocity = clampVectorMagnitude(velocity, 120)
-			pcall(function() humanoid.AutoRotate = false end)
 			local gyro = MovementRecord.flightGyro
-			if gyro and a.cframe then
-				-- Replay recorded body orientation (including pitch/yaw) rather than assuming upright flight.
-				pcall(function() gyro.CFrame = CFrame.new(root.Position) * a.cframe.Rotation end)
+			if a.flightControl then
+				pcall(function()
+					mover.P = math.clamp(tonumber(a.flightVelocityP) or 1250, 100, 200000)
+					local force = a.flightMaxForce
+					if force and typeof(force) == "Vector3" and force.Magnitude > 1 then mover.MaxForce = force end
+				end)
+				pcall(function()
+					if gyro then
+						gyro.P = math.clamp(tonumber(a.flightGyroP) or 1000, 100, 200000)
+						gyro.D = math.max(0, math.min(tonumber(a.flightGyroD) or 50, 50000))
+						local torque = a.flightMaxTorque
+						if torque and typeof(torque) == "Vector3" and torque.Magnitude > 1 then gyro.MaxTorque = torque end
+					end
+				end)
 			end
+			-- Track the recorded 3D path continuously. The source fly velocity remains a useful fallback,
+			-- but using only controller velocity can drift after a delayed frame or network correction.
+			local targetNow = getTargetPosition(saved, localElapsed)
+			local lookAheadTime = math.min(duration, localElapsed + 0.06)
+			local targetAhead = getTargetPosition(saved, lookAheadTime)
+			local routeVelocity = segmentVelocity
+			if targetNow and targetAhead and lookAheadTime > localElapsed + 0.001 then
+				routeVelocity = (targetAhead - targetNow) / (lookAheadTime - localElapsed)
+			end
+			local sourceVelocity = a.flightControl and a.flightVelocity or nil
+			if routeVelocity and typeof(routeVelocity) == "Vector3" and routeVelocity.Magnitude > 1 then
+				-- The captured world path is authoritative; controller velocity is only a fallback
+				-- when adjacent samples are nearly stationary or missing.
+				velocity = routeVelocity
+			elseif sourceVelocity and typeof(sourceVelocity) == "Vector3" then
+				velocity = sourceVelocity
+			elseif routeVelocity and typeof(routeVelocity) == "Vector3" then
+				velocity = routeVelocity
+			end
+			if targetNow then
+				local positionError = targetNow - root.Position
+				local correction = clampVectorMagnitude(positionError * 5.0, 45)
+				velocity = velocity + correction
+			end
+			mover.Velocity = clampVectorMagnitude(velocity, 5000)
+			local orientationCFrame = a.flightCFrame or a.cframe
+			if gyro and orientationCFrame then
+				-- Built-in fly uses the camera orientation; replay the captured orientation and source gyro gains.
+				pcall(function() gyro.CFrame = CFrame.new(root.Position) * orientationCFrame.Rotation end)
+			end
+			pcall(function() humanoid.PlatformStand = true end)
+			pcall(function() humanoid.AutoRotate = false end)
 			pcall(function() humanoid:Move(Vector3.zero, false) end)
 		else
 			removeFlightMover()
-			-- Preserve recorded body-facing during parkour turns; keep normal humanoid physics for position.
-			local facingGyro = ensurePlaybackOrientationController(root)
-			if facingGyro and a.cframe then
-				pcall(function() facingGyro.CFrame = CFrame.new(root.Position) * a.cframe.Rotation end)
+			local original = MovementRecord.originalProperties
+			if original then
+				pcall(function() humanoid.PlatformStand = original.platformStand == true end)
+				pcall(function() humanoid.AutoRotate = original.autoRotate ~= false end)
 			end
-			pcall(function() humanoid.AutoRotate = false end)
-			local targetPosition = getTargetPosition(saved, math.min(duration, localElapsed + 0.12))
-			if targetPosition then
-				local offset = targetPosition - root.Position
-				local horizontalOffset = Vector3.new(offset.X, 0, offset.Z)
-				-- Only use trajectory steering after a substantial drift; otherwise replay the captured input.
-				if horizontalOffset.Magnitude > 5.0 and sampleMove and sampleMove.Magnitude > 0.05 then
-					sampleMove = horizontalOffset.Unit
+			local aState = tostring(a.state or "")
+			local bState = tostring(b and b.state or "")
+			local function isRecordedAirState(state)
+				return state == "Jumping" or state == "Freefall" or state == "FallingDown" or state == "Ragdoll"
+			end
+			local recordedAirborne = a.jump == true or isRecordedAirState(aState)
+			if not recordedAirborne and segmentVelocity and isRecordedAirState(bState) then recordedAirborne = true end
+			if recordedAirborne then
+				-- Parkour gaps are sensitive to a few frames of drift. Track the recorded 3D trajectory
+				-- with a physics velocity actuator only during recorded airborne frames; never teleport each sample.
+				local trajectoryMover = ensureTrajectoryMover(root)
+				if not trajectoryMover then return false, "Could not create the parkour trajectory controller." end
+				local targetNow = getTargetPosition(saved, localElapsed)
+				local lookAheadTime = math.min(duration, localElapsed + 0.06)
+				local targetAhead = getTargetPosition(saved, lookAheadTime)
+				local routeVelocity = segmentVelocity or Vector3.zero
+				if targetNow and targetAhead and lookAheadTime > localElapsed + 0.001 then
+					routeVelocity = (targetAhead - targetNow) / (lookAheadTime - localElapsed)
+				end
+				if not routeVelocity or typeof(routeVelocity) ~= "Vector3" then routeVelocity = Vector3.zero end
+				if targetNow then
+					local positionError = targetNow - root.Position
+					local correction = clampVectorMagnitude(positionError * 6.0, 38)
+					routeVelocity = routeVelocity + correction
+				end
+				trajectoryMover.P = 18000
+				trajectoryMover.MaxForce = Vector3.new(9000000000, 9000000000, 9000000000)
+				trajectoryMover.Velocity = clampVectorMagnitude(routeVelocity, 260)
+			else
+				removeTrajectoryMover()
+				local targetPosition = getTargetPosition(saved, math.min(duration, localElapsed + 0.12))
+				if targetPosition then
+					local offset = targetPosition - root.Position
+					local horizontalOffset = Vector3.new(offset.X, 0, offset.Z)
+					-- Small, continuous ground steering correction complements direct Humanoid input.
+					if horizontalOffset.Magnitude > 0.55 then
+						local correction = horizontalOffset.Unit
+						local correctionWeight = math.clamp((horizontalOffset.Magnitude - 0.45) / 2.0, 0.08, 0.82)
+						if sampleMove and sampleMove.Magnitude > 0.08 then
+							sampleMove = sampleMove.Unit:Lerp(correction, correctionWeight)
+							if sampleMove.Magnitude > 0.05 then sampleMove = sampleMove.Unit end
+						else
+							sampleMove = correction
+						end
+					end
 				end
 			end
 			local desiredWalkSpeed = tonumber(a.walkSpeed)
@@ -11191,6 +11454,7 @@ do
 		MovementRecord.lastSampleAt = nil
 		MovementRecord.recordingCharacter = character
 		MovementRecord.recordingRoot = root
+		MovementRecord.recordingHumanoid = humanoid
 		MovementRecord.recordingGameId = CURRENT_GAME_ID
 		MovementRecord.recordingPlaceId = CURRENT_PLACE_ID
 		MovementRecord.recordingStartCFrame = root.CFrame
@@ -11220,6 +11484,10 @@ do
 		end
 		MovementRecord.recordingEventConnections = {}
 		MovementRecord.pendingJumpPulse = false
+		MovementRecord.recordingFlightLatched = false
+		MovementRecord.recordingFlightLastExplicitAt = nil
+		MovementRecord.recordingFlightReleaseCount = 0
+		MovementRecord.recordingFastFlightCount = 0
 		local function queueRecordedJump()
 			if MovementRecord.mode == "recording" and MovementRecord.recordingHumanoid == humanoid then
 				MovementRecord.pendingJumpPulse = true
@@ -11259,9 +11527,9 @@ do
 		end
 		if not silent then
 			if MovementRecord.recordingPersistent then
-				recordNotify("Recording started at 60 Hz with facing, angular velocity, and local movement capture. Checkpoints are saved locally for this game/place.", 4)
+				recordNotify("Recording started at 60 Hz. Checkpoints are saved locally for this game/place.", 4)
 			else
-				recordNotify("Recording started at 60 Hz with facing, angular velocity, and local movement capture. Local file storage is unavailable; this recording is session-only.", 5)
+				recordNotify("Recording started at 60 Hz. Local file storage is unavailable; this recording is session-only.", 5)
 			end
 		end
 		updateRecordWindow()
@@ -11300,6 +11568,25 @@ do
 			if not silent then recordNotify("The recording has no valid starting position.", 4) end
 			return false
 		end
+		local recordingHasFlight = false
+		for _, sample in ipairs(saved.samples) do
+			if sample and sample.flight == true then recordingHasFlight = true; break end
+		end
+		-- Infinite Yield's desktop/mobile fly controllers keep updating their own BodyVelocity/BodyGyro.
+		-- Stop those before playback so their live input cannot fight the recorded flight samples.
+		if recordingHasFlight and isBuiltInFlyActive() then
+			local stopFly = IY_RELOAD_INSTANCE_STATE and IY_RELOAD_INSTANCE_STATE.stopFlyForRecordPlayback
+			if type(stopFly) == "function" then
+				local stopOk, stopped = pcall(stopFly)
+				if not stopOk or stopped == false or isBuiltInFlyActive() then
+					if not silent then recordNotify("Playback blocked: could not suspend the active fly controller. Use unfly and try again.", 5) end
+					return false
+				end
+			else
+				if not silent then recordNotify("Playback blocked: the active fly controller is still running. Use unfly and try again.", 5) end
+				return false
+			end
+		end
 		local controlsOk, controlsError = disableDefaultControls()
 		-- Do not block playback if PlayerModule is hidden. A render-step fallback reapplies
 		-- Humanoid:Move after default input processing so walking/jumping can still run naturally.
@@ -11312,6 +11599,7 @@ do
 			jumpPower = humanoid.JumpPower,
 			jumpHeight = humanoid.JumpHeight,
 			useJumpPower = humanoid.UseJumpPower,
+			platformStand = humanoid.PlatformStand,
 			autoRotate = humanoid.AutoRotate,
 		}
 		local startPositioned = pcall(function()
@@ -11333,6 +11621,9 @@ do
 		MovementRecord.playbackLastElapsed = 0
 		MovementRecord.playbackLastSampleIndex = 0
 		MovementRecord.playbackJumpResetPending = false
+		MovementRecord.playbackJumpPendingUntil = nil
+		MovementRecord.playbackJumpLastAttemptAt = 0
+		MovementRecord.playbackJumpLastAttemptElapsed = nil
 		MovementRecord.playbackLoopIndex = 0
 		MovementRecord.lastJump = false
 		removeFlightMoverOnPlaybackStart()
@@ -11362,6 +11653,9 @@ do
 					end
 					MovementRecord.playbackLoopIndex = loopIndex
 					MovementRecord.playbackLastElapsed = 0
+					MovementRecord.playbackJumpPendingUntil = nil
+					MovementRecord.playbackJumpLastAttemptAt = 0
+					MovementRecord.playbackJumpLastAttemptElapsed = nil
 					MovementRecord.lastJump = false
 				end
 			end
