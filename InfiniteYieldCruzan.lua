@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.5.0"
+currentVersion = "1.5.1"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -10802,7 +10802,14 @@ do
 		return true
 	end
 
+	local function unbindPlaybackRenderStep()
+		local bindName = MovementRecord.playbackRenderStepName
+		MovementRecord.playbackRenderStepName = nil
+		if bindName then pcall(function() RunService:UnbindFromRenderStep(bindName) end) end
+	end
+
 	local function restorePlaybackProperties()
+		unbindPlaybackRenderStep()
 		local humanoid = MovementRecord.playbackHumanoid
 		local original = MovementRecord.originalProperties
 		if humanoid and original then
@@ -10830,6 +10837,7 @@ do
 		MovementRecord.playbackHumanoid = nil
 		MovementRecord.playbackRoot = nil
 		MovementRecord.playbackStartedAt = nil
+		MovementRecord.playbackCurrentElapsed = nil
 		MovementRecord.playbackLoop = false
 		MovementRecord.playbackLastElapsed = 0
 		if zeroVelocity then resetRootVelocity(root) end
@@ -10839,22 +10847,33 @@ do
 	end
 
 	local function disableDefaultControls()
+		-- PlayerModule is optional: some executors/games do not expose it to this script.
+		-- If it is missing, playback still runs and applies Humanoid movement after the default input step.
+		MovementRecord.controlsFallback = false
 		local player = Players.LocalPlayer
 		local playerScripts = player and (player:FindFirstChild("PlayerScripts") or player.PlayerScripts)
 		local playerModule = playerScripts and playerScripts:FindFirstChild("PlayerModule")
-		if not playerModule then return false, "PlayerModule is not available" end
+		if not playerModule and playerScripts then
+			pcall(function() playerModule = playerScripts:WaitForChild("PlayerModule", 0.75) end)
+		end
+		local function useFallback(reason)
+			MovementRecord.controls = nil
+			MovementRecord.controlsFallback = true
+			return true, tostring(reason or "PlayerModule is not available")
+		end
+		if not playerModule then return useFallback("PlayerModule is not available") end
 		local loaded, module = pcall(require, playerModule)
 		if not loaded or type(module) ~= "table" or type(module.GetControls) ~= "function" then
-			return false, "Could not load PlayerModule controls"
+			return useFallback("PlayerModule controls could not be loaded")
 		end
 		local ok, controls = pcall(function() return module:GetControls() end)
 		if not ok or not controls or type(controls.Disable) ~= "function" or type(controls.Enable) ~= "function" then
-			return false, "PlayerModule controls cannot be disabled"
+			return useFallback("PlayerModule controls cannot be disabled")
 		end
 		local disabled = pcall(function() controls:Disable() end)
-		if not disabled then return false, "PlayerModule controls failed to disable" end
+		if not disabled then return useFallback("PlayerModule controls failed to disable") end
 		MovementRecord.controls = controls
-		return true
+		return true, nil
 	end
 
 	local function removeFlightMoverOnPlaybackStart()
@@ -11084,9 +11103,11 @@ do
 			return false
 		end
 		local controlsOk, controlsError = disableDefaultControls()
+		-- Do not block playback if PlayerModule is hidden. A render-step fallback reapplies
+		-- Humanoid:Move after default input processing so walking/jumping can still run naturally.
 		if not controlsOk then
-			if not silent then recordNotify("Playback blocked: " .. tostring(controlsError) .. ". Natural replay requires control of PlayerModule.", 5) end
-			return false
+			MovementRecord.controlsFallback = true
+			controlsError = controlsError or "PlayerModule controls are unavailable"
 		end
 		MovementRecord.originalProperties = {
 			walkSpeed = humanoid.WalkSpeed,
@@ -11109,6 +11130,7 @@ do
 		MovementRecord.playbackHumanoid = humanoid
 		MovementRecord.playbackRoot = root
 		MovementRecord.playbackStartedAt = os.clock()
+		MovementRecord.playbackCurrentElapsed = 0
 		MovementRecord.playbackLastElapsed = 0
 		MovementRecord.playbackLoopIndex = 0
 		MovementRecord.lastJump = false
@@ -11122,6 +11144,7 @@ do
 				return
 			end
 			local elapsed = os.clock() - (MovementRecord.playbackStartedAt or os.clock())
+			MovementRecord.playbackCurrentElapsed = elapsed
 			if MovementRecord.playbackLoop then
 				local loopDuration = tonumber(MovementRecord.saved and MovementRecord.saved.duration) or 0
 				local loopIndex = loopDuration > 0 and math.floor(elapsed / loopDuration) or 0
@@ -11148,10 +11171,35 @@ do
 			end
 		end)
 		MovementRecord.connection = connection
+		if MovementRecord.controlsFallback and type(RunService.BindToRenderStep) == "function" then
+			local bindName = "IY_CruzanRecordPlayback_" .. tostring(math.floor(os.clock() * 1000000))
+			local bindPriority = 201
+			pcall(function()
+				bindPriority = Enum.RenderPriority.Input.Value + 1
+			end)
+			local bindOk = pcall(function()
+				RunService:BindToRenderStep(bindName, bindPriority, function()
+					if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" then return end
+					local elapsed = tonumber(MovementRecord.playbackCurrentElapsed) or 0
+					local stepOk, stepError = applyPlaybackAt(elapsed)
+					if not stepOk and stepError ~= "finished" then
+						stopPlayback(true, false)
+						recordNotify("Playback stopped: " .. tostring(stepError), 4)
+					end
+				end)
+			end)
+			if bindOk then MovementRecord.playbackRenderStepName = bindName end
+		end
 		if IY_RELOAD_INSTANCE_STATE and type(IY_RELOAD_INSTANCE_STATE.TrackConnection) == "function" then
 			IY_RELOAD_INSTANCE_STATE.TrackConnection(connection)
 		end
-		if not silent then recordNotify(looping and "Loop playback started. Use Stop to end it." or "Playback started.", 4) end
+		if not silent then
+			if MovementRecord.controlsFallback then
+				recordNotify("Playback started in fallback mode; PlayerModule is unavailable, so movement may be less precise.", 5)
+			else
+				recordNotify(looping and "Loop playback started. Use Stop to end it." or "Playback started.", 4)
+			end
+		end
 		updateRecordWindow()
 		return true
 	end
@@ -11192,8 +11240,8 @@ do
 		if old and old.Parent then pcall(function() old:Destroy() end) end
 		local frame = Instance.new("Frame")
 		frame.Name = "IY_CruzanRecordWindow"
-		frame.Size = UDim2.new(0, 250, 0, 137)
-		frame.Position = UDim2.new(0.5, -125, 0.66, -68)
+		frame.Size = UDim2.new(0, 218, 0, 114)
+		frame.Position = UDim2.new(0.5, -109, 0.66, -57)
 		frame.BackgroundColor3 = currentShade1 or Color3.fromRGB(36, 36, 37)
 		frame.BorderSizePixel = 0
 		frame.Visible = false
@@ -11206,7 +11254,7 @@ do
 
 		local titleBar = Instance.new("Frame")
 		titleBar.Name = "Header"
-		titleBar.Size = UDim2.new(1, 0, 0, 23)
+		titleBar.Size = UDim2.new(1, 0, 0, 22)
 		titleBar.BackgroundColor3 = currentShade2 or Color3.fromRGB(46, 46, 47)
 		titleBar.BorderSizePixel = 0
 		titleBar.Active = true
@@ -11221,7 +11269,7 @@ do
 		title.Size = UDim2.new(1, -34, 1, 0)
 		title.Font = Enum.Font.SourceSansBold
 		title.Text = "Record"
-		title.TextSize = 15
+		title.TextSize = 14
 		title.TextXAlignment = Enum.TextXAlignment.Left
 		title.TextColor3 = currentText1 or Color3.new(1, 1, 1)
 		title.ZIndex = 82
@@ -11230,14 +11278,14 @@ do
 
 		local close = Instance.new("TextButton")
 		close.Name = "Close"
-		close.Size = UDim2.new(0, 23, 0, 21)
-		close.Position = UDim2.new(1, -24, 0, 1)
+		close.Size = UDim2.new(0, 21, 0, 20)
+		close.Position = UDim2.new(1, -22, 0, 1)
 		close.BackgroundColor3 = currentShade2 or Color3.fromRGB(46, 46, 47)
 		close.BorderSizePixel = 0
 		close.AutoButtonColor = false
 		close.Text = "×"
 		close.Font = Enum.Font.SourceSansBold
-		close.TextSize = 17
+		close.TextSize = 16
 		close.TextColor3 = currentText1 or Color3.new(1, 1, 1)
 		close.ZIndex = 83
 		close.Parent = titleBar
@@ -11246,12 +11294,12 @@ do
 
 		local status = Instance.new("TextLabel")
 		status.Name = "Status"
-		status.Position = UDim2.new(0, 7, 0, 25)
-		status.Size = UDim2.new(1, -14, 0, 18)
+		status.Position = UDim2.new(0, 6, 0, 23)
+		status.Size = UDim2.new(1, -12, 0, 16)
 		status.BackgroundTransparency = 1
 		status.BorderSizePixel = 0
 		status.Font = Enum.Font.SourceSans
-		status.TextSize = 13
+		status.TextSize = 11
 		status.Text = "Ready  •  00:00"
 		status.TextXAlignment = Enum.TextXAlignment.Left
 		status.TextColor3 = currentText1 or Color3.new(1, 1, 1)
@@ -11263,12 +11311,12 @@ do
 			local button = Instance.new("TextButton")
 			button.Name = name
 			button.Position = UDim2.new(0, x, 0, y)
-			button.Size = UDim2.new(0, width, 0, 25)
+			button.Size = UDim2.new(0, width, 0, 21)
 			button.BackgroundColor3 = currentShade2 or Color3.fromRGB(46, 46, 47)
 			button.BorderSizePixel = 0
 			button.AutoButtonColor = false
 			button.Font = Enum.Font.SourceSans
-			button.TextSize = 13
+			button.TextSize = 12
 			button.Text = caption
 			button.TextColor3 = currentText1 or Color3.new(1, 1, 1)
 			button.ZIndex = 82
@@ -11278,27 +11326,27 @@ do
 			return button
 		end
 
-		local recordButton = makeButton("RecordButton", "Record", 6, 46, 116)
-		local playButton = makeButton("PlayButton", "Play", 128, 46, 116)
-		local loopButton = makeButton("LoopButton", "Loop", 6, 75, 116)
-		local stopButton = makeButton("StopButton", "Stop", 128, 75, 116)
+		local recordButton = makeButton("RecordButton", "Record", 6, 42, 98)
+		local playButton = makeButton("PlayButton", "Play", 114, 42, 98)
+		local loopButton = makeButton("LoopButton", "Loop", 6, 66, 98)
+		local stopButton = makeButton("StopButton", "Stop", 114, 66, 98)
 		local saved = Instance.new("TextLabel")
 		saved.Name = "SavedDuration"
-		saved.Position = UDim2.new(0, 7, 0, 105)
-		saved.Size = UDim2.new(1, -72, 0, 22)
+		saved.Position = UDim2.new(0, 6, 0, 91)
+		saved.Size = UDim2.new(1, -64, 0, 18)
 		saved.BackgroundTransparency = 1
 		saved.BorderSizePixel = 0
 		saved.Font = Enum.Font.SourceSans
-		saved.TextSize = 12
+		saved.TextSize = 11
 		saved.TextXAlignment = Enum.TextXAlignment.Left
 		saved.TextColor3 = currentText1 or Color3.new(1, 1, 1)
 		saved.Text = "Last: None"
 		saved.ZIndex = 82
 		saved.Parent = frame
 		table.insert(text1, saved)
-		local clear = makeButton("ClearButton", "Clear", 190, 105, 54)
-		clear.Size = UDim2.new(0, 54, 0, 22)
-		clear.TextSize = 12
+		local clear = makeButton("ClearButton", "Clear", 164, 91, 48)
+		clear.Size = UDim2.new(0, 48, 0, 18)
+		clear.TextSize = 11
 
 		local dragState = nil
 		local function onDragInputChanged(input)
