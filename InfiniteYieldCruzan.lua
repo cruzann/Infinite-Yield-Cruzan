@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.4.8"
+currentVersion = "1.4.9"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -10138,9 +10138,9 @@ addcmd('rec', {}, function(args, speaker)
 	return COREGUI:ToggleRecording()
 end)
 
--- IY_CRUZAN_MOVEMENT_RECORD_V2
--- Records movement inputs and replays them through Humanoid movement / physics controllers.
--- Character CFrames are reference points only; playback never assigns the character root CFrame.
+-- IY_CRUZAN_MOVEMENT_RECORD_V3
+-- Records movement inputs at a 60 Hz target and persists compressed chunks per GameId/PlaceId.
+-- Playback restores the recorded starting CFrame once, then replays movement via Humanoid input/physics.
 do
 	local sharedEnv = IY_RELOAD_INSTANCE_STATE.sharedEnv or _G
 	local recordData = type(sharedEnv.IY_CRUZAN_MOVEMENT_RECORD_DATA) == "table" and sharedEnv.IY_CRUZAN_MOVEMENT_RECORD_DATA or {saved = nil}
@@ -10154,6 +10154,17 @@ do
 		recordingCharacter = nil,
 		recordingRoot = nil,
 		recordingPlaceId = nil,
+		recordingGameId = nil,
+		recordingStartCFrame = nil,
+		recordingSessionId = nil,
+		recordingBasePath = nil,
+		recordingManifestPath = nil,
+		recordingPendingPath = nil,
+		recordingPersistent = false,
+		recordingPersistedSampleCount = 0,
+		recordingChunkCount = 0,
+		recordingChunkBytes = 0,
+		playbackLoopIndex = 0,
 		playbackCharacter = nil,
 		playbackHumanoid = nil,
 		playbackRoot = nil,
@@ -10163,9 +10174,10 @@ do
 		controls = nil,
 		flightMover = nil,
 		originalProperties = nil,
-		maxDuration = 300,
-		sampleInterval = 1 / 30,
-		maxStartDistance = 4.5,
+		sampleInterval = 1 / 60,
+		maxMemorySamples = 36000,
+		maxPersistentBytes = 10 * 1024 * 1024,
+		persistChunkSamples = 300,
 		ui = nil,
 	}
 
@@ -10173,8 +10185,229 @@ do
 		pcall(function() notify("Record", message, duration or 3) end)
 	end
 
+	local RECORD_FOLDER = "IY_Cruzan_Recordings"
+	local RECORD_CHUNK_SIZE = MovementRecord.persistChunkSamples -- five-second chunks at the 60 Hz target
+	local RECORD_MAX_BYTES = MovementRecord.maxPersistentBytes
+	local RECORD_MAX_MEMORY_SAMPLES = MovementRecord.maxMemorySamples
+	local CURRENT_GAME_ID = tostring(game.GameId or 0)
+	local CURRENT_PLACE_ID = tonumber(game.PlaceId) or 0
+	local RECORD_PLACE_KEY = CURRENT_GAME_ID .. ":" .. tostring(CURRENT_PLACE_ID)
+
+	if type(recordData.byPlace) ~= "table" then recordData.byPlace = {} end
+
+	local function pathToken(value)
+		local token = tostring(value or "0"):gsub("[^%w%-_]", "_")
+		if token == "" then token = "0" end
+		return token
+	end
+
+	local function recordPaths(gameId, placeId)
+		local base = RECORD_FOLDER .. "/g" .. pathToken(gameId) .. "_p" .. pathToken(placeId)
+		return {base = base, manifest = base .. ".json", pending = base .. ".pending.json"}
+	end
+
+	local function safeFileRead(path)
+		if type(readfile) ~= "function" then return nil end
+		local ok, value = pcall(function()
+			local first, second = readfile(path, true)
+			if first == true then return second end
+			if type(first) == "string" then return first end
+			return nil
+		end)
+		return ok and type(value) == "string" and value or nil
+	end
+
+	local function safeFileWrite(path, data)
+		if type(writefile) ~= "function" then return false, "writefile is unavailable" end
+		local ok, result, detail = pcall(function() return writefile(path, data, true) end)
+		if not ok then return false, tostring(result) end
+		if result == false then return false, tostring(detail or "writefile failed") end
+		return true
+	end
+
+	local function safeFileDelete(path)
+		if type(delfile) ~= "function" then return false end
+		local ok = pcall(delfile, path)
+		return ok
+	end
+
+	local function ensureRecordFolder()
+		if type(writefile) ~= "function" or type(readfile) ~= "function" or not HttpService then
+			return false
+		end
+		if type(isfolder) == "function" then
+			local ok, exists = pcall(isfolder, RECORD_FOLDER)
+			if ok and exists then return true end
+		end
+		if type(makefolder) == "function" then pcall(makefolder, RECORD_FOLDER) end
+		local probe = RECORD_FOLDER .. "/.iy_record_probe"
+		local ok = safeFileWrite(probe, "ok")
+		if ok then
+			safeFileDelete(probe)
+			return true
+		end
+		if type(isfolder) == "function" then
+			local checkOk, exists = pcall(isfolder, RECORD_FOLDER)
+			return checkOk and exists == true
+		end
+		return false
+	end
+
+	local function safeJsonEncode(value)
+		local ok, result = pcall(function() return HttpService:JSONEncode(value) end)
+		return ok and type(result) == "string" and result or nil
+	end
+
+	local function safeJsonRead(path)
+		local raw = safeFileRead(path)
+		if not raw then return nil end
+		local ok, value = pcall(function() return HttpService:JSONDecode(raw) end)
+		return ok and type(value) == "table" and value or nil
+	end
+
+	local function rounded(value, digits)
+		value = tonumber(value) or 0
+		if value ~= value or math.abs(value) > 10000000 then value = 0 end
+		local scale = 10 ^ (digits or 3)
+		if value >= 0 then return math.floor(value * scale + 0.5) / scale end
+		return math.ceil(value * scale - 0.5) / scale
+	end
+
+	local function packCFrame(value)
+		if not value then return nil end
+		local ok, packed = pcall(function()
+			local pos = value.Position
+			local rx, ry, rz = value:ToOrientation()
+			return {rounded(pos.X, 4), rounded(pos.Y, 4), rounded(pos.Z, 4), rounded(rx, 5), rounded(ry, 5), rounded(rz, 5)}
+		end)
+		return ok and packed or nil
+	end
+
+	local function unpackCFrame(value)
+		if type(value) ~= "table" or #value < 6 then return nil end
+		local ok, result = pcall(function()
+			return CFrame.new(tonumber(value[1]) or 0, tonumber(value[2]) or 0, tonumber(value[3]) or 0)
+				* CFrame.fromOrientation(tonumber(value[4]) or 0, tonumber(value[5]) or 0, tonumber(value[6]) or 0)
+		end)
+		return ok and result or nil
+	end
+
+	-- Compact numeric arrays avoid serializing Roblox Vector3/CFrame userdata directly.
+	local function packMovementSample(sample)
+		local cf = packCFrame(sample.cframe)
+		if not cf then return nil end
+		local move = sample.move or Vector3.zero
+		local velocity = sample.pathVelocity or Vector3.zero
+		return {
+			math.floor((tonumber(sample.t) or 0) * 1000 + 0.5),
+			cf[1], cf[2], cf[3], cf[4], cf[5], cf[6],
+			rounded(move.X, 3), rounded(move.Y, 3), rounded(move.Z, 3),
+			sample.jump and 1 or 0,
+			rounded(sample.walkSpeed or 16, 2), rounded(sample.jumpPower or 50, 2),
+			rounded(sample.jumpHeight or 7.2, 2), sample.useJumpPower == false and 0 or 1,
+			sample.flight and 1 or 0,
+			rounded(velocity.X, 2), rounded(velocity.Y, 2), rounded(velocity.Z, 2),
+			tostring(sample.state or "Unknown")
+		}
+	end
+
+	local function unpackMovementSample(row)
+		if type(row) ~= "table" or #row < 19 then return nil end
+		local cf = unpackCFrame({row[2], row[3], row[4], row[5], row[6], row[7]})
+		if not cf then return nil end
+		local function n(index, fallback) return tonumber(row[index]) or fallback or 0 end
+		return {
+			t = n(1, 0) / 1000,
+			cframe = cf,
+			move = Vector3.new(n(8), n(9), n(10)),
+			jump = n(11) == 1,
+			walkSpeed = n(12, 16),
+			jumpPower = n(13, 50),
+			jumpHeight = n(14, 7.2),
+			useJumpPower = n(15, 1) == 1,
+			flight = n(16) == 1,
+			pathVelocity = Vector3.new(n(17), n(18), n(19)),
+			state = tostring(row[20] or "Unknown"),
+		}
+	end
+
+	local function recordChunkPath(base, sessionId, chunkIndex)
+		return base .. "_" .. pathToken(sessionId) .. "_c" .. string.format("%04d", chunkIndex) .. ".json"
+	end
+
+	local function readManifest(path)
+		return safeJsonRead(path)
+	end
+
+	local function deleteManifestChunks(manifest, base)
+		if type(manifest) ~= "table" or type(manifest.sessionId) ~= "string" then return end
+		local count = math.min(2000, math.max(0, tonumber(manifest.chunks) or 0))
+		for index = 1, count do safeFileDelete(recordChunkPath(base, manifest.sessionId, index)) end
+	end
+
+	local function hydrateManifest(manifest, paths)
+		if type(manifest) ~= "table" or manifest.deleted == true then return nil end
+		if tostring(manifest.gameId or "") ~= CURRENT_GAME_ID or tonumber(manifest.placeId) ~= CURRENT_PLACE_ID then return nil end
+		local chunkCount = tonumber(manifest.chunks) or 0
+		local declaredSamples = tonumber(manifest.sampleCount) or 0
+		if chunkCount < 1 or chunkCount > 2000 or declaredSamples < 2 or declaredSamples > RECORD_MAX_MEMORY_SAMPLES then return nil end
+		local sessionId = tostring(manifest.sessionId or "")
+		if sessionId == "" then return nil end
+		local samples = {}
+		for index = 1, chunkCount do
+			local chunk = safeJsonRead(recordChunkPath(paths.base, sessionId, index))
+			if not chunk or type(chunk.data) ~= "table" then break end
+			for _, row in ipairs(chunk.data) do
+				local sample = unpackMovementSample(row)
+				if sample then
+					samples[#samples + 1] = sample
+					if #samples >= RECORD_MAX_MEMORY_SAMPLES then break end
+				end
+			end
+			if #samples >= RECORD_MAX_MEMORY_SAMPLES then break end
+		end
+		if #samples < 2 then return nil end
+		local startCFrame = unpackCFrame(manifest.start) or samples[1].cframe
+		return {
+			samples = samples,
+			duration = tonumber(samples[#samples].t) or tonumber(manifest.duration) or 0,
+			startCFrame = startCFrame,
+			gameId = CURRENT_GAME_ID,
+			placeId = CURRENT_PLACE_ID,
+			version = 3,
+			sampleRate = tonumber(manifest.sampleRate) or 60,
+			sessionId = sessionId,
+			persistentBasePath = paths.base,
+			recoveredPartial = manifest.complete ~= true,
+		}
+	end
+
+	local function loadPersistedRecording()
+		local paths = recordPaths(CURRENT_GAME_ID, CURRENT_PLACE_ID)
+		local finalManifest = readManifest(paths.manifest)
+		local pendingManifest = readManifest(paths.pending)
+		local finalSaved = hydrateManifest(finalManifest, paths)
+		local pendingSaved = hydrateManifest(pendingManifest, paths)
+		local finalTime = tonumber(finalManifest and finalManifest.updatedAt) or 0
+		local pendingTime = tonumber(pendingManifest and pendingManifest.updatedAt) or 0
+		local tombstoneTime = -1
+		if finalManifest and finalManifest.deleted == true then tombstoneTime = math.max(tombstoneTime, finalTime) end
+		if pendingManifest and pendingManifest.deleted == true then tombstoneTime = math.max(tombstoneTime, pendingTime) end
+		-- A clear tombstone must suppress older checkpoint files, unless a newer recording has begun afterwards.
+		if pendingSaved and pendingTime > tombstoneTime and (not finalSaved or pendingTime > finalTime
+			or (pendingSaved.sessionId ~= finalSaved.sessionId and pendingTime == finalTime and #pendingSaved.samples > #finalSaved.samples)) then
+			return pendingSaved, true
+		end
+		if finalSaved and finalTime > tombstoneTime then return finalSaved, false end
+		return nil, false
+	end
+
 	local function syncSavedRecording()
-		recordData.saved = MovementRecord.saved
+		recordData.byPlace = type(recordData.byPlace) == "table" and recordData.byPlace or {}
+		recordData.byPlace[RECORD_PLACE_KEY] = MovementRecord.saved
+		recordData.saved = MovementRecord.saved -- legacy compatibility for older script reloads
+		recordData.gameId = CURRENT_GAME_ID
+		recordData.placeId = CURRENT_PLACE_ID
 		sharedEnv.IY_CRUZAN_MOVEMENT_RECORD_DATA = recordData
 	end
 
@@ -10182,8 +10415,110 @@ do
 		local liveData = sharedEnv.IY_CRUZAN_MOVEMENT_RECORD_DATA
 		if type(liveData) == "table" then
 			recordData = liveData
-			MovementRecord.saved = liveData.saved
+			recordData.byPlace = type(recordData.byPlace) == "table" and recordData.byPlace or {}
+			local placeSaved = recordData.byPlace[RECORD_PLACE_KEY]
+			local legacySaved = recordData.saved
+			local legacyMatchesPlace = type(legacySaved) == "table"
+				and tonumber(legacySaved.placeId) == CURRENT_PLACE_ID
+				and (legacySaved.gameId == nil or tostring(legacySaved.gameId) == CURRENT_GAME_ID)
+			-- Honour explicit writes through the legacy field too; older versions and integrations only set .saved.
+			if legacyMatchesPlace and legacySaved ~= placeSaved then
+				MovementRecord.saved = legacySaved
+			elseif placeSaved then
+				MovementRecord.saved = placeSaved
+			else
+				MovementRecord.saved = legacyMatchesPlace and legacySaved or nil
+			end
 		end
+	end
+
+	local function activeManifest(sampleCount, chunkCount, complete)
+		local samples = MovementRecord.currentSamples or {}
+		local last = samples[sampleCount]
+		return {
+			version = 3,
+			gameId = MovementRecord.recordingGameId or CURRENT_GAME_ID,
+			placeId = MovementRecord.recordingPlaceId or CURRENT_PLACE_ID,
+			sessionId = MovementRecord.recordingSessionId,
+			chunks = chunkCount,
+			sampleCount = sampleCount,
+			duration = last and tonumber(last.t) or 0,
+			start = packCFrame(MovementRecord.recordingStartCFrame),
+			sampleRate = 60,
+			complete = complete == true,
+			updatedAt = os.time(),
+		}
+	end
+
+	local function flushRecordingChunks(finalFlush)
+		if not MovementRecord.recordingPersistent then return true end
+		local samples = MovementRecord.currentSamples or {}
+		while true do
+			local available = #samples - (MovementRecord.recordingPersistedSampleCount or 0)
+			if available <= 0 then return true end
+			if not finalFlush and available < RECORD_CHUNK_SIZE then return true end
+			local count = math.min(RECORD_CHUNK_SIZE, available)
+			local firstIndex = (MovementRecord.recordingPersistedSampleCount or 0) + 1
+			local packed = {}
+			for index = firstIndex, firstIndex + count - 1 do
+				local row = packMovementSample(samples[index])
+				if not row then return false, "serializeError" end
+				packed[#packed + 1] = row
+			end
+			local chunkRaw = safeJsonEncode({version = 1, data = packed})
+			if not chunkRaw then return false, "serializeError" end
+			local nextChunkCount = (MovementRecord.recordingChunkCount or 0) + 1
+			local nextSampleCount = (MovementRecord.recordingPersistedSampleCount or 0) + count
+			local manifestRaw = safeJsonEncode(activeManifest(nextSampleCount, nextChunkCount, false))
+			if not manifestRaw then return false, "serializeError" end
+			if (MovementRecord.recordingChunkBytes or 0) + #chunkRaw + #manifestRaw > RECORD_MAX_BYTES then
+				return false, "maxBytes"
+			end
+			local chunkPath = recordChunkPath(MovementRecord.recordingBasePath, MovementRecord.recordingSessionId, nextChunkCount)
+			local wroteChunk, chunkError = safeFileWrite(chunkPath, chunkRaw)
+			if not wroteChunk then return false, "writeError: " .. tostring(chunkError) end
+			local wroteManifest, manifestError = safeFileWrite(MovementRecord.recordingPendingPath, manifestRaw)
+			if not wroteManifest then
+				safeFileDelete(chunkPath)
+				return false, "writeError: " .. tostring(manifestError)
+			end
+			MovementRecord.recordingChunkCount = nextChunkCount
+			MovementRecord.recordingPersistedSampleCount = nextSampleCount
+			MovementRecord.recordingChunkBytes = (MovementRecord.recordingChunkBytes or 0) + #chunkRaw
+			if not finalFlush and #samples - MovementRecord.recordingPersistedSampleCount < RECORD_CHUNK_SIZE then return true end
+		end
+	end
+
+	local function finalizePersistentRecording(saved)
+		if not MovementRecord.recordingPersistent then return false, "persistent storage is unavailable" end
+		local paths = recordPaths(saved.gameId or CURRENT_GAME_ID, saved.placeId or CURRENT_PLACE_ID)
+		local oldManifest = readManifest(paths.manifest)
+		local finalManifest = {
+			version = 3,
+			gameId = tostring(saved.gameId or CURRENT_GAME_ID),
+			placeId = tonumber(saved.placeId) or CURRENT_PLACE_ID,
+			sessionId = MovementRecord.recordingSessionId,
+			chunks = MovementRecord.recordingChunkCount or 0,
+			sampleCount = #saved.samples,
+			duration = tonumber(saved.duration) or 0,
+			start = packCFrame(saved.startCFrame or saved.samples[1].cframe),
+			sampleRate = 60,
+			complete = true,
+			updatedAt = os.time(),
+		}
+		local raw = safeJsonEncode(finalManifest)
+		if not raw then return false, "could not encode the final manifest" end
+		if (MovementRecord.recordingChunkBytes or 0) + #raw > RECORD_MAX_BYTES then return false, "recording file limit reached" end
+		local ok, err = safeFileWrite(paths.manifest, raw)
+		if not ok then return false, tostring(err) end
+		safeFileDelete(paths.pending)
+		if oldManifest and oldManifest.sessionId and oldManifest.sessionId ~= finalManifest.sessionId then
+			deleteManifestChunks(oldManifest, paths.base)
+		end
+		saved.sessionId = finalManifest.sessionId
+		saved.persistentBasePath = paths.base
+		saved.recoveredPartial = false
+		return true
 	end
 
 	local function getLocalCharacterParts()
@@ -10260,6 +10595,16 @@ do
 		MovementRecord.recordingCharacter = nil
 		MovementRecord.recordingRoot = nil
 		MovementRecord.recordingPlaceId = nil
+		MovementRecord.recordingGameId = nil
+		MovementRecord.recordingStartCFrame = nil
+		MovementRecord.recordingSessionId = nil
+		MovementRecord.recordingBasePath = nil
+		MovementRecord.recordingManifestPath = nil
+		MovementRecord.recordingPendingPath = nil
+		MovementRecord.recordingPersistent = false
+		MovementRecord.recordingPersistedSampleCount = 0
+		MovementRecord.recordingChunkCount = 0
+		MovementRecord.recordingChunkBytes = 0
 	end
 
 	local function updateRecordWindow()
@@ -10268,7 +10613,7 @@ do
 		local modeLabels = {idle = "Ready", recording = "Recording", playing = "Playing", looping = "Looping"}
 		local elapsedText = "00:00"
 		if MovementRecord.mode == "recording" and MovementRecord.startedAt then
-			local elapsed = math.max(0, math.min(MovementRecord.maxDuration, os.clock() - MovementRecord.startedAt))
+			local elapsed = math.max(0, os.clock() - MovementRecord.startedAt)
 			elapsedText = string.format("%02d:%02d", math.floor(elapsed / 60), math.floor(elapsed % 60))
 		elseif (MovementRecord.mode == "playing" or MovementRecord.mode == "looping") and MovementRecord.playbackStartedAt then
 			local duration = MovementRecord.saved and (tonumber(MovementRecord.saved.duration) or 0) or 0
@@ -10340,14 +10685,6 @@ do
 			return false
 		end
 		local elapsed = math.max(0, now - (MovementRecord.startedAt or now))
-		if elapsed >= MovementRecord.maxDuration and not finalSample then
-			if finishRecording then finishRecording(false, "maxDuration", true) end
-			return false
-		end
-		if not finalSample and MovementRecord.lastSampleAt and now - MovementRecord.lastSampleAt < MovementRecord.sampleInterval then
-			return true
-		end
-		elapsed = math.min(elapsed, MovementRecord.maxDuration)
 		local samples = MovementRecord.currentSamples
 		local previousSample = samples and samples[#samples]
 		if not samples then return false end
@@ -10355,40 +10692,90 @@ do
 		local sample = makeMovementSample(character, humanoid, root, elapsed, previousSample)
 		samples[#samples + 1] = sample
 		MovementRecord.lastSampleAt = now
+		if not finalSample and MovementRecord.recordingPersistent and #samples - (MovementRecord.recordingPersistedSampleCount or 0) >= RECORD_CHUNK_SIZE then
+			local flushed, flushError = flushRecordingChunks(false)
+			if not flushed then
+				if flushError == "maxBytes" then
+					while #samples > (MovementRecord.recordingPersistedSampleCount or 0) do table.remove(samples) end
+					if finishRecording then finishRecording(false, "maxBytes", false) end
+					return false
+				else
+					MovementRecord.recordingPersistent = false
+					MovementRecord.recordingPersistenceError = tostring(flushError)
+					recordNotify("Persistent checkpoint failed; continuing in memory only.", 5)
+				end
+			end
+		end
+		if not finalSample and #samples >= MovementRecord.maxMemorySamples then
+			if finishRecording then finishRecording(false, "maxSamples", false) end
+			return false
+		end
 		return true
 	end
 
 	finishRecording = function(silent, reason, includeFinalSample)
 		if MovementRecord.mode ~= "recording" then return false end
 		local samples = MovementRecord.currentSamples or {}
-		local startedAt = MovementRecord.startedAt or os.clock()
-		local elapsed = math.max(0, os.clock() - startedAt)
-		local character, humanoid, root = getLocalCharacterParts()
-		if includeFinalSample ~= false and character == MovementRecord.recordingCharacter and root == MovementRecord.recordingRoot and #samples > 0 then
-			captureSample(os.clock(), true)
+		if includeFinalSample ~= false then
+			local character, humanoid, root = getLocalCharacterParts()
+			if character == MovementRecord.recordingCharacter and root == MovementRecord.recordingRoot and #samples > 0 then
+				captureSample(os.clock(), true)
+			end
+		end
+		if MovementRecord.recordingPersistent then
+			local flushed, flushError = flushRecordingChunks(true)
+			if not flushed then
+				if flushError == "maxBytes" then
+					reason = "maxBytes"
+					while #samples > (MovementRecord.recordingPersistedSampleCount or 0) do table.remove(samples) end
+				else
+					MovementRecord.recordingPersistent = false
+					MovementRecord.recordingPersistenceError = tostring(flushError)
+				end
+			end
 		end
 		MovementRecord.mode = "idle"
 		disconnectRecordConnection()
 		local duration = #samples > 0 and (samples[#samples].t or 0) or 0
 		local valid = #samples >= 2 and duration >= 0.05
+		local persistentSaved = false
+		local persistentError = MovementRecord.recordingPersistenceError
 		if valid then
 			MovementRecord.saved = {
 				samples = samples,
 				duration = duration,
-				placeId = MovementRecord.recordingPlaceId,
-				version = 2,
+				placeId = MovementRecord.recordingPlaceId or CURRENT_PLACE_ID,
+				gameId = MovementRecord.recordingGameId or CURRENT_GAME_ID,
+				startCFrame = MovementRecord.recordingStartCFrame or samples[1].cframe,
+				version = 3,
+				sampleRate = 60,
 				movementMode = "humanoid-input-plus-physics-flight",
 			}
+			if MovementRecord.recordingPersistent then
+				local savedOk, savedError = finalizePersistentRecording(MovementRecord.saved)
+				persistentSaved = savedOk == true
+				persistentError = savedError
+			end
 			syncSavedRecording()
+		elseif MovementRecord.recordingPersistent then
+			local pending = readManifest(MovementRecord.recordingPendingPath or "")
+			if pending then deleteManifestChunks(pending, MovementRecord.recordingBasePath or "") end
+			safeFileDelete(MovementRecord.recordingPendingPath or "")
 		end
+		local hitByteLimit = reason == "maxBytes"
+		local memoryLimit = reason == "maxSamples"
 		clearRecordingReferences()
 		if not silent then
-			if reason == "maxDuration" and valid then
-				recordNotify(string.format("Maximum duration reached. Saved %.1f seconds (%d samples).", duration, #samples), 4)
+			if hitByteLimit and valid then
+				recordNotify(string.format("The 10 MB recording limit was reached. Saved %.1f seconds (%d samples).", duration, #samples), 5)
+			elseif memoryLimit and valid then
+				recordNotify(string.format("The in-memory safety limit was reached. Saved %.1f seconds (%d samples).", duration, #samples), 5)
+			elseif valid and persistentSaved then
+				recordNotify(string.format("Recording saved permanently for this place: %.1f seconds (%d samples).", duration, #samples), 4)
+			elseif valid and persistentError then
+				recordNotify(string.format("Recording saved for this session only. Disk save failed: %s", tostring(persistentError)), 5)
 			elseif valid then
-				recordNotify(string.format("Recording saved: %.1f seconds (%d samples).", duration, #samples), 4)
-			elseif reason == "maxDuration" then
-				recordNotify("Maximum duration reached, but the segment was too short to save.", 4)
+				recordNotify(string.format("Recording saved in memory: %.1f seconds (%d samples). Persistent file access is unavailable.", duration, #samples), 5)
 			else
 				recordNotify("Recording was too short to save. The previous recording was kept.", 4)
 			end
@@ -10401,6 +10788,11 @@ do
 		if MovementRecord.mode ~= "recording" then return false end
 		MovementRecord.mode = "idle"
 		disconnectRecordConnection()
+		if MovementRecord.recordingPersistent then
+			local pending = readManifest(MovementRecord.recordingPendingPath or "")
+			if pending then deleteManifestChunks(pending, MovementRecord.recordingBasePath or "") end
+			safeFileDelete(MovementRecord.recordingPendingPath or "")
+		end
 		clearRecordingReferences()
 		updateRecordWindow()
 		return true
@@ -10597,16 +10989,60 @@ do
 		MovementRecord.lastSampleAt = nil
 		MovementRecord.recordingCharacter = character
 		MovementRecord.recordingRoot = root
-		MovementRecord.recordingPlaceId = game.PlaceId
+		MovementRecord.recordingGameId = CURRENT_GAME_ID
+		MovementRecord.recordingPlaceId = CURRENT_PLACE_ID
+		MovementRecord.recordingStartCFrame = root.CFrame
+		MovementRecord.recordingSessionId = pathToken((function()
+			local ok, guid = pcall(function() return HttpService:GenerateGUID(false) end)
+			return ok and guid or (tostring(os.time()) .. tostring(math.floor(os.clock() * 100000)))
+		end)())
+		local paths = recordPaths(CURRENT_GAME_ID, CURRENT_PLACE_ID)
+		MovementRecord.recordingBasePath = paths.base
+		MovementRecord.recordingManifestPath = paths.manifest
+		MovementRecord.recordingPendingPath = paths.pending
+		MovementRecord.recordingPersistent = ensureRecordFolder()
+		MovementRecord.recordingPersistedSampleCount = 0
+		MovementRecord.recordingChunkCount = 0
+		MovementRecord.recordingChunkBytes = 0
+		MovementRecord.recordingPersistenceError = MovementRecord.recordingPersistent and nil or "Executor file APIs are unavailable."
+		if MovementRecord.recordingPersistent then
+			local stalePending = readManifest(paths.pending)
+			if stalePending and stalePending.sessionId ~= MovementRecord.recordingSessionId then deleteManifestChunks(stalePending, paths.base) end
+			local initialManifest = activeManifest(0, 0, false)
+			local pendingRaw = safeJsonEncode(initialManifest)
+			local pendingWritten = pendingRaw and safeFileWrite(paths.pending, pendingRaw)
+			if not pendingWritten then
+				MovementRecord.recordingPersistent = false
+				MovementRecord.recordingPersistenceError = "Could not create the checkpoint manifest."
+			end
+		end
 		captureSample(MovementRecord.startedAt, true)
-		local connection = RunService.Heartbeat:Connect(function()
-			if MovementRecord.mode == "recording" then captureSample(os.clock(), false) end
+		local sampleAccumulator = 0
+		local lastHeartbeatClock = MovementRecord.startedAt
+		local connection = RunService.Heartbeat:Connect(function(dt)
+			if MovementRecord.mode ~= "recording" then return end
+			local now = os.clock()
+			local frameDelta = tonumber(dt)
+			if not frameDelta or frameDelta <= 0 then frameDelta = math.max(0, now - (lastHeartbeatClock or now)) end
+			lastHeartbeatClock = now
+			sampleAccumulator = sampleAccumulator + math.max(0, frameDelta)
+			-- Accumulate frame time so tiny floating-point timing differences do not halve the 60 Hz target.
+			if sampleAccumulator + 0.000001 >= MovementRecord.sampleInterval then
+				sampleAccumulator = sampleAccumulator % MovementRecord.sampleInterval
+				captureSample(now, false)
+			end
 		end)
 		MovementRecord.connection = connection
 		if IY_RELOAD_INSTANCE_STATE and type(IY_RELOAD_INSTANCE_STATE.TrackConnection) == "function" then
 			IY_RELOAD_INSTANCE_STATE.TrackConnection(connection)
 		end
-		if not silent then recordNotify("Recording started. Use the Record window to stop and save.", 4) end
+		if not silent then
+			if MovementRecord.recordingPersistent then
+				recordNotify("Recording started at 60 Hz. Checkpoints are saved locally for this game/place.", 4)
+			else
+				recordNotify("Recording started at 60 Hz. Local file storage is unavailable; this recording is session-only.", 5)
+			end
+		end
 		updateRecordWindow()
 		return true
 	end
@@ -10618,8 +11054,8 @@ do
 			if not silent then recordNotify("No saved movement. Use record to open the window and record a path.") end
 			return false
 		end
-		if saved.placeId ~= game.PlaceId then
-			if not silent then recordNotify("This recording belongs to a different place. Playback was blocked.", 4) end
+		if tonumber(saved.placeId) ~= CURRENT_PLACE_ID or (saved.gameId ~= nil and tostring(saved.gameId) ~= CURRENT_GAME_ID) then
+			if not silent then recordNotify("This recording belongs to a different game or place. Playback was blocked.", 4) end
 			return false
 		end
 		local character, humanoid, root = getLocalCharacterParts()
@@ -10627,13 +11063,22 @@ do
 			if not silent then recordNotify("Cannot play: your character is not ready.") end
 			return false
 		end
+		if MovementRecord.mode == "recording" then
+			finishRecording(true, "stopped", true)
+			refreshSavedRecording()
+			saved = MovementRecord.saved
+			if not saved or type(saved.samples) ~= "table" or #saved.samples < 2 then
+				if not silent then recordNotify("The recording did not contain a usable path.") end
+				return false
+			end
+		end
+		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
 		local first = saved.samples[1]
-		if first and first.cframe and (root.Position - first.cframe.Position).Magnitude > MovementRecord.maxStartDistance then
-			if not silent then recordNotify("Move near the recording's starting point first. Playback no longer teleports you.", 5) end
+		local startCFrame = saved.startCFrame or (first and first.cframe)
+		if not startCFrame then
+			if not silent then recordNotify("The recording has no valid starting position.", 4) end
 			return false
 		end
-		if MovementRecord.mode == "recording" then finishRecording(true, nil, true); saved = MovementRecord.saved end
-		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
 		local controlsOk, controlsError = disableDefaultControls()
 		if not controlsOk then
 			if not silent then recordNotify("Playback blocked: " .. tostring(controlsError) .. ". Natural replay requires control of PlayerModule.", 5) end
@@ -10645,6 +11090,15 @@ do
 			jumpHeight = humanoid.JumpHeight,
 			useJumpPower = humanoid.UseJumpPower,
 		}
+		local startPositioned = pcall(function()
+			root.CFrame = startCFrame -- one-time reposition to the exact recorded start, not per-sample teleporting
+			resetRootVelocity(root)
+		end)
+		if not startPositioned then
+			restorePlaybackProperties()
+			if not silent then recordNotify("Could not return to the recorded starting position.", 5) end
+			return false
+		end
 		MovementRecord.mode = looping and "looping" or "playing"
 		MovementRecord.playbackLoop = looping == true
 		MovementRecord.playbackCharacter = character
@@ -10652,6 +11106,7 @@ do
 		MovementRecord.playbackRoot = root
 		MovementRecord.playbackStartedAt = os.clock()
 		MovementRecord.playbackLastElapsed = 0
+		MovementRecord.playbackLoopIndex = 0
 		MovementRecord.lastJump = false
 		removeFlightMoverOnPlaybackStart()
 		local connection = RunService.Heartbeat:Connect(function()
@@ -10663,6 +11118,25 @@ do
 				return
 			end
 			local elapsed = os.clock() - (MovementRecord.playbackStartedAt or os.clock())
+			if MovementRecord.playbackLoop then
+				local loopDuration = tonumber(MovementRecord.saved and MovementRecord.saved.duration) or 0
+				local loopIndex = loopDuration > 0 and math.floor(elapsed / loopDuration) or 0
+				if loopIndex > (MovementRecord.playbackLoopIndex or 0) then
+					local loopStart = MovementRecord.saved and (MovementRecord.saved.startCFrame or (MovementRecord.saved.samples[1] and MovementRecord.saved.samples[1].cframe))
+					local resetOk = loopStart and pcall(function()
+						currentRoot.CFrame = loopStart
+						resetRootVelocity(currentRoot)
+					end)
+					if not resetOk then
+						stopPlayback(true, false)
+						recordNotify("Loop stopped because the starting position could not be restored.", 4)
+						return
+					end
+					MovementRecord.playbackLoopIndex = loopIndex
+					MovementRecord.playbackLastElapsed = 0
+					MovementRecord.lastJump = false
+				end
+			end
 			local ok, err = applyPlaybackAt(elapsed)
 			if not ok and err ~= "finished" then
 				stopPlayback(true, false)
@@ -10681,9 +11155,21 @@ do
 	local function clearSavedRecording(silent)
 		if MovementRecord.mode == "recording" then cancelRecording() end
 		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+		local paths = recordPaths(CURRENT_GAME_ID, CURRENT_PLACE_ID)
+		local oldManifest = readManifest(paths.manifest)
+		local oldPending = readManifest(paths.pending)
+		local tombstone = {version = 3, deleted = true, gameId = CURRENT_GAME_ID, placeId = CURRENT_PLACE_ID, updatedAt = os.time()}
+		local tombstoneRaw = safeJsonEncode(tombstone)
+		if tombstoneRaw and ensureRecordFolder() then
+			safeFileWrite(paths.manifest, tombstoneRaw)
+			safeFileWrite(paths.pending, tombstoneRaw)
+			deleteManifestChunks(oldManifest, paths.base)
+			deleteManifestChunks(oldPending, paths.base)
+			safeFileDelete(paths.pending)
+		end
 		MovementRecord.saved = nil
 		syncSavedRecording()
-		if not silent then recordNotify("Last recording cleared.") end
+		if not silent then recordNotify("Last recording for this game/place cleared.") end
 		updateRecordWindow()
 		return true
 	end
@@ -10888,7 +11374,16 @@ do
 		return false
 	end
 	IY_RELOAD_INSTANCE_STATE.movementRecorder = MovementRecord
+	local diskSaved, recoveredPartial = loadPersistedRecording()
+	if diskSaved then
+		MovementRecord.saved = diskSaved
+	else
+		refreshSavedRecording()
+	end
 	syncSavedRecording()
+	if recoveredPartial and MovementRecord.saved then
+		recordNotify("Recovered the last saved checkpoint for this place after an interrupted recording.", 5)
+	end
 
 	addcmd('record', {}, function(args, speaker)
 		local action = tostring(args[1] or ""):lower()
@@ -10920,7 +11415,7 @@ do
 		elseif action == "clear" then
 			clearSavedRecording(false)
 		else
-			recordNotify("Usage: record | record start | record play | record loop | record stop | record clear", 5)
+			recordNotify("Usage: record | record start | record play | record loop | record stop | record clear (60 Hz; saved per game/place when file APIs are available)", 5)
 		end
 		updateRecordWindow()
 	end)
