@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.4.9"
+currentVersion = "1.5.0"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -10141,6 +10141,10 @@ end)
 -- IY_CRUZAN_MOVEMENT_RECORD_V3
 -- Records movement inputs at a 60 Hz target and persists compressed chunks per GameId/PlaceId.
 -- Playback restores the recorded starting CFrame once, then replays movement via Humanoid input/physics.
+-- Keep optional recorder initialization fail-soft so an executor/filesystem mismatch cannot abort the main UI.
+local __iyRecordConnStart = #(IY_RELOAD_INSTANCE_STATE.connections or {})
+local __iyRecordInstanceStart = #(IY_RELOAD_INSTANCE_STATE.ownedInstances or {})
+local __iyRecordInitOk, __iyRecordInitError = pcall(function()
 do
 	local sharedEnv = IY_RELOAD_INSTANCE_STATE.sharedEnv or _G
 	local recordData = type(sharedEnv.IY_CRUZAN_MOVEMENT_RECORD_DATA) == "table" and sharedEnv.IY_CRUZAN_MOVEMENT_RECORD_DATA or {saved = nil}
@@ -11419,6 +11423,25 @@ do
 		end
 		updateRecordWindow()
 	end)
+end
+end)
+if not __iyRecordInitOk then
+    local recordState = IY_RELOAD_INSTANCE_STATE
+    for index = #(recordState.connections or {}), __iyRecordConnStart + 1, -1 do
+        local connection = recordState.connections[index]
+        pcall(function() if connection and type(connection.Disconnect) == "function" then connection:Disconnect() end end)
+        table.remove(recordState.connections, index)
+    end
+    for index = #(recordState.ownedInstances or {}), __iyRecordInstanceStart + 1, -1 do
+        local object = recordState.ownedInstances[index]
+        pcall(function() if object and object.Parent then object:Destroy() end end)
+        table.remove(recordState.ownedInstances, index)
+    end
+    pcall(function() if recordState.recordWindow then recordState.recordWindow:Destroy() end end)
+    recordState.recordWindow = nil
+    recordState.movementRecorder = nil
+    pcall(function() warn("[IY Record] Initialization failed: " .. tostring(__iyRecordInitError)) end)
+    pcall(function() notify("Record Unavailable", "Recorder initialization failed. See console for details.", 5) end)
 end
 
 addcmd('screenshot', {'scrnshot'}, function(args, speaker)
@@ -16890,6 +16913,24 @@ addcmd("reload", {}, function(args, speaker)
             or not remoteSource:find("currentVersion", 1, true)
             or not remoteSource:find(IY_RELOAD_INSTANCE_STATE.sourceUrl, 1, true) then
             sendFailure("The downloaded file is not a valid reload-enabled Cruzan build. The current script was kept running.")
+            return
+        end
+        local remoteVersion = remoteSource:match('currentVersion%s*=%s*"([^"]+)"')
+        local function versionParts(version)
+            local a, b, c = tostring(version or ""):match("^(%d+)%.(%d+)%.(%d+)$")
+            if not a then return nil end
+            return tonumber(a), tonumber(b), tonumber(c)
+        end
+        local function versionIsOlder(candidate, active)
+            local ca, cb, cc = versionParts(candidate)
+            local aa, ab, ac = versionParts(active)
+            if not ca or not aa then return true end
+            if ca ~= aa then return ca < aa end
+            if cb ~= ab then return cb < ab end
+            return cc < ac
+        end
+        if not remoteVersion or versionIsOlder(remoteVersion, currentVersion) then
+            sendFailure("GitHub's raw file is older than this build (local " .. tostring(currentVersion) .. ", remote " .. tostring(remoteVersion or "unknown") .. "). Update the repository before using Reload; the current script was kept running.")
             return
         end
         if type(loadstring) ~= "function" then
