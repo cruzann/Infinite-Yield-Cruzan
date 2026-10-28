@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.5.1"
+currentVersion = "1.5.2"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -10139,7 +10139,8 @@ addcmd('rec', {}, function(args, speaker)
 end)
 
 -- IY_CRUZAN_MOVEMENT_RECORD_V3
--- Records movement inputs at a 60 Hz target and persists compressed chunks per GameId/PlaceId.
+-- Records movement inputs and jump events at a 60 Hz target; flight playback preserves recorded orientation.
+-- Flight replication remains best-effort when the source uses a third-party controller.
 -- Playback restores the recorded starting CFrame once, then replays movement via Humanoid input/physics.
 -- Keep optional recorder initialization fail-soft so an executor/filesystem mismatch cannot abort the main UI.
 local __iyRecordConnStart = #(IY_RELOAD_INSTANCE_STATE.connections or {})
@@ -10157,6 +10158,9 @@ do
 		lastSampleAt = nil,
 		recordingCharacter = nil,
 		recordingRoot = nil,
+		recordingHumanoid = nil,
+		recordingEventConnections = {},
+		pendingJumpPulse = false,
 		recordingPlaceId = nil,
 		recordingGameId = nil,
 		recordingStartCFrame = nil,
@@ -10175,8 +10179,11 @@ do
 		playbackStartedAt = nil,
 		playbackLoop = false,
 		playbackLastElapsed = 0,
+		playbackLastSampleIndex = 0,
+		playbackJumpResetPending = false,
 		controls = nil,
 		flightMover = nil,
+		flightGyro = nil,
 		originalProperties = nil,
 		sampleInterval = 1 / 60,
 		maxMemorySamples = 36000,
@@ -10571,33 +10578,80 @@ do
 
 	local function removeFlightMover()
 		local mover = MovementRecord.flightMover
+		local gyro = MovementRecord.flightGyro
 		MovementRecord.flightMover = nil
+		MovementRecord.flightGyro = nil
 		if mover then pcall(function() mover:Destroy() end) end
+		if gyro then pcall(function() gyro:Destroy() end) end
 	end
 
 	local function ensureFlightMover(root)
 		local mover = MovementRecord.flightMover
-		if mover and mover.Parent == root then return mover end
-		removeFlightMover()
-		local ok, created = pcall(function()
-			local bodyVelocity = Instance.new("BodyVelocity")
-			bodyVelocity.Name = "IY_CruzanRecordFlightVelocity"
-			bodyVelocity.MaxForce = Vector3.new(1000000, 1000000, 1000000)
-			bodyVelocity.P = 8000
-			bodyVelocity.Velocity = Vector3.zero
-			bodyVelocity.Parent = root
-			return bodyVelocity
-		end)
-		if ok then MovementRecord.flightMover = created; return created end
-		return nil
+		if not mover or mover.Parent ~= root then
+			removeFlightMover()
+			local ok, created = pcall(function()
+				local bodyVelocity = Instance.new("BodyVelocity")
+				bodyVelocity.Name = "IY_CruzanRecordFlightVelocity"
+				bodyVelocity.MaxForce = Vector3.new(1000000, 1000000, 1000000)
+				bodyVelocity.P = 8000
+				bodyVelocity.Velocity = Vector3.zero
+				bodyVelocity.Parent = root
+				return bodyVelocity
+			end)
+			if not ok then return nil end
+			MovementRecord.flightMover = created
+			mover = created
+		end
+		local gyro = MovementRecord.flightGyro
+		if not gyro or gyro.Parent ~= root then
+			if gyro then pcall(function() gyro:Destroy() end) end
+			local gyroOk, createdGyro = pcall(function()
+				local bodyGyro = Instance.new("BodyGyro")
+				bodyGyro.Name = "IY_CruzanRecordFlightOrientation"
+				bodyGyro.MaxTorque = Vector3.new(9000000000, 9000000000, 9000000000)
+				bodyGyro.P = 90000
+				bodyGyro.D = 1200
+				bodyGyro.CFrame = root.CFrame
+				bodyGyro.Parent = root
+				return bodyGyro
+			end)
+			if gyroOk then MovementRecord.flightGyro = createdGyro end
+		end
+		return mover
+	end
+
+	local function disconnectRecordingEventConnections()
+		local connections = MovementRecord.recordingEventConnections or {}
+		MovementRecord.recordingEventConnections = {}
+		for _, connection in ipairs(connections) do
+			pcall(function() connection:Disconnect() end)
+			local state = IY_RELOAD_INSTANCE_STATE
+			if state and type(state.connections) == "table" then
+				for index = #state.connections, 1, -1 do
+					if state.connections[index] == connection then table.remove(state.connections, index) end
+				end
+			end
+		end
+	end
+
+	local function trackRecordingEventConnection(connection)
+		if not connection then return end
+		MovementRecord.recordingEventConnections = MovementRecord.recordingEventConnections or {}
+		table.insert(MovementRecord.recordingEventConnections, connection)
+		if IY_RELOAD_INSTANCE_STATE and type(IY_RELOAD_INSTANCE_STATE.TrackConnection) == "function" then
+			IY_RELOAD_INSTANCE_STATE.TrackConnection(connection)
+		end
 	end
 
 	local function clearRecordingReferences()
+		disconnectRecordingEventConnections()
 		MovementRecord.currentSamples = nil
 		MovementRecord.startedAt = nil
 		MovementRecord.lastSampleAt = nil
 		MovementRecord.recordingCharacter = nil
 		MovementRecord.recordingRoot = nil
+		MovementRecord.recordingHumanoid = nil
+		MovementRecord.pendingJumpPulse = false
 		MovementRecord.recordingPlaceId = nil
 		MovementRecord.recordingGameId = nil
 		MovementRecord.recordingStartCFrame = nil
@@ -10635,13 +10689,50 @@ do
 		ui.loop.TextTransparency = ui.loop.Active and 0 or 0.45
 	end
 
+	local function hasExternalFlightController(character, root, humanoid, rootVelocity)
+		local platformStand = false
+		pcall(function() platformStand = humanoid.PlatformStand == true end)
+		if platformStand then return true end
+		local descendants = nil
+		local ok = pcall(function() descendants = character:GetDescendants() end)
+		if not ok or type(descendants) ~= "table" then return false end
+		local hasOrientationController = false
+		for _, item in ipairs(descendants) do
+			local className = nil
+			pcall(function() className = item.ClassName end)
+			if item.Name ~= "IY_CruzanRecordFlightVelocity" and item.Name ~= "IY_CruzanRecordFlightOrientation" then
+				if className == "BodyVelocity" then
+					local maxForce = Vector3.zero
+					pcall(function() maxForce = item.MaxForce end)
+					if maxForce and maxForce.Magnitude > 1 then return true end
+				elseif className == "LinearVelocity" then
+					local enabled, vectorVelocity = true, Vector3.zero
+					pcall(function() enabled = item.Enabled ~= false end)
+					pcall(function() vectorVelocity = item.VectorVelocity end)
+					local forceEnabled = false
+					pcall(function() forceEnabled = item.MaxForce > 0 end)
+					if enabled and ((vectorVelocity and vectorVelocity.Magnitude > 1) or forceEnabled) then return true end
+				elseif className == "VectorForce" or className == "BodyForce" or className == "BodyThrust" then
+					local force = Vector3.zero
+					pcall(function() force = item.Force end)
+					if force and force.Magnitude > 1 then return true end
+				elseif className == "BodyGyro" or className == "AlignOrientation" then
+					hasOrientationController = true
+				end
+			end
+		end
+		return hasOrientationController and rootVelocity and rootVelocity.Magnitude > 20 or false
+	end
+
 	local function makeMovementSample(character, humanoid, root, elapsed, previousSample)
 		local stateName = getHumanoidStateName(humanoid)
 		local moveDirection = Vector3.zero
 		pcall(function() moveDirection = humanoid.MoveDirection end)
-		local jumpActive = false
-		pcall(function() jumpActive = humanoid.Jump == true end)
-		if stateName == "Jumping" then jumpActive = true end
+		local jumpTriggered = MovementRecord.pendingJumpPulse == true
+		if not jumpTriggered and stateName == "Jumping" then
+			jumpTriggered = not previousSample or previousSample.state ~= "Jumping"
+		end
+		MovementRecord.pendingJumpPulse = false
 		local walkSpeed = 16
 		pcall(function() walkSpeed = humanoid.WalkSpeed end)
 		local jumpPower, jumpHeight, useJumpPower = 50, 7.2, true
@@ -10658,18 +10749,20 @@ do
 		end
 		local horizontalSpeed = Vector3.new(pathVelocity.X, 0, pathVelocity.Z).Magnitude
 		local nonLocomotionState = stateName == "Physics" or stateName == "PlatformStanding" or stateName == "Flying"
-		local fastUncommandedMotion = moveDirection.Magnitude < 0.15 and not jumpActive and stateName ~= "Jumping"
+		local jumpingState = stateName == "Jumping"
+		local fastUncommandedMotion = moveDirection.Magnitude < 0.15 and not jumpingState
 			and horizontalSpeed > math.max(25, walkSpeed * 1.55)
 		local fastMotionOverride = horizontalSpeed > math.max(30, walkSpeed * 1.8)
-			and not jumpActive and stateName ~= "Jumping" and stateName ~= "Freefall"
+			and not jumpingState and stateName ~= "Freefall"
 		local unusualVerticalMotion = math.abs(pathVelocity.Y) > math.max(6, walkSpeed * 0.6)
-			and not jumpActive and stateName ~= "Jumping" and stateName ~= "Freefall"
-		local flightMode = nonLocomotionState or fastUncommandedMotion or fastMotionOverride or unusualVerticalMotion
+			and not jumpingState and stateName ~= "Freefall"
+		local hasFlightController = hasExternalFlightController(character, root, humanoid, rootVelocity)
+		local flightMode = nonLocomotionState or hasFlightController or fastUncommandedMotion or fastMotionOverride or unusualVerticalMotion
 		return {
 			t = elapsed,
 			cframe = root.CFrame,
 			move = moveDirection,
-			jump = jumpActive,
+			jump = jumpTriggered,
 			walkSpeed = walkSpeed,
 			jumpPower = jumpPower,
 			jumpHeight = jumpHeight,
@@ -10692,7 +10785,13 @@ do
 		local samples = MovementRecord.currentSamples
 		local previousSample = samples and samples[#samples]
 		if not samples then return false end
-		if finalSample and previousSample and elapsed <= (previousSample.t or 0) + 0.008 then return true end
+		if finalSample and previousSample and elapsed <= (previousSample.t or 0) + 0.008 then
+			if MovementRecord.pendingJumpPulse then
+				previousSample.jump = true
+				MovementRecord.pendingJumpPulse = false
+			end
+			return true
+		end
 		local sample = makeMovementSample(character, humanoid, root, elapsed, previousSample)
 		samples[#samples + 1] = sample
 		MovementRecord.lastSampleAt = now
@@ -10726,6 +10825,7 @@ do
 				captureSample(os.clock(), true)
 			end
 		end
+		disconnectRecordingEventConnections()
 		if MovementRecord.recordingPersistent then
 			local flushed, flushError = flushRecordingChunks(true)
 			if not flushed then
@@ -10821,6 +10921,8 @@ do
 			pcall(function() humanoid:Move(Vector3.zero, false) end)
 		end
 		MovementRecord.originalProperties = nil
+		MovementRecord.playbackJumpResetPending = false
+		MovementRecord.playbackLastSampleIndex = 0
 		local controls = MovementRecord.controls
 		MovementRecord.controls = nil
 		if controls then pcall(function() controls:Enable() end) end
@@ -10919,18 +11021,38 @@ do
 		local localElapsed = elapsed
 		if MovementRecord.playbackLoop then
 			localElapsed = elapsed % duration
-			if localElapsed < (MovementRecord.playbackLastElapsed or 0) then MovementRecord.lastJump = false end
+			if localElapsed < (MovementRecord.playbackLastElapsed or 0) then
+				MovementRecord.lastJump = false
+				MovementRecord.playbackLastSampleIndex = 0
+			end
 		elseif elapsed >= duration then
 			stopPlayback(true, true)
 			recordNotify("Playback finished.")
 			return false, "finished"
 		end
-		MovementRecord.playbackLastElapsed = localElapsed
-		local a, b = getSampleAt(saved, localElapsed)
+		local a, b, sampleIndex = getSampleAt(saved, localElapsed)
 		if not a then return false, "Invalid sample data." end
 		local humanoid = MovementRecord.playbackHumanoid
 		local root = MovementRecord.playbackRoot
 		if not humanoid or not root or not root.Parent then return false, "Character root is no longer available." end
+		-- Release the previous one-frame jump pulse before processing any new jump event.
+		if MovementRecord.playbackJumpResetPending then
+			pcall(function() humanoid.Jump = false end)
+			MovementRecord.playbackJumpResetPending = false
+		end
+		-- Process every crossed sample so a short jump marker cannot be skipped by a delayed frame.
+		local lastSampleIndex = tonumber(MovementRecord.playbackLastSampleIndex) or 0
+		if sampleIndex < lastSampleIndex then lastSampleIndex = 0 end
+		local jumpEventFound = false
+		for index = math.max(1, lastSampleIndex + 1), sampleIndex do
+			local candidate = saved.samples[index]
+			if candidate and candidate.jump == true and candidate.flight ~= true then
+				local prior = saved.samples[index - 1]
+				if not prior or prior.jump ~= true then jumpEventFound = true end
+			end
+		end
+		MovementRecord.playbackLastSampleIndex = sampleIndex
+		MovementRecord.playbackLastElapsed = localElapsed
 		local sampleMove = a.move
 		if not sampleMove or sampleMove.Magnitude < 0.08 then sampleMove = deriveHorizontalMove(a, b) end
 		local recordedJump = a.jump
@@ -10951,6 +11073,13 @@ do
 				isFlight = true
 			end
 		end
+		-- A recorded jump should only trigger a Humanoid jump on locomotion segments;
+		-- vertical flight input is already reproduced by the recorded flight velocity.
+		if jumpEventFound and not isFlight then
+			pcall(function() humanoid.Jump = true end)
+			pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end)
+			MovementRecord.playbackJumpResetPending = true
+		end
 		if isFlight then
 			local mover = ensureFlightMover(root)
 			if not mover then return false, "Could not create the flight physics controller." end
@@ -10960,8 +11089,12 @@ do
 			if not velocity or typeof(velocity) ~= "Vector3" then velocity = Vector3.zero end
 			if velocity.Magnitude < 0.1 and segmentVelocity then velocity = segmentVelocity end
 			mover.Velocity = clampVectorMagnitude(velocity, 120)
+			local gyro = MovementRecord.flightGyro
+			if gyro and a.cframe then
+				-- Preserve the recorded facing/pitch/yaw while the velocity controller recreates flight movement.
+				pcall(function() gyro.CFrame = CFrame.new(root.Position) * a.cframe.Rotation end)
+			end
 			pcall(function() humanoid:Move(Vector3.zero, false) end)
-			MovementRecord.lastJump = false
 		else
 			removeFlightMover()
 			local targetPosition = getTargetPosition(saved, math.min(duration, localElapsed + 0.18))
@@ -10978,12 +11111,6 @@ do
 			local desiredJumpHeight = tonumber(a.jumpHeight)
 			if desiredJumpPower and desiredJumpPower > 0 then pcall(function() humanoid.JumpPower = math.min(desiredJumpPower, 200) end) end
 			if desiredJumpHeight and desiredJumpHeight > 0 then pcall(function() humanoid.JumpHeight = math.min(desiredJumpHeight, 100) end) end
-			if recordedJump == true and MovementRecord.lastJump ~= true then
-				pcall(function() humanoid.Jump = true end)
-			elseif recordedJump ~= true then
-				pcall(function() humanoid.Jump = false end)
-			end
-			MovementRecord.lastJump = recordedJump == true
 			local moved = pcall(function() humanoid:Move(sampleMove or Vector3.zero, false) end)
 			if not moved then return false, "Humanoid movement input failed." end
 		end
@@ -11039,6 +11166,25 @@ do
 				MovementRecord.recordingPersistenceError = "Could not create the checkpoint manifest."
 			end
 		end
+		MovementRecord.recordingEventConnections = {}
+		MovementRecord.pendingJumpPulse = false
+		local function queueRecordedJump()
+			if MovementRecord.mode == "recording" and MovementRecord.recordingHumanoid == humanoid then
+				MovementRecord.pendingJumpPulse = true
+			end
+		end
+		local stateSignalOk, stateConnection = pcall(function()
+			return humanoid.StateChanged:Connect(function(_, newState)
+				if newState == Enum.HumanoidStateType.Jumping then queueRecordedJump() end
+			end)
+		end)
+		if stateSignalOk then trackRecordingEventConnection(stateConnection) end
+		local jumpSignalOk, jumpConnection = pcall(function()
+			return humanoid.Jumping:Connect(function(active)
+				if active then queueRecordedJump() end
+			end)
+		end)
+		if jumpSignalOk then trackRecordingEventConnection(jumpConnection) end
 		captureSample(MovementRecord.startedAt, true)
 		local sampleAccumulator = 0
 		local lastHeartbeatClock = MovementRecord.startedAt
@@ -11132,6 +11278,8 @@ do
 		MovementRecord.playbackStartedAt = os.clock()
 		MovementRecord.playbackCurrentElapsed = 0
 		MovementRecord.playbackLastElapsed = 0
+		MovementRecord.playbackLastSampleIndex = 0
+		MovementRecord.playbackJumpResetPending = false
 		MovementRecord.playbackLoopIndex = 0
 		MovementRecord.lastJump = false
 		removeFlightMoverOnPlaybackStart()
