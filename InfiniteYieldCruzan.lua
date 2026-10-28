@@ -10192,6 +10192,8 @@ do
 		recordingChunkCount = 0,
 		recordingChunkBytes = 0,
 		playbackLoopIndex = 0,
+		approach = nil,
+		approachGyro = nil,
 		playbackCharacter = nil,
 		playbackHumanoid = nil,
 		playbackRoot = nil,
@@ -10211,7 +10213,6 @@ do
 		flightMover = nil,
 		flightGyro = nil,
 		trajectoryMover = nil,
-		playbackOrientationGyro = nil,
 		originalProperties = nil,
 		sampleInterval = 1 / 60,
 		maxMemorySamples = 36000,
@@ -10662,33 +10663,6 @@ do
 		if gyro then pcall(function() gyro:Destroy() end) end
 	end
 
-	local function removePlaybackOrientationMover()
-		local gyro = MovementRecord.playbackOrientationGyro
-		MovementRecord.playbackOrientationGyro = nil
-		if gyro then pcall(function() gyro:Destroy() end) end
-	end
-
-	local function ensurePlaybackOrientationMover(root)
-		local gyro = MovementRecord.playbackOrientationGyro
-		if not gyro or gyro.Parent ~= root then
-			removePlaybackOrientationMover()
-			local ok, created = pcall(function()
-				local bodyGyro = Instance.new("BodyGyro")
-				bodyGyro.Name = "IY_CruzanRecordBodyOrientation"
-				bodyGyro.P = 7000
-				bodyGyro.D = 350
-				bodyGyro.MaxTorque = Vector3.new(0, 9000000000, 0)
-				bodyGyro.CFrame = root.CFrame
-				bodyGyro.Parent = root
-				return bodyGyro
-			end)
-			if not ok then return nil end
-			MovementRecord.playbackOrientationGyro = created
-			gyro = created
-		end
-		return gyro
-	end
-
 	local function ensureFlightMover(root)
 		local mover = MovementRecord.flightMover
 		if not mover or mover.Parent ~= root then
@@ -10776,10 +10750,13 @@ do
 	local function updateRecordWindow()
 		local ui = MovementRecord.ui
 		if not ui or not ui.frame or not ui.frame.Parent then return end
-		local modeLabels = {idle = "Ready", recording = "Recording", playing = "Playing", looping = "Looping"}
+		local modeLabels = {idle = "Ready", recording = "Recording", approaching = "Walking to start", playing = "Playing", looping = "Looping"}
 		local elapsedText = "00:00"
 		if MovementRecord.mode == "recording" and MovementRecord.startedAt then
 			local elapsed = math.max(0, os.clock() - MovementRecord.startedAt)
+			elapsedText = string.format("%02d:%02d", math.floor(elapsed / 60), math.floor(elapsed % 60))
+		elseif (MovementRecord.mode == "approaching") and MovementRecord.approach and MovementRecord.approach.startedAt then
+			local elapsed = math.max(0, os.clock() - MovementRecord.approach.startedAt)
 			elapsedText = string.format("%02d:%02d", math.floor(elapsed / 60), math.floor(elapsed % 60))
 		elseif (MovementRecord.mode == "playing" or MovementRecord.mode == "looping") and MovementRecord.playbackStartedAt then
 			local duration = MovementRecord.saved and (tonumber(MovementRecord.saved.duration) or 0) or 0
@@ -11140,8 +11117,165 @@ do
 		if bindName then pcall(function() RunService:UnbindFromRenderStep(bindName) end) end
 	end
 
+	local RECORD_NATURAL_START_RADIUS = 22
+	local RECORD_APPROACH_TIMEOUT = 10
+	local RECORD_APPROACH_ARRIVAL_RADIUS = 1.45
+	local RECORD_APPROACH_VERTICAL_TOLERANCE = 3.4
+
+	local function removeRecordApproachGyro()
+		local gyro = MovementRecord.approachGyro
+		MovementRecord.approachGyro = nil
+		if gyro then pcall(function() gyro:Destroy() end) end
+	end
+
+	local function createNaturalStartApproach(root, humanoid, targetCFrame, resumeElapsed)
+		if not root or not humanoid or not targetCFrame then return nil end
+		local targetPosition = targetCFrame.Position
+		local offset = targetPosition - root.Position
+		local distance = offset.Magnitude
+		if distance > RECORD_NATURAL_START_RADIUS then return nil end
+
+		local waypoints = {}
+		if distance > RECORD_APPROACH_ARRIVAL_RADIUS then
+			local path = nil
+			local pathCreated = pcall(function()
+				path = PathService:CreatePath({AgentRadius = 2, AgentHeight = 5, AgentCanJump = true, WaypointSpacing = 2.5})
+			end)
+			if pathCreated and path then
+				local computed = pcall(function() path:ComputeAsync(root.Position, targetPosition) end)
+				local successStatus = false
+				pcall(function() successStatus = path.Status == Enum.PathStatus.Success end)
+				if computed and successStatus then
+					local okWaypoints, result = pcall(function() return path:GetWaypoints() end)
+					if okWaypoints and type(result) == "table" then
+						for _, waypoint in ipairs(result) do waypoints[#waypoints + 1] = waypoint end
+					end
+				end
+			end
+			if #waypoints > 0 then
+				local lastWaypoint = waypoints[#waypoints]
+				local lastPosition = nil
+				pcall(function() lastPosition = lastWaypoint.Position end)
+				if not lastPosition or (lastPosition - targetPosition).Magnitude > 1.5 then
+					waypoints[#waypoints + 1] = {Position = targetPosition, Action = Enum.PathWaypointAction.Walk}
+				end
+			else
+				local horizontal = Vector3.new(offset.X, 0, offset.Z)
+				-- Safe same-level fallback only; do not walk blindly toward a nearby target across a gap.
+				if horizontal.Magnitude <= 12 and math.abs(offset.Y) <= 3.5 then
+					waypoints[1] = {Position = targetPosition, Action = Enum.PathWaypointAction.Walk}
+				else
+					return nil
+				end
+			end
+		end
+
+		local waypointIndex = 1
+		if #waypoints > 1 then
+			local firstPosition = nil
+			pcall(function() firstPosition = waypoints[1].Position end)
+			if firstPosition and (firstPosition - root.Position).Magnitude <= 1.6 then waypointIndex = 2 end
+		end
+		local firstSample = MovementRecord.saved and MovementRecord.saved.samples and MovementRecord.saved.samples[1]
+		local walkSpeed = tonumber(firstSample and firstSample.walkSpeed) or tonumber(humanoid.WalkSpeed) or 16
+		return {
+			targetCFrame = targetCFrame,
+			targetPosition = targetPosition,
+			waypoints = waypoints,
+			waypointIndex = waypointIndex,
+			startedAt = os.clock(),
+			rotateStartedAt = nil,
+			resumeElapsed = tonumber(resumeElapsed) or 0,
+			walkSpeed = math.clamp(walkSpeed, 8, 100),
+			jumpWaypointIndex = nil,
+		}
+	end
+
+	local function stepNaturalStartApproach()
+		local approach = MovementRecord.approach
+		local humanoid = MovementRecord.playbackHumanoid
+		local root = MovementRecord.playbackRoot
+		if not approach or not humanoid or not root or not root.Parent then return false, "The character is no longer available while approaching the start." end
+		local now = os.clock()
+		if now - (approach.startedAt or now) > RECORD_APPROACH_TIMEOUT then return false, "Could not reach the recording start naturally before timeout." end
+		local waypoints = approach.waypoints or {}
+		local index = tonumber(approach.waypointIndex) or 1
+		local waypoint = waypoints[index]
+		if waypoint then
+			local target = nil
+			local action = nil
+			pcall(function() target = waypoint.Position; action = waypoint.Action end)
+			if target then
+				local offset = target - root.Position
+				local horizontal = Vector3.new(offset.X, 0, offset.Z)
+				if horizontal.Magnitude <= RECORD_APPROACH_ARRIVAL_RADIUS and math.abs(offset.Y) <= RECORD_APPROACH_VERTICAL_TOLERANCE then
+					approach.waypointIndex = index + 1
+					pcall(function() humanoid:Move(Vector3.zero, false) end)
+					return true, "working"
+				end
+				if action == Enum.PathWaypointAction.Jump and approach.jumpWaypointIndex ~= index then
+					approach.jumpWaypointIndex = index
+					pcall(function() humanoid.Jump = true end)
+					pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end)
+				end
+				pcall(function() humanoid.AutoRotate = true end)
+				pcall(function() humanoid.WalkSpeed = approach.walkSpeed end)
+				local direction = horizontal.Magnitude > 0.05 and horizontal.Unit or Vector3.zero
+				local moveOk = pcall(function() humanoid:Move(direction, false) end)
+				if not moveOk then return false, "Humanoid movement input failed while approaching the start." end
+				return true, "working"
+			end
+		end
+
+		local finalOffset = approach.targetPosition - root.Position
+		local finalHorizontal = Vector3.new(finalOffset.X, 0, finalOffset.Z)
+		if finalHorizontal.Magnitude > RECORD_APPROACH_ARRIVAL_RADIUS or math.abs(finalOffset.Y) > RECORD_APPROACH_VERTICAL_TOLERANCE then
+			local direction = finalHorizontal.Magnitude > 0.05 and finalHorizontal.Unit or Vector3.zero
+			pcall(function() humanoid.AutoRotate = true; humanoid.WalkSpeed = approach.walkSpeed; humanoid:Move(direction, false) end)
+			return true, "working"
+		end
+
+		pcall(function() humanoid:Move(Vector3.zero, false); humanoid.AutoRotate = false end)
+		if not MovementRecord.approachGyro then
+			local targetLook = approach.targetCFrame.LookVector
+			local horizontalLook = Vector3.new(targetLook.X, 0, targetLook.Z)
+			if horizontalLook.Magnitude < 0.001 then horizontalLook = Vector3.new(0, 0, -1) else horizontalLook = horizontalLook.Unit end
+			local targetRotation = CFrame.lookAt(root.Position, root.Position + horizontalLook, Vector3.yAxis)
+			local ok, gyro = pcall(function()
+				local bodyGyro = Instance.new("BodyGyro")
+				bodyGyro.Name = "IY_CruzanRecordStartAlignment"
+				bodyGyro.P = 3200
+				bodyGyro.D = 180
+				bodyGyro.MaxTorque = Vector3.new(0, 900000000, 0)
+				bodyGyro.CFrame = targetRotation
+				bodyGyro.Parent = root
+				return bodyGyro
+			end)
+			if ok then MovementRecord.approachGyro = gyro end
+			approach.rotateStartedAt = now
+		end
+		local targetLook = approach.targetCFrame.LookVector
+		local currentLook = root.CFrame.LookVector
+		local targetFlat = Vector3.new(targetLook.X, 0, targetLook.Z)
+		local currentFlat = Vector3.new(currentLook.X, 0, currentLook.Z)
+		local aligned = false
+		if targetFlat.Magnitude > 0.001 and currentFlat.Magnitude > 0.001 then
+			aligned = targetFlat.Unit:Dot(currentFlat.Unit) >= 0.9925
+		end
+		if aligned or now - (approach.rotateStartedAt or now) >= 1.35 then
+			removeRecordApproachGyro()
+			local original = MovementRecord.originalProperties
+			pcall(function() humanoid.AutoRotate = not original or original.autoRotate ~= false; humanoid:Move(Vector3.zero, false) end)
+			MovementRecord.approach = nil
+			return true, "done"
+		end
+		return true, "working"
+	end
+
 	local function restorePlaybackProperties()
 		unbindPlaybackRenderStep()
+		removeRecordApproachGyro()
+		MovementRecord.approach = nil
 		local humanoid = MovementRecord.playbackHumanoid
 		local original = MovementRecord.originalProperties
 		if humanoid and original then
@@ -11165,11 +11299,10 @@ do
 		if controls then pcall(function() controls:Enable() end) end
 		removeFlightMover()
 		removeTrajectoryMover()
-		removePlaybackOrientationMover()
 	end
 
 	local function stopPlayback(silent, zeroVelocity)
-		if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" then return false end
+		if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" and MovementRecord.mode ~= "approaching" then return false end
 		local root = MovementRecord.playbackRoot
 		MovementRecord.mode = "idle"
 		disconnectRecordConnection()
@@ -11292,21 +11425,7 @@ do
 		end
 		MovementRecord.playbackLastSampleIndex = sampleIndex
 		MovementRecord.playbackLastElapsed = localElapsed
-		local sampleSpan = b and ((tonumber(b.t) or 0) - (tonumber(a.t) or 0)) or 0
-		local sampleAlpha = sampleSpan > 0 and math.clamp((localElapsed - (tonumber(a.t) or 0)) / sampleSpan, 0, 1) or 0
 		local sampleMove = a.move
-		if a.move and b and b.move and typeof(a.move) == "Vector3" and typeof(b.move) == "Vector3" then
-			local interpolatedMove = a.move:Lerp(b.move, sampleAlpha)
-			local targetInputMagnitude = a.move.Magnitude + (b.move.Magnitude - a.move.Magnitude) * sampleAlpha
-			-- Preserve the recorded input strength while smoothing direction changes between 60 Hz samples.
-			if interpolatedMove.Magnitude > 0.03 then
-				sampleMove = interpolatedMove.Unit * math.clamp(targetInputMagnitude, 0, 1)
-			elseif a.move.Magnitude > 0.08 then
-				sampleMove = a.move
-			else
-				sampleMove = interpolatedMove
-			end
-		end
 		if not sampleMove or sampleMove.Magnitude < 0.08 then sampleMove = deriveHorizontalMove(a, b) end
 		local isFlight = a.flight == true
 		local recordedSpeed = tonumber(a.walkSpeed) or 16
@@ -11378,7 +11497,7 @@ do
 			-- Track the recorded 3D path continuously. The source fly velocity remains a useful fallback,
 			-- but using only controller velocity can drift after a delayed frame or network correction.
 			local targetNow = getTargetPosition(saved, localElapsed)
-			local lookAheadTime = math.min(duration, localElapsed + 0.05)
+			local lookAheadTime = math.min(duration, localElapsed + 0.06)
 			local targetAhead = getTargetPosition(saved, lookAheadTime)
 			local routeVelocity = segmentVelocity
 			if targetNow and targetAhead and lookAheadTime > localElapsed + 0.001 then
@@ -11396,21 +11515,15 @@ do
 			end
 			if targetNow then
 				local positionError = targetNow - root.Position
-				local correction = clampVectorMagnitude(positionError * 7.0, 65)
+				local correction = clampVectorMagnitude(positionError * 5.0, 45)
 				velocity = velocity + correction
 			end
 			mover.Velocity = clampVectorMagnitude(velocity, 5000)
-			local orientationA = a.flightCFrame or a.cframe
-			local orientationB = b and b.flight == true and (b.flightCFrame or b.cframe) or orientationA
-			local orientationCFrame = orientationA
-			if orientationA and orientationB and sampleAlpha > 0 then
-				pcall(function() orientationCFrame = orientationA:Lerp(orientationB, sampleAlpha) end)
-			end
+			local orientationCFrame = a.flightCFrame or a.cframe
 			if gyro and orientationCFrame then
-				-- Interpolate the recorded fly/camera orientation rather than holding each sample's heading for a full frame.
+				-- Built-in fly uses the camera orientation; replay the captured orientation and source gyro gains.
 				pcall(function() gyro.CFrame = CFrame.new(root.Position) * orientationCFrame.Rotation end)
 			end
-			removePlaybackOrientationMover()
 			pcall(function() humanoid.PlatformStand = true end)
 			pcall(function() humanoid.AutoRotate = false end)
 			pcall(function() humanoid:Move(Vector3.zero, false) end)
@@ -11428,31 +11541,13 @@ do
 			end
 			local recordedAirborne = a.jump == true or isRecordedAirState(aState)
 			if not recordedAirborne and segmentVelocity and isRecordedAirState(bState) then recordedAirborne = true end
-			local orientationMover = ensurePlaybackOrientationMover(root)
-			if orientationMover then
-				local facingCFrame = a.cframe
-				if b and b.cframe and sampleAlpha > 0 then pcall(function() facingCFrame = a.cframe:Lerp(b.cframe, sampleAlpha) end) end
-				if facingCFrame then
-					local targetOrientation = facingCFrame.Rotation
-					if recordedAirborne then
-						orientationMover.MaxTorque = Vector3.new(9000000000, 9000000000, 9000000000)
-					else
-						orientationMover.MaxTorque = Vector3.new(0, 9000000000, 0)
-						local look = facingCFrame.LookVector
-						local flatLook = Vector3.new(look.X, 0, look.Z)
-						if flatLook.Magnitude > 0.001 then targetOrientation = CFrame.lookAt(root.Position, root.Position + flatLook.Unit, Vector3.yAxis).Rotation end
-					end
-					orientationMover.CFrame = CFrame.new(root.Position) * targetOrientation
-				end
-				pcall(function() humanoid.AutoRotate = false end)
-			end
 			if recordedAirborne then
 				-- Parkour gaps are sensitive to a few frames of drift. Track the recorded 3D trajectory
 				-- with a physics velocity actuator only during recorded airborne frames; never teleport each sample.
 				local trajectoryMover = ensureTrajectoryMover(root)
 				if not trajectoryMover then return false, "Could not create the parkour trajectory controller." end
 				local targetNow = getTargetPosition(saved, localElapsed)
-				local lookAheadTime = math.min(duration, localElapsed + 0.05)
+				local lookAheadTime = math.min(duration, localElapsed + 0.06)
 				local targetAhead = getTargetPosition(saved, lookAheadTime)
 				local routeVelocity = segmentVelocity or Vector3.zero
 				if targetNow and targetAhead and lookAheadTime > localElapsed + 0.001 then
@@ -11461,10 +11556,10 @@ do
 				if not routeVelocity or typeof(routeVelocity) ~= "Vector3" then routeVelocity = Vector3.zero end
 				if targetNow then
 					local positionError = targetNow - root.Position
-					local correction = clampVectorMagnitude(positionError * 8.0, 48)
+					local correction = clampVectorMagnitude(positionError * 6.0, 38)
 					routeVelocity = routeVelocity + correction
 				end
-				trajectoryMover.P = 22000
+				trajectoryMover.P = 18000
 				trajectoryMover.MaxForce = Vector3.new(9000000000, 9000000000, 9000000000)
 				trajectoryMover.Velocity = clampVectorMagnitude(routeVelocity, 260)
 			else
@@ -11487,16 +11582,6 @@ do
 				end
 			end
 			local desiredWalkSpeed = tonumber(a.walkSpeed)
-			-- When the recorded route shows sustained ground movement, use measured path speed to reproduce sprint/speed effects
-			-- that may not be reflected in Humanoid.WalkSpeed (for example, a game-specific movement controller).
-			if not recordedAirborne and sampleMove and sampleMove.Magnitude > 0.12 and a.pathVelocity and typeof(a.pathVelocity) == "Vector3" then
-				local horizontalSpeed = Vector3.new(a.pathVelocity.X, 0, a.pathVelocity.Z).Magnitude
-				if b and b.pathVelocity and typeof(b.pathVelocity) == "Vector3" then
-					local blendedVelocity = a.pathVelocity:Lerp(b.pathVelocity, sampleAlpha)
-					horizontalSpeed = Vector3.new(blendedVelocity.X, 0, blendedVelocity.Z).Magnitude
-				end
-				if horizontalSpeed >= 2 and horizontalSpeed <= 100 then desiredWalkSpeed = horizontalSpeed end
-			end
 			if desiredWalkSpeed and desiredWalkSpeed > 0 then pcall(function() humanoid.WalkSpeed = math.min(desiredWalkSpeed, 100) end) end
 			if a.useJumpPower ~= nil then pcall(function() humanoid.UseJumpPower = a.useJumpPower end) end
 			local desiredJumpPower = tonumber(a.jumpPower)
@@ -11518,7 +11603,7 @@ do
 			updateRecordWindow()
 			return false
 		end
-		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then stopPlayback(true, true) end
 		local character, humanoid, root = getLocalCharacterParts()
 		if not character or not humanoid or not root then
 			if not silent then recordNotify("Cannot record: your character is not ready.") end
@@ -11638,7 +11723,7 @@ do
 				return false
 			end
 		end
-		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then stopPlayback(true, true) end
 		local first = saved.samples[1]
 		local startCFrame = saved.startCFrame or (first and first.cframe)
 		if not startCFrame then
@@ -11679,21 +11764,26 @@ do
 			platformStand = humanoid.PlatformStand,
 			autoRotate = humanoid.AutoRotate,
 		}
-		local startPositioned = pcall(function()
-			root.CFrame = startCFrame -- one-time reposition to the exact recorded start, not per-sample teleporting
-			resetRootVelocity(root)
-		end)
+		local approach = createNaturalStartApproach(root, humanoid, startCFrame, 0)
+		local startPositioned = true
+		if not approach then
+			startPositioned = pcall(function()
+				root.CFrame = startCFrame -- Far or unreachable starts retain the existing one-time reposition fallback.
+				resetRootVelocity(root)
+			end)
+		end
 		if not startPositioned then
 			restorePlaybackProperties()
 			if not silent then recordNotify("Could not return to the recorded starting position.", 5) end
 			return false
 		end
-		MovementRecord.mode = looping and "looping" or "playing"
+		MovementRecord.approach = approach
+		MovementRecord.mode = approach and "approaching" or (looping and "looping" or "playing")
 		MovementRecord.playbackLoop = looping == true
 		MovementRecord.playbackCharacter = character
 		MovementRecord.playbackHumanoid = humanoid
 		MovementRecord.playbackRoot = root
-		MovementRecord.playbackStartedAt = os.clock()
+		MovementRecord.playbackStartedAt = approach and nil or os.clock()
 		MovementRecord.playbackCurrentElapsed = 0
 		MovementRecord.playbackLastElapsed = 0
 		MovementRecord.playbackLastSampleIndex = 0
@@ -11705,11 +11795,33 @@ do
 		MovementRecord.lastJump = false
 		removeFlightMoverOnPlaybackStart()
 		local connection = RunService.Heartbeat:Connect(function()
-			if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" then return end
+			if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" and MovementRecord.mode ~= "approaching" then return end
 			local currentCharacter, currentHumanoid, currentRoot = getLocalCharacterParts()
 			if currentCharacter ~= MovementRecord.playbackCharacter or currentRoot ~= MovementRecord.playbackRoot or not currentHumanoid then
 				stopPlayback(true, false)
 				recordNotify("Playback stopped because your character changed or died.", 4)
+				return
+			end
+			if MovementRecord.mode == "approaching" then
+				local resumeElapsed = MovementRecord.approach and tonumber(MovementRecord.approach.resumeElapsed) or 0
+				local approachOk, approachState = stepNaturalStartApproach()
+				if not approachOk then
+					stopPlayback(true, false)
+					recordNotify("Could not approach the recorded start: " .. tostring(approachState), 5)
+					return
+				end
+				if approachState == "done" then
+					MovementRecord.mode = MovementRecord.playbackLoop and "looping" or "playing"
+					MovementRecord.playbackStartedAt = os.clock() - resumeElapsed
+					MovementRecord.playbackCurrentElapsed = resumeElapsed
+					MovementRecord.playbackLastElapsed = 0
+					MovementRecord.playbackLastSampleIndex = 0
+					MovementRecord.playbackJumpPendingUntil = nil
+					MovementRecord.playbackJumpLastAttemptAt = 0
+					MovementRecord.playbackJumpLastAttemptElapsed = nil
+					MovementRecord.lastJump = false
+					updateRecordWindow()
+				end
 				return
 			end
 			local elapsed = os.clock() - (MovementRecord.playbackStartedAt or os.clock())
@@ -11719,6 +11831,19 @@ do
 				local loopIndex = loopDuration > 0 and math.floor(elapsed / loopDuration) or 0
 				if loopIndex > (MovementRecord.playbackLoopIndex or 0) then
 					local loopStart = MovementRecord.saved and (MovementRecord.saved.startCFrame or (MovementRecord.saved.samples[1] and MovementRecord.saved.samples[1].cframe))
+					local loopApproach = loopStart and createNaturalStartApproach(currentRoot, currentHumanoid, loopStart, loopIndex * loopDuration)
+					if loopApproach then
+						MovementRecord.approach = loopApproach
+						MovementRecord.mode = "approaching"
+						MovementRecord.playbackLoopIndex = loopIndex
+						MovementRecord.playbackLastElapsed = 0
+						MovementRecord.playbackJumpPendingUntil = nil
+						MovementRecord.playbackJumpLastAttemptAt = 0
+						MovementRecord.playbackJumpLastAttemptElapsed = nil
+						MovementRecord.lastJump = false
+						updateRecordWindow()
+						return
+					end
 					local resetOk = loopStart and pcall(function()
 						currentRoot.CFrame = loopStart
 						resetRootVelocity(currentRoot)
@@ -11728,6 +11853,7 @@ do
 						recordNotify("Loop stopped because the starting position could not be restored.", 4)
 						return
 					end
+					MovementRecord.playbackStartedAt = os.clock() - loopIndex * loopDuration
 					MovementRecord.playbackLoopIndex = loopIndex
 					MovementRecord.playbackLastElapsed = 0
 					MovementRecord.playbackJumpPendingUntil = nil
@@ -11778,7 +11904,7 @@ do
 
 	local function clearSavedRecording(silent)
 		if MovementRecord.mode == "recording" then cancelRecording() end
-		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then stopPlayback(true, true) end
 		local paths = recordPaths(CURRENT_GAME_ID, CURRENT_PLACE_ID)
 		local oldManifest = readManifest(paths.manifest)
 		local oldPending = readManifest(paths.pending)
@@ -11801,7 +11927,7 @@ do
 	MovementRecord.Stop = function(silent)
 		if MovementRecord.mode == "recording" then
 			return finishRecording(silent == true, "stopped", true)
-		elseif MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then
+		elseif MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then
 			return stopPlayback(silent == true, true)
 		end
 		return false
@@ -11950,13 +12076,13 @@ do
 		end)
 		playButton.MouseButton1Click:Connect(function()
 			if MovementRecord.mode == "recording" then finishRecording(true, "stopped", true) end
-			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then stopPlayback(true, true) end
 			startPlayback(false, true)
 			updateRecordWindow()
 		end)
 		loopButton.MouseButton1Click:Connect(function()
 			if MovementRecord.mode == "recording" then finishRecording(true, "stopped", true) end
-			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then stopPlayback(true, true) end
 			startPlayback(true, true)
 			updateRecordWindow()
 		end)
@@ -12022,16 +12148,16 @@ do
 			if MovementRecord.mode == "recording" then finishRecording(false, "stopped", true) else startRecording(false) end
 		elseif action == "play" then
 			if MovementRecord.mode == "recording" then finishRecording(true, "stopped", true) end
-			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then stopPlayback(true, true) end
 			startPlayback(false, false)
 		elseif action == "loop" then
 			if MovementRecord.mode == "recording" then finishRecording(true, "stopped", true) end
-			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then stopPlayback(true, true) end
+			if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then stopPlayback(true, true) end
 			startPlayback(true, false)
 		elseif action == "stop" then
 			if MovementRecord.mode == "recording" then
 				finishRecording(false, "stopped", true)
-			elseif MovementRecord.mode == "playing" or MovementRecord.mode == "looping" then
+			elseif MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then
 				stopPlayback(false, true)
 			else
 				recordNotify("Nothing is recording or playing.")
