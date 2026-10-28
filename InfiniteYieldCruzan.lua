@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.5.4"
+currentVersion = "1.5.5"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -10211,6 +10211,7 @@ do
 		flightMover = nil,
 		flightGyro = nil,
 		trajectoryMover = nil,
+		playbackOrientationGyro = nil,
 		originalProperties = nil,
 		sampleInterval = 1 / 60,
 		maxMemorySamples = 36000,
@@ -10659,6 +10660,33 @@ do
 		MovementRecord.flightGyro = nil
 		if mover then pcall(function() mover:Destroy() end) end
 		if gyro then pcall(function() gyro:Destroy() end) end
+	end
+
+	local function removePlaybackOrientationMover()
+		local gyro = MovementRecord.playbackOrientationGyro
+		MovementRecord.playbackOrientationGyro = nil
+		if gyro then pcall(function() gyro:Destroy() end) end
+	end
+
+	local function ensurePlaybackOrientationMover(root)
+		local gyro = MovementRecord.playbackOrientationGyro
+		if not gyro or gyro.Parent ~= root then
+			removePlaybackOrientationMover()
+			local ok, created = pcall(function()
+				local bodyGyro = Instance.new("BodyGyro")
+				bodyGyro.Name = "IY_CruzanRecordBodyOrientation"
+				bodyGyro.P = 7000
+				bodyGyro.D = 350
+				bodyGyro.MaxTorque = Vector3.new(0, 9000000000, 0)
+				bodyGyro.CFrame = root.CFrame
+				bodyGyro.Parent = root
+				return bodyGyro
+			end)
+			if not ok then return nil end
+			MovementRecord.playbackOrientationGyro = created
+			gyro = created
+		end
+		return gyro
 	end
 
 	local function ensureFlightMover(root)
@@ -11137,6 +11165,7 @@ do
 		if controls then pcall(function() controls:Enable() end) end
 		removeFlightMover()
 		removeTrajectoryMover()
+		removePlaybackOrientationMover()
 	end
 
 	local function stopPlayback(silent, zeroVelocity)
@@ -11263,7 +11292,21 @@ do
 		end
 		MovementRecord.playbackLastSampleIndex = sampleIndex
 		MovementRecord.playbackLastElapsed = localElapsed
+		local sampleSpan = b and ((tonumber(b.t) or 0) - (tonumber(a.t) or 0)) or 0
+		local sampleAlpha = sampleSpan > 0 and math.clamp((localElapsed - (tonumber(a.t) or 0)) / sampleSpan, 0, 1) or 0
 		local sampleMove = a.move
+		if a.move and b and b.move and typeof(a.move) == "Vector3" and typeof(b.move) == "Vector3" then
+			local interpolatedMove = a.move:Lerp(b.move, sampleAlpha)
+			local targetInputMagnitude = a.move.Magnitude + (b.move.Magnitude - a.move.Magnitude) * sampleAlpha
+			-- Preserve the recorded input strength while smoothing direction changes between 60 Hz samples.
+			if interpolatedMove.Magnitude > 0.03 then
+				sampleMove = interpolatedMove.Unit * math.clamp(targetInputMagnitude, 0, 1)
+			elseif a.move.Magnitude > 0.08 then
+				sampleMove = a.move
+			else
+				sampleMove = interpolatedMove
+			end
+		end
 		if not sampleMove or sampleMove.Magnitude < 0.08 then sampleMove = deriveHorizontalMove(a, b) end
 		local isFlight = a.flight == true
 		local recordedSpeed = tonumber(a.walkSpeed) or 16
@@ -11335,7 +11378,7 @@ do
 			-- Track the recorded 3D path continuously. The source fly velocity remains a useful fallback,
 			-- but using only controller velocity can drift after a delayed frame or network correction.
 			local targetNow = getTargetPosition(saved, localElapsed)
-			local lookAheadTime = math.min(duration, localElapsed + 0.06)
+			local lookAheadTime = math.min(duration, localElapsed + 0.05)
 			local targetAhead = getTargetPosition(saved, lookAheadTime)
 			local routeVelocity = segmentVelocity
 			if targetNow and targetAhead and lookAheadTime > localElapsed + 0.001 then
@@ -11353,15 +11396,21 @@ do
 			end
 			if targetNow then
 				local positionError = targetNow - root.Position
-				local correction = clampVectorMagnitude(positionError * 5.0, 45)
+				local correction = clampVectorMagnitude(positionError * 7.0, 65)
 				velocity = velocity + correction
 			end
 			mover.Velocity = clampVectorMagnitude(velocity, 5000)
-			local orientationCFrame = a.flightCFrame or a.cframe
+			local orientationA = a.flightCFrame or a.cframe
+			local orientationB = b and b.flight == true and (b.flightCFrame or b.cframe) or orientationA
+			local orientationCFrame = orientationA
+			if orientationA and orientationB and sampleAlpha > 0 then
+				pcall(function() orientationCFrame = orientationA:Lerp(orientationB, sampleAlpha) end)
+			end
 			if gyro and orientationCFrame then
-				-- Built-in fly uses the camera orientation; replay the captured orientation and source gyro gains.
+				-- Interpolate the recorded fly/camera orientation rather than holding each sample's heading for a full frame.
 				pcall(function() gyro.CFrame = CFrame.new(root.Position) * orientationCFrame.Rotation end)
 			end
+			removePlaybackOrientationMover()
 			pcall(function() humanoid.PlatformStand = true end)
 			pcall(function() humanoid.AutoRotate = false end)
 			pcall(function() humanoid:Move(Vector3.zero, false) end)
@@ -11379,13 +11428,31 @@ do
 			end
 			local recordedAirborne = a.jump == true or isRecordedAirState(aState)
 			if not recordedAirborne and segmentVelocity and isRecordedAirState(bState) then recordedAirborne = true end
+			local orientationMover = ensurePlaybackOrientationMover(root)
+			if orientationMover then
+				local facingCFrame = a.cframe
+				if b and b.cframe and sampleAlpha > 0 then pcall(function() facingCFrame = a.cframe:Lerp(b.cframe, sampleAlpha) end) end
+				if facingCFrame then
+					local targetOrientation = facingCFrame.Rotation
+					if recordedAirborne then
+						orientationMover.MaxTorque = Vector3.new(9000000000, 9000000000, 9000000000)
+					else
+						orientationMover.MaxTorque = Vector3.new(0, 9000000000, 0)
+						local look = facingCFrame.LookVector
+						local flatLook = Vector3.new(look.X, 0, look.Z)
+						if flatLook.Magnitude > 0.001 then targetOrientation = CFrame.lookAt(root.Position, root.Position + flatLook.Unit, Vector3.yAxis).Rotation end
+					end
+					orientationMover.CFrame = CFrame.new(root.Position) * targetOrientation
+				end
+				pcall(function() humanoid.AutoRotate = false end)
+			end
 			if recordedAirborne then
 				-- Parkour gaps are sensitive to a few frames of drift. Track the recorded 3D trajectory
 				-- with a physics velocity actuator only during recorded airborne frames; never teleport each sample.
 				local trajectoryMover = ensureTrajectoryMover(root)
 				if not trajectoryMover then return false, "Could not create the parkour trajectory controller." end
 				local targetNow = getTargetPosition(saved, localElapsed)
-				local lookAheadTime = math.min(duration, localElapsed + 0.06)
+				local lookAheadTime = math.min(duration, localElapsed + 0.05)
 				local targetAhead = getTargetPosition(saved, lookAheadTime)
 				local routeVelocity = segmentVelocity or Vector3.zero
 				if targetNow and targetAhead and lookAheadTime > localElapsed + 0.001 then
@@ -11394,10 +11461,10 @@ do
 				if not routeVelocity or typeof(routeVelocity) ~= "Vector3" then routeVelocity = Vector3.zero end
 				if targetNow then
 					local positionError = targetNow - root.Position
-					local correction = clampVectorMagnitude(positionError * 6.0, 38)
+					local correction = clampVectorMagnitude(positionError * 8.0, 48)
 					routeVelocity = routeVelocity + correction
 				end
-				trajectoryMover.P = 18000
+				trajectoryMover.P = 22000
 				trajectoryMover.MaxForce = Vector3.new(9000000000, 9000000000, 9000000000)
 				trajectoryMover.Velocity = clampVectorMagnitude(routeVelocity, 260)
 			else
@@ -11420,6 +11487,16 @@ do
 				end
 			end
 			local desiredWalkSpeed = tonumber(a.walkSpeed)
+			-- When the recorded route shows sustained ground movement, use measured path speed to reproduce sprint/speed effects
+			-- that may not be reflected in Humanoid.WalkSpeed (for example, a game-specific movement controller).
+			if not recordedAirborne and sampleMove and sampleMove.Magnitude > 0.12 and a.pathVelocity and typeof(a.pathVelocity) == "Vector3" then
+				local horizontalSpeed = Vector3.new(a.pathVelocity.X, 0, a.pathVelocity.Z).Magnitude
+				if b and b.pathVelocity and typeof(b.pathVelocity) == "Vector3" then
+					local blendedVelocity = a.pathVelocity:Lerp(b.pathVelocity, sampleAlpha)
+					horizontalSpeed = Vector3.new(blendedVelocity.X, 0, blendedVelocity.Z).Magnitude
+				end
+				if horizontalSpeed >= 2 and horizontalSpeed <= 100 then desiredWalkSpeed = horizontalSpeed end
+			end
 			if desiredWalkSpeed and desiredWalkSpeed > 0 then pcall(function() humanoid.WalkSpeed = math.min(desiredWalkSpeed, 100) end) end
 			if a.useJumpPower ~= nil then pcall(function() humanoid.UseJumpPower = a.useJumpPower end) end
 			local desiredJumpPower = tonumber(a.jumpPower)
