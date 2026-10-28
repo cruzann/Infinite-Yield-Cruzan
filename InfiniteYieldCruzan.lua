@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.5.5"
+currentVersion = "1.5.6"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -11794,6 +11794,28 @@ do
 		MovementRecord.playbackLoopIndex = 0
 		MovementRecord.lastJump = false
 		removeFlightMoverOnPlaybackStart()
+		local function advanceNaturalStartApproach()
+			local resumeElapsed = MovementRecord.approach and tonumber(MovementRecord.approach.resumeElapsed) or 0
+			local approachOk, approachState = stepNaturalStartApproach()
+			if not approachOk then
+				stopPlayback(true, false)
+				recordNotify("Could not approach the recorded start: " .. tostring(approachState), 5)
+				return false
+			end
+			if approachState == "done" then
+				MovementRecord.mode = MovementRecord.playbackLoop and "looping" or "playing"
+				MovementRecord.playbackStartedAt = os.clock() - resumeElapsed
+				MovementRecord.playbackCurrentElapsed = resumeElapsed
+				MovementRecord.playbackLastElapsed = 0
+				MovementRecord.playbackLastSampleIndex = 0
+				MovementRecord.playbackJumpPendingUntil = nil
+				MovementRecord.playbackJumpLastAttemptAt = 0
+				MovementRecord.playbackJumpLastAttemptElapsed = nil
+				MovementRecord.lastJump = false
+				updateRecordWindow()
+			end
+			return true
+		end
 		local connection = RunService.Heartbeat:Connect(function()
 			if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" and MovementRecord.mode ~= "approaching" then return end
 			local currentCharacter, currentHumanoid, currentRoot = getLocalCharacterParts()
@@ -11803,24 +11825,10 @@ do
 				return
 			end
 			if MovementRecord.mode == "approaching" then
-				local resumeElapsed = MovementRecord.approach and tonumber(MovementRecord.approach.resumeElapsed) or 0
-				local approachOk, approachState = stepNaturalStartApproach()
-				if not approachOk then
-					stopPlayback(true, false)
-					recordNotify("Could not approach the recorded start: " .. tostring(approachState), 5)
-					return
-				end
-				if approachState == "done" then
-					MovementRecord.mode = MovementRecord.playbackLoop and "looping" or "playing"
-					MovementRecord.playbackStartedAt = os.clock() - resumeElapsed
-					MovementRecord.playbackCurrentElapsed = resumeElapsed
-					MovementRecord.playbackLastElapsed = 0
-					MovementRecord.playbackLastSampleIndex = 0
-					MovementRecord.playbackJumpPendingUntil = nil
-					MovementRecord.playbackJumpLastAttemptAt = 0
-					MovementRecord.playbackJumpLastAttemptElapsed = nil
-					MovementRecord.lastJump = false
-					updateRecordWindow()
+				-- If default controls remain active, let the post-input RenderStep handler
+				-- issue movement so PlayerModule cannot overwrite it later in the frame.
+				if not (MovementRecord.controlsFallback and MovementRecord.playbackRenderStepName) then
+					advanceNaturalStartApproach()
 				end
 				return
 			end
@@ -11877,6 +11885,10 @@ do
 			end)
 			local bindOk = pcall(function()
 				RunService:BindToRenderStep(bindName, bindPriority, function()
+					if MovementRecord.mode == "approaching" then
+						advanceNaturalStartApproach()
+						return
+					end
 					if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" then return end
 					local elapsed = tonumber(MovementRecord.playbackCurrentElapsed) or 0
 					local stepOk, stepError = applyPlaybackAt(elapsed)
