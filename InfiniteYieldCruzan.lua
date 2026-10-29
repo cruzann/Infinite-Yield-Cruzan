@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.6.0"
+currentVersion = "1.6.1"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -4844,7 +4844,7 @@ end
 CamMoved = workspace.CurrentCamera.AncestryChanged:Connect(updateCamera)
 
 local wasStayOpen = StayOpen
-local SWIPE_DOWN_HIDE_THRESHOLD = IsOnMobile and 54 or 64
+local SWIPE_DOWN_HIDE_THRESHOLD = IsOnMobile and 26 or 32
 
 function dragMain(dragpoint,gui)
 	task.spawn(function()
@@ -4930,7 +4930,7 @@ function dragMain(dragpoint,gui)
 			-- Prioritize a clear downward swipe even if small early horizontal jitter
 			-- already classified the gesture as horizontal. This makes hide-on-swipe
 			-- reliable when the command list is open and the finger path is imperfect.
-			if delta.Y > 0 and delta.Y >= SWIPE_DOWN_HIDE_THRESHOLD and delta.Y >= absX * 1.25 then
+			if delta.Y > 0 and delta.Y >= SWIPE_DOWN_HIDE_THRESHOLD and delta.Y >= absX * 1.1 then
 				gestureMode = "swipeDown"
 				hideFromSwipeDown()
 				resetGesture()
