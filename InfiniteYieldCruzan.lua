@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.5.8"
+currentVersion = "1.5.9"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -11376,6 +11376,39 @@ do
 		}
 	end
 
+	-- Pathfinding waypoints are often positioned on the walkable floor, while the
+	-- HumanoidRootPart stays several studs above that floor. Match a Walk waypoint
+	-- to the current ground plane so that this normal avatar-height offset does not
+	-- leave Record repeatedly steering at a waypoint it can never reach vertically.
+	local RECORD_APPROACH_GROUND_MATCH_TOLERANCE = 1.25
+	local function isGroundAlignedWalkWaypoint(approach, root, humanoid, target, action)
+		if not approach or not root or not humanoid or not target or action == Enum.PathWaypointAction.Jump then return false end
+		local floorMaterial = Enum.Material.Air
+		pcall(function() floorMaterial = humanoid.FloorMaterial end)
+		if floorMaterial == Enum.Material.Air then return false end
+		if approach.groundRaycastParams == nil then
+			local paramsOk, params = pcall(function()
+				local raycastParams = RaycastParams.new()
+				raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+				raycastParams.FilterDescendantsInstances = {MovementRecord.playbackCharacter or root.Parent}
+				raycastParams.IgnoreWater = true
+				return raycastParams
+			end)
+			approach.groundRaycastParams = paramsOk and params or false
+		end
+		local raycastParams = approach.groundRaycastParams
+		if not raycastParams then return false end
+		local groundHit = nil
+		local rayOk = pcall(function()
+			groundHit = workspace:Raycast(root.Position, Vector3.new(0, -12, 0), raycastParams)
+		end)
+		if not rayOk or not groundHit then return false end
+		local rootGroundOffset = root.Position.Y - groundHit.Position.Y
+		local waypointGroundOffset = root.Position.Y - target.Y
+		local groundDifference = math.abs(rootGroundOffset - waypointGroundOffset)
+		return rootGroundOffset >= 0 and groundDifference <= RECORD_APPROACH_GROUND_MATCH_TOLERANCE, rootGroundOffset, waypointGroundOffset, groundDifference
+	end
+
 	local function stepNaturalStartApproach()
 		local approach = MovementRecord.approach
 		local humanoid = MovementRecord.playbackHumanoid
@@ -11404,7 +11437,15 @@ do
 			if target then
 				local offset = target - root.Position
 				local horizontal = Vector3.new(offset.X, 0, offset.Z)
-				if horizontal.Magnitude <= arrivalRadius and math.abs(offset.Y) <= RECORD_APPROACH_VERTICAL_TOLERANCE then
+				local waypointReached = horizontal.Magnitude <= arrivalRadius and math.abs(offset.Y) <= RECORD_APPROACH_VERTICAL_TOLERANCE
+				if not waypointReached and horizontal.Magnitude <= arrivalRadius then
+					local groundMatched, rootGroundOffset, waypointGroundOffset, groundDifference = isGroundAlignedWalkWaypoint(approach, root, humanoid, target, action)
+					if groundMatched then
+						waypointReached = true
+						recordDiagAppend("approach_waypoint_ground_match", string.format("wp=%d/%d hDist=%.2f waypointY=%.2f rootY=%.2f groundY=%.2f rootGroundOffset=%.2f waypointGroundOffset=%.2f difference=%.2f", index, #waypoints, horizontal.Magnitude, target.Y, root.Position.Y, root.Position.Y - (rootGroundOffset or 0), rootGroundOffset or 0, waypointGroundOffset or 0, groundDifference or -1))
+					end
+				end
+				if waypointReached then
 					approach.waypointIndex = index + 1
 					pcall(function() humanoid:Move(Vector3.zero, false) end)
 					return true, "working"
@@ -12035,7 +12076,7 @@ do
 			local approachOk, approachState = stepNaturalStartApproach()
 			if not approachOk then
 				recordDiagAppend("approach_failed", tostring(approachState))
-				stopPlayback(true, false, "natural approach failed: " .. tostring(approachState))
+				stopPlayback(true, true, "natural approach failed: " .. tostring(approachState))
 				recordNotify("Could not approach the recorded start: " .. tostring(approachState) .. (MovementRecord.diagnosticCopied and " Diagnostics copied to clipboard." or " Check executor console for diagnostics."), 5)
 				return false
 			end
