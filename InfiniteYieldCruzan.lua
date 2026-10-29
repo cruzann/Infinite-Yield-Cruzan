@@ -184,7 +184,7 @@ if makefolder and isfolder and writefile and isfile then
 	end)
 end
 
-currentVersion = "1.5.7"
+currentVersion = "1.5.8"
 
 ScaledHolder = Instance.new("Frame")
 Scale = Instance.new("UIScale")
@@ -10225,6 +10225,124 @@ do
 		pcall(function() notify("Record", message, duration or 3) end)
 	end
 
+	-- Temporary diagnostics for Record startup/playback. The log is bounded and copied on stop.
+	local RECORD_DIAGNOSTIC_MAX_LINES = 600
+	local function recordDiagVector(value)
+		if typeof(value) == "Vector3" then
+			return string.format("(%.2f, %.2f, %.2f)", value.X, value.Y, value.Z)
+		end
+		if typeof(value) == "CFrame" then
+			local position, look = value.Position, value.LookVector
+			return string.format("pos=(%.2f, %.2f, %.2f),look=(%.2f, %.2f, %.2f)", position.X, position.Y, position.Z, look.X, look.Y, look.Z)
+		end
+		return tostring(value or "n/a")
+	end
+
+	local function recordDiagRootControllers(root)
+		if not root then return "root=n/a" end
+		local names = {}
+		local scanRoot = root
+		pcall(function() if root.Parent then scanRoot = root.Parent end end)
+		local ok, children = pcall(function() return scanRoot:GetDescendants() end)
+		if ok and type(children) == "table" then
+			for _, child in ipairs(children) do
+				local className = "?"
+				pcall(function() className = child.ClassName end)
+				if className == "BodyVelocity" or className == "BodyGyro" or className == "BodyPosition" or className == "BodyAngularVelocity" or className == "LinearVelocity" or className == "AngularVelocity" or className == "VectorForce" or className == "AlignOrientation" or className == "AlignPosition" then
+					names[#names + 1] = tostring(child.Name) .. ":" .. className
+				end
+			end
+		end
+		return #names > 0 and table.concat(names, ",") or "none"
+	end
+
+	local function recordDiagAppend(eventName, details)
+		if type(MovementRecord.diagnosticLog) ~= "table" then MovementRecord.diagnosticLog = {} end
+		local now = os.clock()
+		local started = tonumber(MovementRecord.diagnosticStartedAt) or now
+		local line = string.format("[+%.3fs] %s%s", math.max(0, now - started), tostring(eventName or "event"), details and (" | " .. tostring(details)) or "")
+		table.insert(MovementRecord.diagnosticLog, line)
+		while #MovementRecord.diagnosticLog > RECORD_DIAGNOSTIC_MAX_LINES do table.remove(MovementRecord.diagnosticLog, 1) end
+	end
+
+	local function recordDiagBegin(kind)
+		MovementRecord.diagnosticLog = {}
+		MovementRecord.diagnosticStartedAt = os.clock()
+		MovementRecord.diagnosticContext = tostring(kind or "Record")
+		MovementRecord.diagnosticCopied = false
+		MovementRecord.diagnosticLastPlaybackAt = 0
+		MovementRecord.diagnosticSampleGapCount = 0
+		recordDiagAppend("session_started", string.format("kind=%s gameId=%s placeId=%s clipboardAPI=%s", MovementRecord.diagnosticContext, tostring(game.GameId or 0), tostring(game.PlaceId or 0), tostring(type(setclipboard) == "function" or type(toclipboard) == "function" or type(set_clipboard) == "function" or type(sharedEnv.setclipboard) == "function" or type(sharedEnv.toclipboard) == "function" or type(sharedEnv.set_clipboard) == "function")))
+	end
+
+	local function recordDiagCopy(reason)
+		if MovementRecord.diagnosticCopied then return true end
+		recordDiagAppend("diagnostics_end", "reason=" .. tostring(reason or "stop"))
+		local payload = table.concat(MovementRecord.diagnosticLog or {}, "\n")
+		local writers = {}
+		local function addWriter(name, fn)
+			if type(fn) == "function" then writers[#writers + 1] = {name = name, fn = fn} end
+		end
+		addWriter("setclipboard", setclipboard)
+		addWriter("toclipboard", toclipboard)
+		addWriter("set_clipboard", set_clipboard)
+		addWriter("sharedEnv.setclipboard", sharedEnv.setclipboard)
+		addWriter("sharedEnv.toclipboard", sharedEnv.toclipboard)
+		addWriter("sharedEnv.set_clipboard", sharedEnv.set_clipboard)
+		local clipboardObject = nil
+		pcall(function() clipboardObject = sharedEnv.Clipboard or _G.Clipboard end)
+		if type(clipboardObject) == "table" then addWriter("Clipboard.set", clipboardObject.set) end
+		local copied, copyError = false, nil
+		for _, writer in ipairs(writers) do
+			local ok, result = pcall(writer.fn, payload)
+			if ok and result ~= false then copied = true; break end
+			copyError = tostring(result)
+		end
+		if copied then
+			MovementRecord.diagnosticCopied = true
+			pcall(function() notify("Record", "Diagnostics copied to clipboard. Paste the log into chat.", 4) end)
+			return true
+		end
+		pcall(function() warn("[IY Record Diagnostics] Clipboard unavailable or failed (" .. tostring(copyError or "no clipboard API") .. "):\n" .. payload) end)
+		pcall(function() notify("Record", "Diagnostics could not be copied; check the executor console.", 5) end)
+		return false
+	end
+
+	local function recordDiagApproachTick(approach, root, humanoid, target, arrivalRadius, waypointIndex, waypointCount)
+		local now = os.clock()
+		if not approach or not root or not humanoid then return end
+		if now - (tonumber(approach.diagnosticLastTick) or 0) >= 0.5 then
+			local position = root.Position
+			local offset = target and (target - position) or Vector3.zero
+			local horizontal = Vector3.new(offset.X, 0, offset.Z)
+			local velocity, moveDirection, floorMaterial, stateName = Vector3.zero, Vector3.zero, "?", "?"
+			pcall(function() velocity = root.AssemblyLinearVelocity end)
+			pcall(function() moveDirection = humanoid.MoveDirection end)
+			pcall(function() floorMaterial = tostring(humanoid.FloorMaterial) end)
+			pcall(function() stateName = humanoid:GetState().Name end)
+			local platformStand, autoRotate, walkSpeed = false, true, 0
+			pcall(function() platformStand = humanoid.PlatformStand end)
+			pcall(function() autoRotate = humanoid.AutoRotate end)
+			pcall(function() walkSpeed = humanoid.WalkSpeed end)
+			recordDiagAppend("approach_tick", string.format("mode=%s wp=%d/%d pos=%s target=%s hDist=%.2f yDiff=%.2f fullDist=%.2f radius=%.2f vel=%s moveDir=%s state=%s floor=%s walkSpeed=%.1f platformStand=%s autoRotate=%s controlsFallback=%s rootControllers=%s", tostring(MovementRecord.mode), tonumber(waypointIndex) or 0, tonumber(waypointCount) or 0, recordDiagVector(position), recordDiagVector(target), horizontal.Magnitude, offset.Y, offset.Magnitude, tonumber(arrivalRadius) or 0, recordDiagVector(velocity), recordDiagVector(moveDirection), tostring(stateName), tostring(floorMaterial), tonumber(walkSpeed) or 0, tostring(platformStand), tostring(autoRotate), tostring(MovementRecord.controlsFallback == true), recordDiagRootControllers(root)))
+			approach.diagnosticLastTick = now
+		end
+		if not approach.diagnosticProbeAt then
+			approach.diagnosticProbeAt = now
+			approach.diagnosticProbePosition = root.Position
+		elseif now - approach.diagnosticProbeAt >= 1.25 then
+			local previousPosition = approach.diagnosticProbePosition or root.Position
+			local moved = (root.Position - previousPosition).Magnitude
+			local offset = target and (target - root.Position) or Vector3.zero
+			local horizontal = Vector3.new(offset.X, 0, offset.Z)
+			if moved < 0.18 and (horizontal.Magnitude > (tonumber(arrivalRadius) or 1.45) + 0.8 or math.abs(offset.Y) > 3.4) then
+				recordDiagAppend("approach_stalled", string.format("moved=%.3f over=1.25s pos=%s target=%s hDist=%.2f yDiff=%.2f rootControllers=%s", moved, recordDiagVector(root.Position), recordDiagVector(target), horizontal.Magnitude, offset.Y, recordDiagRootControllers(root)))
+			end
+			approach.diagnosticProbeAt = now
+			approach.diagnosticProbePosition = root.Position
+		end
+	end
+
 	local RECORD_FOLDER = "IY_Cruzan_Recordings"
 	local RECORD_CHUNK_SIZE = MovementRecord.persistChunkSamples -- five-second chunks at the 60 Hz target
 	local RECORD_MAX_BYTES = MovementRecord.maxPersistentBytes
@@ -10993,6 +11111,17 @@ do
 		local elapsed = math.max(0, now - (MovementRecord.startedAt or now))
 		local samples = MovementRecord.currentSamples
 		local previousSample = samples and samples[#samples]
+		if previousSample then
+			local sampleGap = elapsed - (tonumber(previousSample.t) or elapsed)
+			if sampleGap > 0.045 then
+				MovementRecord.diagnosticSampleGapCount = (MovementRecord.diagnosticSampleGapCount or 0) + 1
+				if MovementRecord.diagnosticSampleGapCount <= 12 or MovementRecord.diagnosticSampleGapCount % 25 == 0 then
+					local velocity = Vector3.zero
+					pcall(function() velocity = root.AssemblyLinearVelocity end)
+					recordDiagAppend("record_sample_gap", string.format("gap=%.4fs elapsed=%.3fs pos=%s velocity=%s count=%d", sampleGap, elapsed, recordDiagVector(root.Position), recordDiagVector(velocity), MovementRecord.diagnosticSampleGapCount))
+				end
+			end
+		end
 		if not samples then return false end
 		if finalSample and previousSample and elapsed <= (previousSample.t or 0) + 0.008 then
 			if MovementRecord.pendingJumpPulse then
@@ -11077,6 +11206,23 @@ do
 		end
 		local hitByteLimit = reason == "maxBytes"
 		local memoryLimit = reason == "maxSamples"
+		local jumpCount, flightCount, stateTransitions, intervalTotal, minInterval, maxInterval = 0, 0, 0, 0, nil, 0
+		local previous = nil
+		for _, sample in ipairs(samples) do
+			if sample.jump == true then jumpCount = jumpCount + 1 end
+			if sample.flight == true then flightCount = flightCount + 1 end
+			if previous then
+				if sample.state ~= previous.state then stateTransitions = stateTransitions + 1 end
+				local interval = (tonumber(sample.t) or 0) - (tonumber(previous.t) or 0)
+				if interval >= 0 then
+					intervalTotal = intervalTotal + interval
+					minInterval = minInterval and math.min(minInterval, interval) or interval
+					maxInterval = math.max(maxInterval, interval)
+				end
+			end
+			previous = sample
+		end
+		recordDiagAppend("recording_finished", string.format("reason=%s valid=%s duration=%.3f samples=%d jumps=%d flightSamples=%d stateTransitions=%d avgInterval=%.4f minInterval=%.4f maxInterval=%.4f persistent=%s persistenceError=%s", tostring(reason or "unknown"), tostring(valid), duration, #samples, jumpCount, flightCount, stateTransitions, #samples > 1 and intervalTotal / (#samples - 1) or 0, minInterval or 0, maxInterval, tostring(persistentSaved), tostring(persistentError or "none")))
 		clearRecordingReferences()
 		if not silent then
 			if hitByteLimit and valid then
@@ -11094,11 +11240,13 @@ do
 			end
 		end
 		updateRecordWindow()
+		recordDiagCopy("recording finished: " .. tostring(reason or "stopped"))
 		return valid
 	end
 
 	local function cancelRecording()
 		if MovementRecord.mode ~= "recording" then return false end
+		recordDiagAppend("recording_cancelled", "cancelled while recording")
 		MovementRecord.mode = "idle"
 		disconnectRecordConnection()
 		if MovementRecord.recordingPersistent then
@@ -11108,6 +11256,7 @@ do
 		end
 		clearRecordingReferences()
 		updateRecordWindow()
+		recordDiagCopy("recording cancelled")
 		return true
 	end
 
@@ -11132,6 +11281,7 @@ do
 	-- Remove controllers from the previous playback segment before natural walking begins.
 	-- A leftover flight/trajectory mover can fight Humanoid:Move and leave the character jittering in place.
 	local function prepareNaturalStartApproach(root, humanoid)
+		recordDiagAppend("approach_cleanup_begin", string.format("root=%s controllers=%s", recordDiagVector(root and root.Position), recordDiagRootControllers(root)))
 		removeFlightMover()
 		removeTrajectoryMover()
 		if humanoid then
@@ -11143,29 +11293,39 @@ do
 			end)
 		end
 		resetRootVelocity(root)
+		recordDiagAppend("approach_cleanup_done", string.format("root=%s controllers=%s", recordDiagVector(root and root.Position), recordDiagRootControllers(root)))
 	end
 
 	local function createNaturalStartApproach(root, humanoid, targetCFrame, resumeElapsed)
-		if not root or not humanoid or not targetCFrame then return nil end
+		if not root or not humanoid or not targetCFrame then
+			recordDiagAppend("approach_plan_rejected", "missing root/humanoid/target CFrame")
+			return nil
+		end
 		local targetPosition = targetCFrame.Position
 		local offset = targetPosition - root.Position
 		local distance = offset.Magnitude
-		if distance > RECORD_NATURAL_START_RADIUS then return nil end
+		if distance > RECORD_NATURAL_START_RADIUS then
+			recordDiagAppend("approach_plan_rejected", string.format("distance=%.2f exceeds natural radius=%.2f; reposition fallback will be used pos=%s target=%s", distance, RECORD_NATURAL_START_RADIUS, recordDiagVector(root.Position), recordDiagVector(targetPosition)))
+			return nil
+		end
 		local horizontalOffset = Vector3.new(offset.X, 0, offset.Z)
 		local nearStart = horizontalOffset.Magnitude <= RECORD_APPROACH_NEAR_RADIUS
 			and math.abs(offset.Y) <= RECORD_APPROACH_VERTICAL_TOLERANCE
 		local arrivalRadius = nearStart and RECORD_APPROACH_NEAR_RADIUS or RECORD_APPROACH_ARRIVAL_RADIUS
 
 		local waypoints = {}
+		local pathDiagnostic = nearStart and "near-start-no-path-needed" or "within-arrival-radius-no-path-needed"
 		if not nearStart and distance > RECORD_APPROACH_ARRIVAL_RADIUS then
 			local path = nil
 			local pathCreated = pcall(function()
 				path = PathService:CreatePath({AgentRadius = 2, AgentHeight = 5, AgentCanJump = true, WaypointSpacing = 2.5})
 			end)
+			pathDiagnostic = "create=" .. tostring(pathCreated and path ~= nil)
 			if pathCreated and path then
-				local computed = pcall(function() path:ComputeAsync(root.Position, targetPosition) end)
-				local successStatus = false
-				pcall(function() successStatus = path.Status == Enum.PathStatus.Success end)
+				local computed, computeError = pcall(function() path:ComputeAsync(root.Position, targetPosition) end)
+				local successStatus, statusName = false, "unknown"
+				pcall(function() statusName = tostring(path.Status); successStatus = path.Status == Enum.PathStatus.Success end)
+				pathDiagnostic = pathDiagnostic .. string.format(",compute=%s,status=%s,error=%s", tostring(computed), statusName, tostring(computed and "none" or computeError))
 				if computed and successStatus then
 					local okWaypoints, result = pcall(function() return path:GetWaypoints() end)
 					if okWaypoints and type(result) == "table" then
@@ -11173,6 +11333,7 @@ do
 					end
 				end
 			end
+			recordDiagAppend("approach_path", string.format("%s waypoints=%d start=%s target=%s", pathDiagnostic, #waypoints, recordDiagVector(root.Position), recordDiagVector(targetPosition)))
 			if #waypoints > 0 then
 				local lastWaypoint = waypoints[#waypoints]
 				local lastPosition = nil
@@ -11186,6 +11347,7 @@ do
 				if horizontal.Magnitude <= 12 and math.abs(offset.Y) <= 3.5 then
 					waypoints[1] = {Position = targetPosition, Action = Enum.PathWaypointAction.Walk}
 				else
+					recordDiagAppend("approach_plan_rejected", string.format("no safe path/fallback; %s distance=%.2f horizontal=%.2f vertical=%.2f start=%s target=%s", pathDiagnostic, distance, horizontal.Magnitude, offset.Y, recordDiagVector(root.Position), recordDiagVector(targetPosition)))
 					return nil
 				end
 			end
@@ -11199,6 +11361,7 @@ do
 		end
 		local firstSample = MovementRecord.saved and MovementRecord.saved.samples and MovementRecord.saved.samples[1]
 		local walkSpeed = tonumber(firstSample and firstSample.walkSpeed) or tonumber(humanoid.WalkSpeed) or 16
+		recordDiagAppend("approach_plan", string.format("distance=%.2f horizontal=%.2f vertical=%.2f nearStart=%s arrivalRadius=%.2f waypoints=%d waypointIndex=%d path=%s start=%s target=%s resumeElapsed=%.3f", distance, horizontalOffset.Magnitude, offset.Y, tostring(nearStart), arrivalRadius, #waypoints, waypointIndex, pathDiagnostic, recordDiagVector(root.Position), recordDiagVector(targetPosition), tonumber(resumeElapsed) or 0))
 		return {
 			targetCFrame = targetCFrame,
 			targetPosition = targetPosition,
@@ -11219,11 +11382,21 @@ do
 		local root = MovementRecord.playbackRoot
 		if not approach or not humanoid or not root or not root.Parent then return false, "The character is no longer available while approaching the start." end
 		local now = os.clock()
-		if now - (approach.startedAt or now) > RECORD_APPROACH_TIMEOUT then return false, "Could not reach the recording start naturally before timeout." end
+		if now - (approach.startedAt or now) > RECORD_APPROACH_TIMEOUT then
+			local offset = approach.targetPosition - root.Position
+			local horizontal = Vector3.new(offset.X, 0, offset.Z)
+			local velocity = Vector3.zero
+			pcall(function() velocity = root.AssemblyLinearVelocity end)
+			recordDiagAppend("approach_timeout", string.format("elapsed=%.3f pos=%s target=%s hDist=%.2f yDiff=%.2f velocity=%s wp=%s/%s controlsFallback=%s rootControllers=%s", now - (approach.startedAt or now), recordDiagVector(root.Position), recordDiagVector(approach.targetPosition), horizontal.Magnitude, offset.Y, recordDiagVector(velocity), tostring(approach.waypointIndex), tostring(#(approach.waypoints or {})), tostring(MovementRecord.controlsFallback == true), recordDiagRootControllers(root)))
+			return false, "Could not reach the recording start naturally before timeout."
+		end
 		local waypoints = approach.waypoints or {}
 		local arrivalRadius = tonumber(approach.arrivalRadius) or RECORD_APPROACH_ARRIVAL_RADIUS
 		local index = tonumber(approach.waypointIndex) or 1
 		local waypoint = waypoints[index]
+		local diagnosticTarget = approach.targetPosition
+		if waypoint then pcall(function() diagnosticTarget = waypoint.Position or diagnosticTarget end) end
+		recordDiagApproachTick(approach, root, humanoid, diagnosticTarget, arrivalRadius, index, #waypoints)
 		if waypoint then
 			local target = nil
 			local action = nil
@@ -11245,6 +11418,10 @@ do
 				pcall(function() humanoid.WalkSpeed = approach.walkSpeed end)
 				local direction = horizontal.Magnitude > 0.05 and horizontal.Unit or Vector3.zero
 				local moveOk = pcall(function() humanoid:Move(direction, false) end)
+				if now - (tonumber(approach.diagnosticLastCommandAt) or 0) >= 0.5 then
+					recordDiagAppend("approach_move_command", string.format("branch=waypoint wp=%d/%d target=%s offset=%s commanded=%s moveOk=%s", index, #waypoints, recordDiagVector(target), recordDiagVector(offset), recordDiagVector(direction), tostring(moveOk)))
+					approach.diagnosticLastCommandAt = now
+				end
 				if not moveOk then return false, "Humanoid movement input failed while approaching the start." end
 				return true, "working"
 			end
@@ -11254,7 +11431,11 @@ do
 		local finalHorizontal = Vector3.new(finalOffset.X, 0, finalOffset.Z)
 		if finalHorizontal.Magnitude > arrivalRadius or math.abs(finalOffset.Y) > RECORD_APPROACH_VERTICAL_TOLERANCE then
 			local direction = finalHorizontal.Magnitude > 0.05 and finalHorizontal.Unit or Vector3.zero
-			pcall(function() humanoid.AutoRotate = true; humanoid.WalkSpeed = approach.walkSpeed; humanoid:Move(direction, false) end)
+			local moveOk = pcall(function() humanoid.AutoRotate = true; humanoid.WalkSpeed = approach.walkSpeed; humanoid:Move(direction, false) end)
+			if now - (tonumber(approach.diagnosticLastCommandAt) or 0) >= 0.5 then
+				recordDiagAppend("approach_move_command", string.format("branch=final-target target=%s offset=%s commanded=%s moveOk=%s", recordDiagVector(approach.targetPosition), recordDiagVector(finalOffset), recordDiagVector(direction), tostring(moveOk)))
+				approach.diagnosticLastCommandAt = now
+			end
 			return true, "working"
 		end
 
@@ -11286,6 +11467,7 @@ do
 			aligned = targetFlat.Unit:Dot(currentFlat.Unit) >= 0.9925
 		end
 		if aligned or now - (approach.rotateStartedAt or now) >= 1.35 then
+			recordDiagAppend("approach_done", string.format("aligned=%s wait=%.3f root=%s target=%s", tostring(aligned), now - (approach.rotateStartedAt or now), recordDiagVector(root.CFrame), recordDiagVector(approach.targetCFrame)))
 			removeRecordApproachGyro()
 			local original = MovementRecord.originalProperties
 			pcall(function() humanoid.AutoRotate = not original or original.autoRotate ~= false; humanoid:Move(Vector3.zero, false) end)
@@ -11324,9 +11506,13 @@ do
 		removeTrajectoryMover()
 	end
 
-	local function stopPlayback(silent, zeroVelocity)
+	local function stopPlayback(silent, zeroVelocity, stopReason)
 		if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" and MovementRecord.mode ~= "approaching" then return false end
+		local oldMode = MovementRecord.mode
 		local root = MovementRecord.playbackRoot
+		local velocity = Vector3.zero
+		pcall(function() if root then velocity = root.AssemblyLinearVelocity end end)
+		recordDiagAppend("playback_stop_begin", string.format("reason=%s oldMode=%s pos=%s velocity=%s controllers=%s", tostring(stopReason or "stop requested"), tostring(oldMode), recordDiagVector(root and root.Position), recordDiagVector(velocity), recordDiagRootControllers(root)))
 		MovementRecord.mode = "idle"
 		disconnectRecordConnection()
 		restorePlaybackProperties()
@@ -11338,8 +11524,12 @@ do
 		MovementRecord.playbackLoop = false
 		MovementRecord.playbackLastElapsed = 0
 		if zeroVelocity then resetRootVelocity(root) end
+		local velocityAfter = Vector3.zero
+		pcall(function() if root then velocityAfter = root.AssemblyLinearVelocity end end)
+		recordDiagAppend("playback_stop_done", string.format("reason=%s zeroVelocity=%s pos=%s velocityAfter=%s controllersAfter=%s", tostring(stopReason or "stop requested"), tostring(zeroVelocity == true), recordDiagVector(root and root.Position), recordDiagVector(velocityAfter), recordDiagRootControllers(root)))
 		if not silent then recordNotify("Playback stopped.") end
 		updateRecordWindow()
+		recordDiagCopy("playback stopped: " .. tostring(stopReason or "stop requested"))
 		return true
 	end
 
@@ -11421,8 +11611,12 @@ do
 				MovementRecord.playbackLastSampleIndex = 0
 			end
 		elseif elapsed >= duration then
-			stopPlayback(true, true)
-			recordNotify("Playback finished.")
+			stopPlayback(true, true, "single playback finished")
+			if MovementRecord.diagnosticCopied then
+				recordNotify("Playback finished. Diagnostics copied to clipboard.", 4)
+			else
+				recordNotify("Playback finished. Diagnostics are in the executor console.", 4)
+			end
 			return false, "finished"
 		end
 		local a, b, sampleIndex = getSampleAt(saved, localElapsed)
@@ -11633,6 +11827,8 @@ do
 			return false
 		end
 		disconnectRecordConnection()
+		recordDiagBegin("recording")
+		recordDiagAppend("recording_start", string.format("root=%s walkSpeed=%.2f jumpPower=%.2f gameId=%s placeId=%s", recordDiagVector(root.CFrame), tonumber(humanoid.WalkSpeed) or 0, tonumber(humanoid.JumpPower) or 0, CURRENT_GAME_ID, CURRENT_PLACE_ID))
 		MovementRecord.mode = "recording"
 		MovementRecord.currentSamples = {}
 		MovementRecord.startedAt = os.clock()
@@ -11746,10 +11942,14 @@ do
 				return false
 			end
 		end
-		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then stopPlayback(true, true) end
+		if MovementRecord.mode == "playing" or MovementRecord.mode == "looping" or MovementRecord.mode == "approaching" then stopPlayback(true, true, "restarted by new playback request") end
+		recordDiagBegin(looping and "loop_playback" or "single_playback")
+		recordDiagAppend("playback_request", string.format("looping=%s samples=%d duration=%.3f gameId=%s placeId=%s root=%s savedStart=%s", tostring(looping == true), #saved.samples, tonumber(saved.duration) or 0, tostring(saved.gameId), tostring(saved.placeId), recordDiagVector(root.Position), recordDiagVector(saved.startCFrame or (saved.samples[1] and saved.samples[1].cframe))))
 		local first = saved.samples[1]
 		local startCFrame = saved.startCFrame or (first and first.cframe)
 		if not startCFrame then
+			recordDiagAppend("playback_rejected", "recording has no valid start CFrame")
+			recordDiagCopy("playback rejected: missing start CFrame")
 			if not silent then recordNotify("The recording has no valid starting position.", 4) end
 			return false
 		end
@@ -11764,15 +11964,20 @@ do
 			if type(stopFly) == "function" then
 				local stopOk, stopped = pcall(stopFly)
 				if not stopOk or stopped == false or isBuiltInFlyActive() then
+					recordDiagAppend("playback_blocked", string.format("could not suspend built-in fly stopOk=%s stopped=%s stillActive=%s", tostring(stopOk), tostring(stopped), tostring(isBuiltInFlyActive())))
+					recordDiagCopy("playback blocked by active fly controller")
 					if not silent then recordNotify("Playback blocked: could not suspend the active fly controller. Use unfly and try again.", 5) end
 					return false
 				end
 			else
+				recordDiagAppend("playback_blocked", "no stopFlyForRecordPlayback integration while built-in fly is active")
+				recordDiagCopy("playback blocked: no fly cleanup integration")
 				if not silent then recordNotify("Playback blocked: the active fly controller is still running. Use unfly and try again.", 5) end
 				return false
 			end
 		end
 		local controlsOk, controlsError = disableDefaultControls()
+		recordDiagAppend("controls_setup", string.format("controlsOk=%s fallback=%s error=%s startDistance=%.3f current=%s start=%s", tostring(controlsOk), tostring(MovementRecord.controlsFallback == true), tostring(controlsError or "none"), (startCFrame.Position - root.Position).Magnitude, recordDiagVector(root.Position), recordDiagVector(startCFrame)))
 		-- Do not block playback if PlayerModule is hidden. A render-step fallback reapplies
 		-- Humanoid:Move after default input processing so walking/jumping can still run naturally.
 		if not controlsOk then
@@ -11788,6 +11993,7 @@ do
 			autoRotate = humanoid.AutoRotate,
 		}
 		local approach = createNaturalStartApproach(root, humanoid, startCFrame, 0)
+		recordDiagAppend("approach_selected", string.format("natural=%s current=%s start=%s distance=%.3f", tostring(approach ~= nil), recordDiagVector(root.Position), recordDiagVector(startCFrame.Position), (startCFrame.Position - root.Position).Magnitude))
 		local startPositioned = true
 		if approach then
 			prepareNaturalStartApproach(root, humanoid)
@@ -11801,7 +12007,9 @@ do
 			end)
 		end
 		if not startPositioned then
+			recordDiagAppend("playback_start_failed", "could not return to starting position")
 			restorePlaybackProperties()
+			recordDiagCopy("playback start failed")
 			if not silent then recordNotify("Could not return to the recorded starting position.", 5) end
 			return false
 		end
@@ -11826,11 +12034,13 @@ do
 			local resumeElapsed = MovementRecord.approach and tonumber(MovementRecord.approach.resumeElapsed) or 0
 			local approachOk, approachState = stepNaturalStartApproach()
 			if not approachOk then
-				stopPlayback(true, false)
-				recordNotify("Could not approach the recorded start: " .. tostring(approachState), 5)
+				recordDiagAppend("approach_failed", tostring(approachState))
+				stopPlayback(true, false, "natural approach failed: " .. tostring(approachState))
+				recordNotify("Could not approach the recorded start: " .. tostring(approachState) .. (MovementRecord.diagnosticCopied and " Diagnostics copied to clipboard." or " Check executor console for diagnostics."), 5)
 				return false
 			end
 			if approachState == "done" then
+				recordDiagAppend("approach_transition_to_playback", string.format("loop=%s resumeElapsed=%.3f root=%s controllers=%s", tostring(MovementRecord.playbackLoop == true), tonumber(resumeElapsed) or 0, recordDiagVector(MovementRecord.playbackRoot and MovementRecord.playbackRoot.Position), recordDiagRootControllers(MovementRecord.playbackRoot)))
 				MovementRecord.mode = MovementRecord.playbackLoop and "looping" or "playing"
 				MovementRecord.playbackStartedAt = os.clock() - resumeElapsed
 				MovementRecord.playbackCurrentElapsed = resumeElapsed
@@ -11848,8 +12058,9 @@ do
 			if MovementRecord.mode ~= "playing" and MovementRecord.mode ~= "looping" and MovementRecord.mode ~= "approaching" then return end
 			local currentCharacter, currentHumanoid, currentRoot = getLocalCharacterParts()
 			if currentCharacter ~= MovementRecord.playbackCharacter or currentRoot ~= MovementRecord.playbackRoot or not currentHumanoid then
-				stopPlayback(true, false)
-				recordNotify("Playback stopped because your character changed or died.", 4)
+				recordDiagAppend("playback_character_changed", string.format("sameCharacter=%s sameRoot=%s hasHumanoid=%s", tostring(currentCharacter == MovementRecord.playbackCharacter), tostring(currentRoot == MovementRecord.playbackRoot), tostring(currentHumanoid ~= nil)))
+				stopPlayback(true, false, "character changed or died")
+				recordNotify("Playback stopped because your character changed or died." .. (MovementRecord.diagnosticCopied and " Diagnostics copied to clipboard." or " Check executor console for diagnostics."), 4)
 				return
 			end
 			if MovementRecord.mode == "approaching" then
@@ -11862,11 +12073,22 @@ do
 			end
 			local elapsed = os.clock() - (MovementRecord.playbackStartedAt or os.clock())
 			MovementRecord.playbackCurrentElapsed = elapsed
+			if os.clock() - (MovementRecord.diagnosticLastPlaybackAt or 0) >= 0.75 then
+				MovementRecord.diagnosticLastPlaybackAt = os.clock()
+				local sampleElapsed = elapsed
+				local durationForLog = tonumber(MovementRecord.saved and MovementRecord.saved.duration) or 0
+				if MovementRecord.playbackLoop and durationForLog > 0 then sampleElapsed = elapsed % durationForLog end
+				local sampleA, _, sampleIndex = getSampleAt(MovementRecord.saved, sampleElapsed)
+				local rootVelocity = Vector3.zero
+				pcall(function() rootVelocity = currentRoot.AssemblyLinearVelocity end)
+				recordDiagAppend("playback_tick", string.format("mode=%s elapsed=%.3f sampleElapsed=%.3f sample=%s/%d flight=%s jump=%s pos=%s velocity=%s moveDirection=%s state=%s controlsFallback=%s controllers=%s", tostring(MovementRecord.mode), elapsed, sampleElapsed, tostring(sampleIndex), #(MovementRecord.saved and MovementRecord.saved.samples or {}), tostring(sampleA and sampleA.flight), tostring(sampleA and sampleA.jump), recordDiagVector(currentRoot.Position), recordDiagVector(rootVelocity), recordDiagVector(currentHumanoid.MoveDirection), tostring(getHumanoidStateName(currentHumanoid)), tostring(MovementRecord.controlsFallback == true), recordDiagRootControllers(currentRoot)))
+			end
 			if MovementRecord.playbackLoop then
 				local loopDuration = tonumber(MovementRecord.saved and MovementRecord.saved.duration) or 0
 				local loopIndex = loopDuration > 0 and math.floor(elapsed / loopDuration) or 0
 				if loopIndex > (MovementRecord.playbackLoopIndex or 0) then
 					local loopStart = MovementRecord.saved and (MovementRecord.saved.startCFrame or (MovementRecord.saved.samples[1] and MovementRecord.saved.samples[1].cframe))
+					recordDiagAppend("loop_boundary", string.format("elapsed=%.3f duration=%.3f nextLoop=%d current=%s start=%s distance=%.3f velocity=%s controllers=%s", elapsed, loopDuration, loopIndex, recordDiagVector(currentRoot.Position), recordDiagVector(loopStart), loopStart and (loopStart.Position - currentRoot.Position).Magnitude or -1, recordDiagVector(currentRoot.AssemblyLinearVelocity), recordDiagRootControllers(currentRoot)))
 					local loopApproach = loopStart and createNaturalStartApproach(currentRoot, currentHumanoid, loopStart, loopIndex * loopDuration)
 					if loopApproach then
 						-- Release the previous iteration's physics controllers before approaching on foot.
@@ -11893,8 +12115,8 @@ do
 						resetRootVelocity(currentRoot)
 					end)
 					if not resetOk then
-						stopPlayback(true, false)
-						recordNotify("Loop stopped because the starting position could not be restored.", 4)
+						stopPlayback(true, false, "loop start position could not be restored")
+						recordNotify("Loop stopped because the starting position could not be restored." .. (MovementRecord.diagnosticCopied and " Diagnostics copied to clipboard." or " Check executor console for diagnostics."), 4)
 						return
 					end
 					MovementRecord.playbackStartedAt = os.clock() - loopIndex * loopDuration
@@ -11908,8 +12130,9 @@ do
 			end
 			local ok, err = applyPlaybackAt(elapsed)
 			if not ok and err ~= "finished" then
-				stopPlayback(true, false)
-				recordNotify("Playback stopped: " .. tostring(err), 4)
+				recordDiagAppend("playback_apply_failed", tostring(err))
+				stopPlayback(true, false, "applyPlaybackAt failed: " .. tostring(err))
+				recordNotify("Playback stopped: " .. tostring(err) .. (MovementRecord.diagnosticCopied and " Diagnostics copied to clipboard." or " Check executor console for diagnostics."), 4)
 			end
 		end)
 		MovementRecord.connection = connection
@@ -11929,8 +12152,9 @@ do
 					local elapsed = tonumber(MovementRecord.playbackCurrentElapsed) or 0
 					local stepOk, stepError = applyPlaybackAt(elapsed)
 					if not stepOk and stepError ~= "finished" then
-						stopPlayback(true, false)
-						recordNotify("Playback stopped: " .. tostring(stepError), 4)
+						recordDiagAppend("playback_renderstep_failed", tostring(stepError))
+						stopPlayback(true, false, "RenderStep playback failed: " .. tostring(stepError))
+						recordNotify("Playback stopped: " .. tostring(stepError) .. (MovementRecord.diagnosticCopied and " Diagnostics copied to clipboard." or " Check executor console for diagnostics."), 4)
 					end
 				end)
 			end)
